@@ -1,4 +1,4 @@
-package sd
+package activation
 
 import (
 	"os"
@@ -11,7 +11,7 @@ const (
 	listenFdsStart = 3
 )
 
-func ListenFds() []*os.File {
+func Files() []*os.File {
 	pid, err := strconv.Atoi(os.Getenv("LISTEN_PID"))
 	if err != nil || pid != os.Getpid() {
 		return nil
@@ -23,7 +23,7 @@ func ListenFds() []*os.File {
 	files := []*os.File(nil)
 	for fd := listenFdsStart; fd < listenFdsStart+nfds; fd++ {
 		syscall.CloseOnExec(fd)
-		files = append(files, os.NewFile(uintptr(fd), ""))
+		files = append(files, os.NewFile(uintptr(fd), "")
 	}
 	return files
 }
