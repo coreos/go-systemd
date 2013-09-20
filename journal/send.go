@@ -2,6 +2,7 @@ package journal
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,7 +32,7 @@ func init() {
 	var err error
 	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "socket connection error:", err)
+		journalError(err.Error())
 	}
 }
 
@@ -39,10 +40,9 @@ func Enabled() bool {
 	return conn != nil
 }
 
-func Send(message string, priority Priority, vars map[string]string) {
+func Send(message string, priority Priority, vars map[string]string) error {
 	if conn == nil {
-		fmt.Fprintln(os.Stderr, "journal error: connection uninitialized")
-		return
+		return journalError("could not connect to journald socket")
 	}
 
 	data := new(bytes.Buffer)
@@ -56,13 +56,11 @@ func Send(message string, priority Priority, vars map[string]string) {
 	if err != nil && isSocketSpaceError(err) {
 		file, err := tempFd()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "journal error:", err)
-			return
+			return journalError(err.Error())
 		}
 		_, err = io.Copy(file, data)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "journal error:", err)
-			return
+			return journalError(err.Error())
 		}
 
 		rights := syscall.UnixRights(int(file.Fd()))
@@ -70,20 +68,18 @@ func Send(message string, priority Priority, vars map[string]string) {
 		/* this connection should always be a UnixConn, but better safe than sorry */
 		unixConn, ok := conn.(*net.UnixConn)
 		if !ok {
-			fmt.Fprintln(os.Stderr, "journal error: can't send file through non-Unix connection")
-			return
+			return journalError("can't send file through non-Unix connection")
 		}
-
 		unixConn.WriteMsgUnix([]byte{}, rights, nil)
 	} else if err != nil {
-		fmt.Fprintln(os.Stderr, "journal error:", err)
+		return journalError(err.Error())
 	}
+	return nil
 }
 
 func appendVariable(w io.Writer, name, value string) {
 	if !validVarName(name) {
-		fmt.Fprintln(os.Stderr, "journal error: variable name contains invalid character, ignoring")
-		return
+		journalError("variable name contains invalid character, ignoring")
 	}
 	if strings.ContainsRune(value, '\n') {
 		/* When the value contains a newline, we write:
@@ -107,7 +103,7 @@ func validVarName(name string) bool {
 	valid := true
 	valid = valid && name[0] != '_'
 	for _, c := range name {
-		valid = valid && ('A' <= c && c <= 'Z') || ('0' <= c && c <='9') || c == '_'
+		valid = valid && ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_'
 	}
 	return valid
 }
@@ -144,4 +140,10 @@ func tempFd() (*os.File, error) {
 		return nil, err
 	}
 	return file, nil
+}
+
+func journalError(s string) error {
+	s = "journal error: " + s
+	fmt.Fprintln(os.Stderr, s)
+	return errors.New(s)
 }
