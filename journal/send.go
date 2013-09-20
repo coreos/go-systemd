@@ -15,14 +15,14 @@ import (
 type Priority int
 
 const (
-	PRI_EMERG Priority = iota
-	PRI_ALERT
-	PRI_CRIT
-	PRI_ERR
-	PRI_WARNING
-	PRI_NOTICE
-	PRI_INFO
-	PRI_DEBUG
+	PriEmerg Priority = iota
+	PriAlert
+	PriCrit
+	PriErr
+	PriWarning
+	PriNotice
+	PriInfo
+	PriDebug
 )
 
 var conn net.Conn
@@ -127,11 +127,11 @@ func isSocketSpaceError(err error) bool {
 }
 
 func toBytes(n uint64) []byte {
-	var b [8]byte
+	b := make([]byte, 8)
 	for i := 0; i < 8; i++ {
 		b[i] = byte(n >> uint(i*8))
 	}
-	return b[:]
+	return b
 }
 
 func tempFd() (*os.File, error) {
