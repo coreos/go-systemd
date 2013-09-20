@@ -1,3 +1,4 @@
+// Package journal provides write bindings to the systemd journal
 package journal
 
 import (
@@ -13,6 +14,7 @@ import (
 	"syscall"
 )
 
+// Priority of a journal message
 type Priority int
 
 const (
@@ -36,10 +38,18 @@ func init() {
 	}
 }
 
+// Enabled returns true iff the systemd journal is available for logging
 func Enabled() bool {
 	return conn != nil
 }
 
+// Send a message to the systemd journal. vars is a map of journald fields to
+// values.  Fields must be composed of uppercase letters, numbers, and
+// underscores, but must not start with an underscore. Within these
+// restrictions, any arbitrary field name may be used.  Some names have special
+// significance: see the journalctl documentation
+// (http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
+// for more details.  vars may be nil.
 func Send(message string, priority Priority, vars map[string]string) error {
 	if conn == nil {
 		return journalError("could not connect to journald socket")
