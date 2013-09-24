@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"encoding/binary"
 )
 
 // Priority of a journal message
@@ -33,9 +34,6 @@ var conn net.Conn
 func init() {
 	var err error
 	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
-	if err != nil {
-		journalError(err.Error())
-	}
 }
 
 // Enabled returns true iff the systemd journal is available for logging
@@ -98,7 +96,7 @@ func appendVariable(w io.Writer, name, value string) {
 		 * - the data, followed by a newline
 		 */
 		fmt.Fprintln(w, name)
-		w.Write(toBytes(uint64(len(value))))
+		binary.Write(w, binary.LittleEndian, uint64(len(value)))
 		fmt.Fprintln(w, value)
 	} else {
 		/* just write the variable and value all on one line */
@@ -130,14 +128,6 @@ func isSocketSpaceError(err error) bool {
 	}
 
 	return sysErr == syscall.EMSGSIZE || sysErr == syscall.ENOBUFS
-}
-
-func toBytes(n uint64) []byte {
-	b := make([]byte, 8)
-	for i := 0; i < 8; i++ {
-		b[i] = byte(n >> uint(i*8))
-	}
-	return b
 }
 
 func tempFd() (*os.File, error) {
