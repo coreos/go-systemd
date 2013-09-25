@@ -32,8 +32,7 @@ const (
 var conn net.Conn
 
 func init() {
-	var err error
-	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
+	conn, _ = net.Dial("unixgram", "/run/systemd/journal/socket")
 }
 
 // Enabled returns true iff the systemd journal is available for logging
