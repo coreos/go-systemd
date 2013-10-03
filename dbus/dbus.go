@@ -10,12 +10,12 @@ import (
 const signalBuffer = 100
 const managerInterface = "org.freedesktop.systemd1.Manager"
 
-type Subscriber struct {
+type subscriberT struct {
 	jobs     map[dbus.ObjectPath]chan string
 	jobsLock sync.Mutex
 }
 
-var subscriber Subscriber
+var subscriber subscriberT
 
 var sysconn *dbus.Conn
 var sysobj *dbus.Object
@@ -52,7 +52,7 @@ func init() {
 	initSubscriber(&subscriber)
 }
 
-func initSubscriber(s *Subscriber) {
+func initSubscriber(s *subscriberT) {
 	s.jobs = make(map[dbus.ObjectPath]chan string)
 	ch := make(chan *dbus.Signal, signalBuffer)
 
@@ -79,7 +79,7 @@ func initSubscriber(s *Subscriber) {
 	}()
 }
 
-func startJob(job string, args ...interface{}) <-chan string {
+func startJob(job string, args ...interface{}) (<-chan string, error ){
 	subscriber.jobsLock.Lock()
 	defer subscriber.jobsLock.Unlock()
 
@@ -87,18 +87,33 @@ func startJob(job string, args ...interface{}) <-chan string {
 	var path dbus.ObjectPath
 	err := sysobj.Call(job, 0, args...).Store(&path)
 	if err != nil {
-		//TODO: give more information about the error
-		ch <- "error"
-		return ch
+		return nil, err
 	}
 	subscriber.jobs[path] = ch
-	return ch
+	return ch, nil
 }
 
-// StartUnit enqeues a start job, and possibly depending jobs. Takes the unit
-// to activate. The call will start the unit and its dependencies, possibly
-// replacing already queued jobs that conflict with this. Returns a blocking
-// channel which will emit the result string when the job completes.
+func runJob(job string, args ...interface{}) (string, error) {
+	respCh, err := startJob(job, args...)
+	if err != nil {
+		return "", err
+	}
+	return <-respCh, nil
+}
+
+// StartUnit enqeues a start job and possibly depending jobs.  
+//
+// Takes the unit to activate, plus a mode string. The mode needs to be one of
+// replace, fail, isolate, ignore-dependencies, ignore-requirements. If
+// "replace" the call will start the unit and its dependencies, possibly
+// replacing already queued jobs that conflict with this. If "fail" the call
+// will start the unit and its dependencies, but will fail if this would change
+// an already queued job. If "isolate" the call will start the unit in question
+// and terminate all units that aren't dependencies of it. If
+// "ignore-dependencies" it will start a unit but ignore all its dependencies.
+// If "ignore-requirements" it will start a unit but only ignore the
+// requirement dependencies. It is not recommended to make use of the latter
+// two options. 
 //
 // Result string: one of done, canceled, timeout, failed, dependency, skipped.
 // done indicates successful execution of a job. canceled indicates that a job
@@ -107,43 +122,43 @@ func startJob(job string, args ...interface{}) <-chan string {
 // indicates that a job this job has been depending on failed and the job hence
 // has been removed too. skipped indicates that a job was skipped because it
 // didn't apply to the units current state.
-func StartUnit(name string) <-chan string {
-	return startJob("StartUnit", name, "replace")
+func StartUnit(name string, mode string) (string, error) {
+	return runJob("StartUnit", name, mode)
 }
 
 // StopUnit is similar to StartUnit but stops the specified unit rather
 // than starting it.
-func StopUnit(name string) <-chan string {
-	return startJob("StopUnit", name, "replace")
+func StopUnit(name string, mode string) (string, error) {
+	return runJob("StopUnit", name, mode)
 }
 
 // ReloadUnit reloads a unit.  Reloading is done only if the unit is already running and fails otherwise.
-func ReloadUnit(name string) <-chan string {
-	return startJob("ReloadUnit", name, "replace")
+func ReloadUnit(name string, mode string) (string, error) {
+	return runJob("ReloadUnit", name, mode)
 }
 
 // RestartUnit restarts a service.  If a service is restarted that isn't
 // running it will be started.
-func RestartUnit(name string) <-chan string {
-	return startJob("RestartUnit", name, "replace")
+func RestartUnit(name string, mode string) (string, error) {
+	return runJob("RestartUnit", name, mode)
 }
 
 // TryRestartUnit is like RestartUnit, except that a service that isn't running
 // is not affected by the restart.
-func TryRestartUnit(name string) <-chan string {
-	return startJob("TryRestartUnit", name, "replace")
+func TryRestartUnit(name string, mode string) (string, error) {
+	return runJob("TryRestartUnit", name, mode)
 }
 
 // ReloadOrRestart attempts a reload if the unit supports it and use a restart
 // otherwise.
-func ReloadOrRestartUnit(name string) <-chan string {
-	return startJob("ReloadOrRestartUnit", name, "replace")
+func ReloadOrRestartUnit(name string, mode string) (string, error) {
+	return runJob("ReloadOrRestartUnit", name, mode)
 }
 
 // ReloadOrTryRestart attempts a reload if the unit supports it and use a "Try"
 // flavored restart otherwise.
-func ReloadOrTryRestartUnit(name string) <-chan string {
-	return startJob("ReloadOrTryRestartUnit", name, "replace")
+func ReloadOrTryRestartUnit(name string, mode string) (string, error) {
+	return runJob("ReloadOrTryRestartUnit", name, mode)
 }
 
 // KillUnit takes the unit name and a UNIX signal number to send.  All of the unit's
