@@ -61,6 +61,9 @@ func initSubscriber(s *subscriberT) {
 	go func() {
 		for {
 			signal := <-ch
+			if signal == nil {
+				continue
+			}
 			switch signal.Name {
 			case managerInterface + ".JobRemoved":
 				var id uint32
@@ -79,7 +82,7 @@ func initSubscriber(s *subscriberT) {
 	}()
 }
 
-func startJob(job string, args ...interface{}) (<-chan string, error ){
+func startJob(job string, args ...interface{}) (<-chan string, error) {
 	subscriber.jobsLock.Lock()
 	defer subscriber.jobsLock.Unlock()
 
@@ -101,7 +104,7 @@ func runJob(job string, args ...interface{}) (string, error) {
 	return <-respCh, nil
 }
 
-// StartUnit enqeues a start job and possibly depending jobs.  
+// StartUnit enqeues a start job and possibly depending jobs.
 //
 // Takes the unit to activate, plus a mode string. The mode needs to be one of
 // replace, fail, isolate, ignore-dependencies, ignore-requirements. If
@@ -113,7 +116,7 @@ func runJob(job string, args ...interface{}) (string, error) {
 // "ignore-dependencies" it will start a unit but ignore all its dependencies.
 // If "ignore-requirements" it will start a unit but only ignore the
 // requirement dependencies. It is not recommended to make use of the latter
-// two options. 
+// two options.
 //
 // Result string: one of done, canceled, timeout, failed, dependency, skipped.
 // done indicates successful execution of a job. canceled indicates that a job
@@ -159,6 +162,15 @@ func ReloadOrRestartUnit(name string, mode string) (string, error) {
 // flavored restart otherwise.
 func ReloadOrTryRestartUnit(name string, mode string) (string, error) {
 	return runJob("ReloadOrTryRestartUnit", name, mode)
+}
+
+// StartTransientUnit() may be used to create and start a transient unit, which
+// will be released as soon as it is not running or referenced anymore or the
+// system is rebooted. name is the unit name including suffix, and must be
+// unique. mode is the same as in StartUnit(), properties contains properties
+// of the unit.
+func StartTransientUnit(name string, mode string, properties ...Property) (string, error) {
+	return runJob("StartTransientUnit", name, mode, properties, make(auxT, 0))
 }
 
 // KillUnit takes the unit name and a UNIX signal number to send.  All of the unit's
