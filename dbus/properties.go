@@ -27,14 +27,6 @@ type property struct {
 	Value dbus.Variant
 }
 
-type auxT []struct {
-	U1 string
-	U2 []struct {
-		U3 string
-		U4 dbus.Variant
-	}
-}
-
 type execStart struct {
 	Path             string   // the binary path to execute
 	Args             []string // an array with all arguments to pass to the executed command, starting with argument 0
