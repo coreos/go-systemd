@@ -44,7 +44,8 @@ func (c *Conn) runJob(job string, args ...interface{}) (string, error) {
 	return <-respCh, nil
 }
 
-// StartUnit enqeues a start job and possibly depending jobs.
+// StartUnit enqeues a start job and depending jobs, if any (unless otherwise
+// specified by the mode string).
 //
 // Takes the unit to activate, plus a mode string. The mode needs to be one of
 // replace, fail, isolate, ignore-dependencies, ignore-requirements. If
