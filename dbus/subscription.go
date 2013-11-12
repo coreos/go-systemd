@@ -1,8 +1,10 @@
 package dbus
 
 import (
-	"github.com/guelfey/go.dbus"
+	"errors"
 	"time"
+
+	"github.com/guelfey/go.dbus"
 )
 
 const (
@@ -71,12 +73,6 @@ type SubStateUpdate struct {
 	SubState string
 }
 
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
-}
-
 // SetSubStateSubscriber writes to updateCh when any unit's substate changes.
 // Althrough this writes to updateCh on every state change, the reported state
 // may be more recent than the change that generated it (due to an unavoidable
@@ -120,7 +116,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 	case c.subscriber.updateCh <- update:
 	default:
 		select {
-		case c.subscriber.errCh <- Error("update channel full!"):
+		case c.subscriber.errCh <- errors.New("update channel full!"):
 		default:
 		}
 	}
