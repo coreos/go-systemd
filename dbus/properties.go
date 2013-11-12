@@ -76,55 +76,55 @@ func propDependency(name string, units []string) Property {
 }
 
 // PropRequires sets the Requires unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#Requires=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requires=
 func PropRequires(units ...string) Property {
 	return propDependency("Requires", units)
 }
 
 // PropRequiresOverridable sets the RequiresOverridable unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#RequiresOverridable=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#RequiresOverridable=
 func PropRequiresOverridable(units ...string) Property {
 	return propDependency("RequiresOverridable", units)
 }
 
 // PropRequisite sets the Requisite unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#Requisite=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Requisite=
 func PropRequisite(units ...string) Property {
 	return propDependency("Requisite", units)
 }
 
 // PropRequisiteOverridable sets the RequisiteOverridable unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#RequisiteOverridable=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#RequisiteOverridable=
 func PropRequisiteOverridable(units ...string) Property {
 	return propDependency("RequisiteOverridable", units)
 }
 
 // PropWants sets the Wants unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#Wants=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Wants=
 func PropWants(units ...string) Property {
 	return propDependency("Wants", units)
 }
 
 // PropBindsTo sets the BindsTo unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#BindsTo=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#BindsTo=
 func PropBindsTo(units ...string) Property {
 	return propDependency("BindsTo", units)
 }
 
 // PropRequiredBy sets the RequiredBy unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#RequiredBy=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#RequiredBy=
 func PropRequiredBy(units ...string) Property {
 	return propDependency("RequiredBy", units)
 }
 
 // PropRequiredByOverridable sets the RequiredByOverridable unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#RequiredByOverridable=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#RequiredByOverridable=
 func PropRequiredByOverridable(units ...string) Property {
 	return propDependency("RequiredByOverridable", units)
 }
 
 // PropWantedBy sets the WantedBy unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#WantedBy=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#WantedBy=
 func PropWantedBy(units ...string) Property {
 	return propDependency("WantedBy", units)
 }
@@ -136,55 +136,55 @@ func PropBoundBy(units ...string) Property {
 }
 
 // PropConflicts sets the Conflicts unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#Conflicts=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Conflicts=
 func PropConflicts(units ...string) Property {
 	return propDependency("Conflicts", units)
 }
 
 // PropConflictedBy sets the ConflictedBy unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#ConflictedBy=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#ConflictedBy=
 func PropConflictedBy(units ...string) Property {
 	return propDependency("ConflictedBy", units)
 }
 
 // PropBefore sets the Before unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#Before=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Before=
 func PropBefore(units ...string) Property {
 	return propDependency("Before", units)
 }
 
 // PropAfter sets the After unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#After=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#After=
 func PropAfter(units ...string) Property {
 	return propDependency("After", units)
 }
 
 // PropOnFailure sets the OnFailure unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#OnFailure=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#OnFailure=
 func PropOnFailure(units ...string) Property {
 	return propDependency("OnFailure", units)
 }
 
 // PropTriggers sets the Triggers unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#Triggers=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#Triggers=
 func PropTriggers(units ...string) Property {
 	return propDependency("Triggers", units)
 }
 
 // PropTriggeredBy sets the TriggeredBy unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#TriggeredBy=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#TriggeredBy=
 func PropTriggeredBy(units ...string) Property {
 	return propDependency("TriggeredBy", units)
 }
 
 // PropPropagatesReloadTo sets the PropagatesReloadTo unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#PropagatesReloadTo=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#PropagatesReloadTo=
 func PropPropagatesReloadTo(units ...string) Property {
 	return propDependency("PropagatesReloadTo", units)
 }
 
 // PropRequiresMountsFor sets the RequiresMountsFor unit property.  See
-// http://www.freedesktop.org/software/systemd/main/systemd.unit.html#RequiresMountsFor=
+// http://www.freedesktop.org/software/systemd/man/systemd.unit.html#RequiresMountsFor=
 func PropRequiresMountsFor(units ...string) Property {
 	return propDependency("RequiresMountsFor", units)
 }
