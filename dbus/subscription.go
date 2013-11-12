@@ -104,7 +104,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 		return
 	}
 
-	info, err := c.getUnitInfo(path)
+	info, err := c.GetUnitInfo(path)
 	if err != nil {
 		select {
 		case c.subscriber.errCh <- err:
@@ -128,7 +128,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 	c.updateIgnore(path, info)
 }
 
-func (c *Conn) getUnitInfo(path dbus.ObjectPath) (map[string]dbus.Variant, error) {
+func (c *Conn) GetUnitInfo(path dbus.ObjectPath) (map[string]dbus.Variant, error) {
 	var err error
 	var props map[string]dbus.Variant
 	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
