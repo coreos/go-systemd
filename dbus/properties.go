@@ -20,9 +20,7 @@ import (
 // used for construction of the scope only and specifies the initial PIDs to
 // add to the scope object.
 
-type Property property
-
-type property struct {
+type Property struct {
 	Name  string
 	Value dbus.Variant
 }
@@ -38,44 +36,43 @@ type execStart struct {
 // the executed command. See
 // http://www.freedesktop.org/software/systemd/man/systemd.service.html#ExecStart=
 func PropExecStart(command []string, uncleanIsFailure bool) Property {
-	return Property(
-		property{
-			Name: "ExecStart",
-			Value: dbus.MakeVariant(
-				[]execStart{
-					execStart{
-						Path:             command[0],
-						Args:             command,
-						UncleanIsFailure: uncleanIsFailure,
-					}})})
+	execStarts := []execStart{
+		execStart{
+			Path:             command[0],
+			Args:             command,
+			UncleanIsFailure: uncleanIsFailure,
+		},
+	}
+
+	return Property{
+		Name:  "ExecStart",
+		Value: dbus.MakeVariant(execStarts),
+	}
 }
 
 // PropRemainAfterExit sets the RemainAfterExit service property. See
 // http://www.freedesktop.org/software/systemd/man/systemd.service.html#RemainAfterExit=
 func PropRemainAfterExit(b bool) Property {
-	return Property(
-		property{
-			Name:  "RemainAfterExit",
-			Value: dbus.MakeVariant(b),
-		})
+	return Property{
+		Name:  "RemainAfterExit",
+		Value: dbus.MakeVariant(b),
+	}
 }
 
 // PropDescription sets the Description unit property. See
 // http://www.freedesktop.org/software/systemd/man/systemd.unit#Description=
 func PropDescription(desc string) Property {
-	return Property(
-		property{
-			Name:  "Description",
-			Value: dbus.MakeVariant(desc),
-		})
+	return Property{
+		Name:  "Description",
+		Value: dbus.MakeVariant(desc),
+	}
 }
 
 func propDependency(name string, units []string) Property {
-	return Property(
-		property{
-			Name:  name,
-			Value: dbus.MakeVariant(units),
-		})
+	return Property{
+		Name:  name,
+		Value: dbus.MakeVariant(units),
+	}
 }
 
 // PropRequires sets the Requires unit property.  See
