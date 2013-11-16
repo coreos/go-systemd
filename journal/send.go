@@ -103,7 +103,7 @@ func appendVariable(w io.Writer, name, value string) {
 		fmt.Fprintln(w, value)
 	} else {
 		/* just write the variable and value all on one line */
-		fmt.Fprintf(w, "%s=%s\n", name, value)
+		fmt.Fprintln(w, "%s=%s", name, value)
 	}
 }
 
