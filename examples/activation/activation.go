@@ -20,10 +20,20 @@ func fixListenPid() {
 func main() {
 	fixListenPid()
 
-	files := activation.Files()
+	files := activation.Files(false)
 
 	if len(files) == 0 {
 		panic("No files")
+	}
+
+	if os.Getenv("LISTEN_PID") == "" || os.Getenv("LISTEN_FDS") == "" {
+		panic("Should not unset envs")
+	}
+
+	files = activation.Files(true)
+
+	if os.Getenv("LISTEN_PID") != "" || os.Getenv("LISTEN_FDS") != "" {
+		panic("Can not unset envs")
 	}
 
 	// Write out the expected strings to the two pipes
