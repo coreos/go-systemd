@@ -123,6 +123,27 @@ func (c *Conn) KillUnit(name string, signal int32) {
 	c.sysobj.Call("KillUnit", 0, name, "all", signal).Store()
 }
 
+// GetUnitProperties takes the unit name and returns all of its dbus object properties.
+func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
+	var err error
+	var props map[string]dbus.Variant
+
+	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+
+	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
+	err = obj.Call("org.freedesktop.DBus.Properties.GetAll", 0, "org.freedesktop.systemd1.Unit").Store(&props)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[string]interface{}, len(props))
+	for k, v := range(props) {
+		out[k] = v.Value()
+	}
+
+	return out, nil
+}
+
 // ListUnits returns an array with all currently loaded units. Note that
 // units may be known by multiple names at the same time, and hence there might
 // be more unit names loaded than actual units behind them.

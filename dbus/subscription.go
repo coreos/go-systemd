@@ -152,7 +152,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 		return
 	}
 
-	info, err := c.GetUnitInfo(path)
+	info, err := c.GetUnitProperties(string(path))
 	if err != nil {
 		select {
 		case c.subscriber.errCh <- err:
@@ -160,8 +160,8 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 		}
 	}
 
-	name := info["Id"].Value().(string)
-	substate := info["SubState"].Value().(string)
+	name := info["Id"].(string)
+	substate := info["SubState"].(string)
 
 	update := &SubStateUpdate{name, substate}
 	select {
@@ -174,17 +174,6 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 	}
 
 	c.updateIgnore(path, info)
-}
-
-func (c *Conn) GetUnitInfo(path dbus.ObjectPath) (map[string]dbus.Variant, error) {
-	var err error
-	var props map[string]dbus.Variant
-	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
-	err = obj.Call("GetAll", 0, "org.freedesktop.systemd1.Unit").Store(&props)
-	if err != nil {
-		return nil, err
-	}
-	return props, nil
 }
 
 // The ignore functions work around a wart in the systemd dbus interface.
@@ -206,11 +195,11 @@ func (c *Conn) shouldIgnore(path dbus.ObjectPath) bool {
 	return ok && t >= time.Now().UnixNano()
 }
 
-func (c *Conn) updateIgnore(path dbus.ObjectPath, info map[string]dbus.Variant) {
+func (c *Conn) updateIgnore(path dbus.ObjectPath, info map[string]interface{}) {
 	c.cleanIgnore()
 
 	// unit is unloaded - it will trigger bad systemd dbus behavior
-	if info["LoadState"].Value().(string) == "not-found" {
+	if info["LoadState"].(string) == "not-found" {
 		c.subscriber.ignore[path] = time.Now().UnixNano() + ignoreInterval
 	}
 }
