@@ -2,11 +2,23 @@
 package dbus
 
 import (
-	"github.com/guelfey/go.dbus"
+	"strings"
 	"sync"
+
+	"github.com/guelfey/go.dbus"
 )
 
 const signalBuffer = 100
+
+// ObjectPath creates a dbus.ObjectPath using the rules that systemd uses for
+// serializing special characters.
+func ObjectPath(path string) dbus.ObjectPath {
+	path = strings.Replace(path, ".", "_2e", -1)
+	path = strings.Replace(path, "-", "_2d", -1)
+	path = strings.Replace(path, "@", "_40", -1)
+
+	return dbus.ObjectPath(path)
+}
 
 type Conn struct {
 	sysconn     *dbus.Conn
