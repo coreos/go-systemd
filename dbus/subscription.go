@@ -95,12 +95,13 @@ func (c *Conn) initDispatch() {
 // Returns two unbuffered channels which will receive all changed units every
 // interval.  Deleted units are sent as nil.
 func (c *Conn) SubscribeUnits(interval time.Duration) (<-chan map[string]*UnitStatus, <-chan error) {
-	return c.SubscribeUnitsCustom(interval, 0, func(u1, u2 *UnitStatus) bool { return *u1 != *u2 })
+	return c.SubscribeUnitsCustom(interval, 0, func(u1, u2 *UnitStatus) bool { return *u1 != *u2 }, nil)
 }
 
 // SubscribeUnitsCustom is like SubscribeUnits but lets you specify the buffer
-// size of the channels and the comparison function for detecting changes.
-func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool) (<-chan map[string]*UnitStatus, <-chan error) {
+// size of the channels, the comparison function for detecting changes and a filter
+// function for cutting down on the noise that your channel receives.
+func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func (string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
 	old := make(map[string]*UnitStatus)
 	statusChan := make(chan map[string]*UnitStatus, buffer)
 	errChan := make(chan error, buffer)
@@ -113,6 +114,9 @@ func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChange
 			if err == nil {
 				cur := make(map[string]*UnitStatus)
 				for i := range units {
+					if filterUnit != nil && filterUnit(units[i].Name) {
+						continue
+					}
 					cur[units[i].Name] = &units[i]
 				}
 
@@ -132,7 +136,9 @@ func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChange
 
 				old = cur
 
-				statusChan <- changed
+				if len(changed) != 0 {
+					statusChan <- changed
+				}
 			} else {
 				errChan <- err
 			}
