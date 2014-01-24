@@ -24,7 +24,7 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
-// TestSubscribe exercises the basics of subscription
+// TestSubscribeUnit exercises the basics of subscription of a particular unit.
 func TestSubscribeUnit(t *testing.T) {
 	target := "subscribe-events.service"
 
@@ -86,3 +86,5 @@ func TestSubscribeUnit(t *testing.T) {
 success:
 	return
 }
+
+
