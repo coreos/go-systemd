@@ -121,5 +121,4 @@ func TestGetUnitProperties(t *testing.T) {
 	if names[0] != "system.slice" {
 		t.Fatal("unexpected wants for /")
 	}
-
 }
