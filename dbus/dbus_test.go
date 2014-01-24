@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// TestObjectPath ensures path encoding of the systemd rules works.
 func TestObjectPath(t *testing.T) {
 	input := "/silly-path/to@a/unit..service"
 	output := ObjectPath(input)
