@@ -15,16 +15,16 @@ func setupConn(t *testing.T) *Conn {
 	return conn
 }
 
-// Ensure that basic unit starting and stopping works.
-func TestStartStopUnit(t *testing.T) {
-	target := "/run/systemd/system/start-stop.service"
-	conn := setupConn(t)
+func setupUnit(target string, conn *Conn, t *testing.T) {
+	// Blindly stop the unit in case it is running
+	conn.StopUnit(target, "replace")
 
 	// Blindly remove the symlink in case it exists
-	err := os.Remove(target)
+	targetRun := filepath.Join("/run/systemd/system/", target)
+	err := os.Remove(targetRun)
 
 	// 1. Enable the unit
-	abs, err := filepath.Abs("../fixtures/start-stop.service")
+	abs, err := filepath.Abs("../fixtures/" + target)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,12 +41,20 @@ func TestStartStopUnit(t *testing.T) {
 		t.Fatal("Expected one change, got %v", changes)
 	}
 
-	if changes[0].Filename != target {
+	if changes[0].Filename != targetRun {
 		t.Fatal("Unexpected target filename")
 	}
+}
+
+// Ensure that basic unit starting and stopping works.
+func TestStartStopUnit(t *testing.T) {
+	target := "start-stop.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
 
 	// 2. Start the unit
-	job, err := conn.StartUnit(filepath.Base(target), "replace")
+	job, err := conn.StartUnit(target, "replace")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +67,7 @@ func TestStartStopUnit(t *testing.T) {
 
 	var unit *UnitStatus
 	for _, u := range units {
-		if u.Name == filepath.Base(target) {
+		if u.Name == target {
 			unit = &u
 		}
 	}
@@ -73,7 +81,7 @@ func TestStartStopUnit(t *testing.T) {
 	}
 
 	// 3. Stop the unit
-	job, err = conn.StopUnit(filepath.Base(target), "replace")
+	job, err = conn.StopUnit(target, "replace")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +90,7 @@ func TestStartStopUnit(t *testing.T) {
 
 	unit = nil
 	for _, u := range units {
-		if u.Name == filepath.Base(target) {
+		if u.Name == target {
 			unit = &u
 		}
 	}
