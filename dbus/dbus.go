@@ -71,7 +71,11 @@ func (c *Conn) initConnection() error {
 
 	c.sysobj = c.sysconn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
 
+	// Setup the listener on jobs so that can get completions
+	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
+	c.initSubscription()
+	c.initDispatch()
+
 	return nil
 }
-
-

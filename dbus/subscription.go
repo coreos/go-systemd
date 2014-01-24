@@ -16,8 +16,6 @@ const (
 // required before calling SubscribeUnits.
 func (c *Conn) Subscribe() error {
 	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
-		"type='signal',interface='org.freedesktop.systemd1.Manager',member='JobRemoved'")
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.systemd1.Manager',member='UnitNew'")
 	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'")
@@ -27,9 +25,6 @@ func (c *Conn) Subscribe() error {
 		c.sysconn.Close()
 		return err
 	}
-
-	c.initSubscription()
-	c.initDispatch()
 
 	return nil
 }
