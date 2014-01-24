@@ -31,6 +31,17 @@ func (c *Conn) Subscribe() error {
 	return nil
 }
 
+// Unsubscribe this connection from systemd dbus events.
+func (c *Conn) Unsubscribe() error {
+	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
+	if err != nil {
+		c.sysconn.Close()
+		return err
+	}
+
+	return nil
+}
+
 func (c *Conn) initSubscription() {
 	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
 }
