@@ -36,6 +36,7 @@ func ObjectPath(path string) dbus.ObjectPath {
 	return dbus.ObjectPath(path)
 }
 
+// Conn is a connection to systemds dbus endpoint.
 type Conn struct {
 	sysconn     *dbus.Conn
 	sysobj      *dbus.Object
@@ -53,6 +54,7 @@ type Conn struct {
 	dispatch map[string]func(dbus.Signal)
 }
 
+// New() establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
 	c := new(Conn)
 
@@ -85,7 +87,11 @@ func (c *Conn) initConnection() error {
 
 	c.sysobj = c.sysconn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
 
+	// Setup the listeners on jobs so that we can get completions
+	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
+	c.initSubscription()
+	c.initDispatch()
+
 	return nil
 }
-
-

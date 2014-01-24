@@ -153,7 +153,7 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 	}
 
 	out := make(map[string]interface{}, len(props))
-	for k, v := range(props) {
+	for k, v := range props {
 		out[k] = v.Value()
 	}
 
