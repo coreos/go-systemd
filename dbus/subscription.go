@@ -12,8 +12,10 @@ const (
 	ignoreInterval      = int64(30 * time.Millisecond)
 )
 
-// Subscribe sets up this connection to subscribe to all dbus events. This is
-// required before calling SubscribeUnits.
+// Subscribe sets up this connection to subscribe to all systemd dbus events.
+// This is required before calling SubscribeUnits. When the connection closes
+// systemd will automatically stop sending signals so there is no need to
+// explicitly call Unsubscribe().
 func (c *Conn) Subscribe() error {
 	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.systemd1.Manager',member='UnitNew'")
@@ -121,7 +123,7 @@ type SubStateUpdate struct {
 }
 
 // SetSubStateSubscriber writes to updateCh when any unit's substate changes.
-// Althrough this writes to updateCh on every state change, the reported state
+// Although this writes to updateCh on every state change, the reported state
 // may be more recent than the change that generated it (due to an unavoidable
 // race in the systemd dbus interface).  That is, this method provides a good
 // way to keep a current view of all units' states, but is not guaranteed to
