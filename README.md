@@ -1,15 +1,25 @@
 # go-systemd
 
-Go bindings to systemd socket activation, journal and D-BUS APIs.
+Go bindings to systemd. The project has three packages:
 
-## Go Docs
+- activation - for writing and using socket activation from Go
+- journal - for writing to systemd's logging service, journal
+- dbus - for starting/stopping/inspecting running services and units
+
+Go docs for the entire project are here:
 
 http://godoc.org/github.com/coreos/go-systemd
 
 ## Socket Activation
 
-See an example in `examples/activation/httpserver.go`. For easy debugging use
-`/usr/lib/systemd/systemd-activate`
+An example HTTP server using socket activation can be quickly setup by
+following this README on a Linux machine running systemd:
+
+https://github.com/coreos/go-systemd/tree/master/examples/activation/httpserver
+
+## Journal
+
+Using this package you can submit journal entries directly to systemd's journal taking advantage of features like indexed key/value pairs for each log entry.
 
 ## D-Bus
 
