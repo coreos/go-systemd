@@ -8,6 +8,10 @@ func (s *set) Add(value string) {
 	s.data[value] = true
 }
 
+func (s *set) Remove(value string) {
+	delete(s.data, value)
+}
+
 func (s *set) Contains(value string) (exists bool) {
 	_, exists = s.data[value]
 	return
