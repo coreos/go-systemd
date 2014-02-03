@@ -17,6 +17,7 @@ limitations under the License.
 package dbus
 
 import (
+	"errors"
 	"github.com/guelfey/go.dbus"
 )
 
@@ -145,6 +146,9 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 	var props map[string]dbus.Variant
 
 	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+	if !path.IsValid() {
+		return nil, errors.New("invalid unit name: " + unit)
+	}
 
 	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
 	err = obj.Call("org.freedesktop.DBus.Properties.GetAll", 0, "org.freedesktop.systemd1.Unit").Store(&props)

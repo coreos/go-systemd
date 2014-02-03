@@ -138,3 +138,18 @@ func TestGetUnitProperties(t *testing.T) {
 		t.Fatal("unexpected wants for /")
 	}
 }
+
+// TestGetUnitPropertiesRejectsInvalidName attempts to get the properties for a
+// unit with an invalid name. This test should be run with --test.timeout set,
+// as a fail will manifest as GetUnitProperties hanging indefinitely.
+func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
+	conn := setupConn(t)
+
+	unit := "//invalid#$^/"
+
+	_, err := conn.GetUnitProperties(unit)
+
+	if err == nil {
+		t.Fatal("Expected an error, got nil")
+	}
+}

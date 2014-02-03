@@ -6,7 +6,7 @@ import (
 
 // TestBasicSetActions asserts that Add & Remove behavior is correct
 func TestBasicSetActions(t *testing.T) {
-	s := set{}
+	s := newSet()
 
 	if s.Contains("foo") {
 		t.Fatal("set should not contain 'foo'")
