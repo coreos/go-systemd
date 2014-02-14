@@ -121,6 +121,37 @@ func TestStartStopUnit(t *testing.T) {
 	}
 }
 
+// Enables a unit and then immediately tears it down
+func TestEnableDisableUnit(t *testing.T) {
+	target := "enable-disable.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
+
+	abs, err := filepath.Abs("../fixtures/" + target)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join("/run/systemd/system/", target)
+
+	// 2. Disable the unit
+	changes, err := conn.DisableUnitFiles([]string{abs}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(changes) != 1 {
+		t.Fatalf("Changes should include the path, %v", changes)
+	}
+	if changes[0].Filename != path {
+		t.Fatalf("Change should include correct filename, %+v", changes[0])
+	}
+	if changes[0].Destination != "" {
+		t.Fatalf("Change destination should be empty, %+v", changes[0])
+	}
+}
+
 // TestGetUnitProperties reads the `-.mount` which should exist on all systemd
 // systems and ensures that one of its properties is valid.
 func TestGetUnitProperties(t *testing.T) {

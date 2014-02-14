@@ -266,6 +266,50 @@ type EnableUnitFileChange struct {
 	Destination string // Destination of the symlink
 }
 
+// DisableUnitFiles() may be used to disable one or more units in the system (by
+// removing symlinks to them from /etc or /run).
+//
+// It takes a list of unit files to disable (either just file names or full
+// absolute paths if the unit files are residing outside the usual unit
+// search paths), and one boolean: whether the unit was enabled for runtime
+// only (true, /run), or persistently (false, /etc).
+//
+// This call returns an array with the changes made. The changes list
+// consists of structures with three strings: the type of the change (one of
+// symlink or unlink), the file name of the symlink and the destination of the
+// symlink.
+func (c *Conn) DisableUnitFiles(files []string, runtime bool) ([]DisableUnitFileChange, error) {
+	result := make([][]interface{}, 0)
+	err := c.sysobj.Call("DisableUnitFiles", 0, files, runtime).Store(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	resultInterface := make([]interface{}, len(result))
+	for i := range result {
+		resultInterface[i] = result[i]
+	}
+
+	changes := make([]DisableUnitFileChange, len(result))
+	changesInterface := make([]interface{}, len(changes))
+	for i := range changes {
+		changesInterface[i] = &changes[i]
+	}
+
+	err = dbus.Store(resultInterface, changesInterface...)
+	if err != nil {
+		return nil, err
+	}
+
+	return changes, nil
+}
+
+type DisableUnitFileChange struct {
+	Type        string // Type of the change (one of symlink or unlink)
+	Filename    string // File name of the symlink
+	Destination string // Destination of the symlink
+}
+
 // Reload instructs systemd to scan for and reload unit files. This is
 // equivalent to a 'systemctl daemon-reload'.
 func (c *Conn) Reload() (string, error) {
