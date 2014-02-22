@@ -19,19 +19,44 @@ package activation
 import (
 	"fmt"
 	"net"
+	"os"
 )
+
+type TcpOrUdp struct {
+	Tcp net.Listener
+	Udp net.PacketConn
+	Err error
+}
+
+// WrapSystemdSockets will take a list of files from Files function and create
+// UDP sockets or TCP listeners for them.
+func WrapSystemdSockets(files []*os.File) (result []TcpOrUdp) {
+	result = make([]TcpOrUdp, len(files))
+	for i, fd := range files {
+		if pc, err := net.FilePacketConn(fd); err == nil {
+			result[i].Udp = pc
+			continue
+		}
+		if sc, err := net.FileListener(fd); err == nil {
+			result[i].Tcp = sc
+			continue
+		} else {
+			result[i].Err = err
+		}
+	}
+	return
+}
 
 // Listeners returns net.Listeners for all socket activated fds passed to this process.
 func Listeners(unsetEnv bool) ([]net.Listener, error) {
 	files := Files(unsetEnv)
 	listeners := make([]net.Listener, len(files))
 
-	for i, f := range files {
-		var err error
-		listeners[i], err = net.FileListener(f)
-		if err != nil {
-			return nil, fmt.Errorf("Error setting up FileListener for fd %d: %s", f.Fd(), err.Error())
+	for i, f := range WrapSystemdSockets(files) {
+		if f.Err != nil {
+			return nil, fmt.Errorf("Error setting up FileListener for fd %d: %s", files[i].Fd(), f.Err.Error())
 		}
+		listeners[i] = f.Tcp
 	}
 
 	return listeners, nil
