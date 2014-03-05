@@ -128,10 +128,7 @@ func (c *Conn) ReloadOrTryRestartUnit(name string, mode string) (string, error) 
 // unique. mode is the same as in StartUnit(), properties contains properties
 // of the unit.
 func (c *Conn) StartTransientUnit(name string, mode string, properties ...Property) (string, error) {
-	// the dbus interface for this method does not use the last argument and
-	// should simply be given an empty list.  We use a concrete type here
-	// (instead of the more appropriate interface{}) to satisfy the dbus library.
-	return c.runJob("org.freedesktop.systemd1.Manager.StartTransientUnit", name, mode, properties, make([]string, 0))
+	return c.runJob("org.freedesktop.systemd1.Manager.StartTransientUnit", name, mode, properties, make([]PropertyCollection, 0))
 }
 
 // KillUnit takes the unit name and a UNIX signal number to send.  All of the unit's

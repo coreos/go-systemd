@@ -41,6 +41,11 @@ type Property struct {
 	Value dbus.Variant
 }
 
+type PropertyCollection struct {
+	Name       string
+	Properties []Property
+}
+
 type execStart struct {
 	Path             string   // the binary path to execute
 	Args             []string // an array with all arguments to pass to the executed command, starting with argument 0

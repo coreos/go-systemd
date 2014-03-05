@@ -17,6 +17,8 @@ limitations under the License.
 package dbus
 
 import (
+	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -151,5 +153,61 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("Expected an error, got nil")
+	}
+}
+
+// Ensure that basic transient unit starting and stopping works.
+func TestStartStopTransientUnit(t *testing.T) {
+	conn := setupConn(t)
+
+	props := []Property{
+		PropExecStart([]string{"/bin/sleep", "400"}, false),
+	}
+	target := fmt.Sprintf("testing-transient-%d.service", rand.Int())
+
+	// Start the unit
+	job, err := conn.StartTransientUnit(target, "replace", props...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if job != "done" {
+		t.Fatal("Job is not done, %v", job)
+	}
+
+	units, err := conn.ListUnits()
+
+	var unit *UnitStatus
+	for _, u := range units {
+		if u.Name == target {
+			unit = &u
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("Test unit not found in list")
+	}
+
+	if unit.ActiveState != "active" {
+		t.Fatalf("Test unit not active")
+	}
+
+	// 3. Stop the unit
+	job, err = conn.StopUnit(target, "replace")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	units, err = conn.ListUnits()
+
+	unit = nil
+	for _, u := range units {
+		if u.Name == target {
+			unit = &u
+		}
+	}
+
+	if unit != nil {
+		t.Fatalf("Test unit found in list, should be stopped")
 	}
 }
