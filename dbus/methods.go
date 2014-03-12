@@ -166,11 +166,11 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 	return c.getProperties(unit, "org.freedesktop.systemd1.Unit")
 }
 
-// GetExtraProperties returns the extra properties for a unit, specific to the unit type.
-// Valid values for subclass: Service, Socket, Target, Device, Mount, Automount, Snapshot, Timer, Swap, Path, Slice, Scope
-// return "dbus.Error: Unknown interface" if the subclass is not the correct type of the unit
-func (c *Conn) GetExtraProperties(unit string, subclass string) (map[string]interface{}, error) {
-	return c.getProperties(unit, "org.freedesktop.systemd1." + subclass)
+// GetUnitTypeProperties returns the extra properties for a unit, specific to the unit type.
+// Valid values for unitType: Service, Socket, Target, Device, Mount, Automount, Snapshot, Timer, Swap, Path, Slice, Scope
+// return "dbus.Error: Unknown interface" if the unitType is not the correct type of the unit
+func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]interface{}, error) {
+	return c.getProperties(unit, "org.freedesktop.systemd1." + unitType)
 }
 
 // ListUnits returns an array with all currently loaded units. Note that
