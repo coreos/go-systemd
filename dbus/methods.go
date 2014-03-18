@@ -171,7 +171,18 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 // Valid values for unitType: Service, Socket, Target, Device, Mount, Automount, Snapshot, Timer, Swap, Path, Slice, Scope
 // return "dbus.Error: Unknown interface" if the unitType is not the correct type of the unit
 func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]interface{}, error) {
-	return c.getProperties(unit, "org.freedesktop.systemd1." + unitType)
+	return c.getProperties(unit, "org.freedesktop.systemd1."+unitType)
+}
+
+// SetUnitProperties() may be used to modify certain unit properties at runtime.
+// Not all properties may be changed at runtime, but many resource management
+// settings (primarily those in systemd.cgroup(5)) may. The changes are applied
+// instantly, and stored on disk for future boots, unless runtime is true, in which
+// case the settings only apply until the next reboot. name is the name of the unit
+// to modify. properties are the settings to set, encoded as an array of property
+// name and value pairs.
+func (c *Conn) SetUnitProperties(name string, runtime bool, properties ...Property) error {
+	return c.sysobj.Call("SetUnitProperties", 0, name, runtime, properties).Store()
 }
 
 // ListUnits returns an array with all currently loaded units. Note that

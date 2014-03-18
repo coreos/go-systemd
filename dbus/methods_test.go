@@ -18,6 +18,7 @@ package dbus
 
 import (
 	"fmt"
+	"github.com/guelfey/go.dbus"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -156,6 +157,29 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("Expected an error, got nil")
+	}
+}
+
+// TestSetUnitProperties changes a cgroup setting on the `tmp.mount`
+// which should exist on all systemd systems and ensures that the
+// property was set.
+func TestSetUnitProperties(t *testing.T) {
+	conn := setupConn(t)
+
+	unit := "tmp.mount"
+
+	if err := conn.SetUnitProperties(unit, true, Property{"CPUShares", dbus.MakeVariant(uint64(1023))}); err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := conn.GetUnitTypeProperties(unit, "Mount")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	value := info["CPUShares"].(uint64)
+	if value != 1023 {
+		t.Fatal("CPUShares of unit is not 1023, %s", value)
 	}
 }
 
