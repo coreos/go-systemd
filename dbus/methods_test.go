@@ -50,13 +50,16 @@ func setupUnit(target string, conn *Conn, t *testing.T) {
 	fixture := []string{abs}
 
 	install, changes, err := conn.EnableUnitFiles(fixture, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if install != false {
 		t.Fatal("Install was true")
 	}
 
 	if len(changes) < 1 {
-		t.Fatal("Expected one change, got %v", changes)
+		t.Fatalf("Expected one change, got %v", changes)
 	}
 
 	if changes[0].Filename != targetRun {
@@ -209,5 +212,29 @@ func TestStartStopTransientUnit(t *testing.T) {
 
 	if unit != nil {
 		t.Fatalf("Test unit found in list, should be stopped")
+	}
+}
+
+func TestConnJobListener(t *testing.T) {
+	target := "start-stop.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
+
+	jobSize := len(conn.jobListener.jobs)
+
+	_, err := conn.StartUnit(target, "replace")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = conn.StopUnit(target, "replace")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	currentJobSize := len(conn.jobListener.jobs)
+	if jobSize != currentJobSize {
+		t.Fatal("JobListener jobs leaked")
 	}
 }

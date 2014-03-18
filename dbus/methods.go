@@ -35,6 +35,7 @@ func (c *Conn) jobComplete(signal *dbus.Signal) {
 	out, ok := c.jobListener.jobs[job]
 	if ok {
 		out <- result
+		delete(c.jobListener.jobs, job)
 	}
 	c.jobListener.Unlock()
 }
