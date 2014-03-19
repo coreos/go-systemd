@@ -18,6 +18,8 @@ limitations under the License.
 package dbus
 
 import (
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -73,7 +75,12 @@ func (c *Conn) initConnection() error {
 		return err
 	}
 
-	err = c.sysconn.Auth(nil)
+	// Only use EXTERNAL method, and hardcode the uid (not username)
+	// to avoid a username lookup (which requires a dynamically linked
+	// libc)
+	methods := []dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Getuid()))}
+
+	err = c.sysconn.Auth(methods)
 	if err != nil {
 		c.sysconn.Close()
 		return err
