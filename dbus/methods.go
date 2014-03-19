@@ -196,6 +196,10 @@ func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]i
 	return c.getProperties(unit, "org.freedesktop.systemd1." + unitType)
 }
 
+func (c *Conn) GetUnitTypeProperty(unit string, unitType string, propertyName string) (*Property, error) {
+	return c.getProperty(unit, "org.freedesktop.systemd1." + unitType, propertyName)
+}
+
 // ListUnits returns an array with all currently loaded units. Note that
 // units may be known by multiple names at the same time, and hence there might
 // be more unit names loaded than actual units behind them.
