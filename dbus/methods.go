@@ -167,6 +167,28 @@ func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
 	return c.getProperties(unit, "org.freedesktop.systemd1.Unit")
 }
 
+func (c *Conn) getProperty(unit string, dbusInterface string, propertyName string) (*Property, error) {
+	var err error
+	var prop dbus.Variant
+
+	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+	if !path.IsValid() {
+		return nil, errors.New("invalid unit name: " + unit)
+	}
+
+	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
+	err = obj.Call("org.freedesktop.DBus.Properties.Get", 0, dbusInterface, propertyName).Store(&prop)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Property{Name: propertyName, Value: prop}, nil
+}
+
+func (c *Conn) GetUnitProperty(unit string, propertyName string) (*Property, error) {
+	return c.getProperty(unit, "org.freedesktop.systemd1.Unit", propertyName)
+}
+
 // GetUnitTypeProperties returns the extra properties for a unit, specific to the unit type.
 // Valid values for unitType: Service, Socket, Target, Device, Mount, Automount, Snapshot, Timer, Swap, Path, Slice, Scope
 // return "dbus.Error: Unknown interface" if the unitType is not the correct type of the unit
@@ -183,6 +205,10 @@ func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]i
 // name and value pairs.
 func (c *Conn) SetUnitProperties(name string, runtime bool, properties ...Property) error {
 	return c.sysobj.Call("SetUnitProperties", 0, name, runtime, properties).Store()
+}
+
+func (c *Conn) GetUnitTypeProperty(unit string, unitType string, propertyName string) (*Property, error) {
+	return c.getProperty(unit, "org.freedesktop.systemd1." + unitType, propertyName)
 }
 
 // ListUnits returns an array with all currently loaded units. Note that

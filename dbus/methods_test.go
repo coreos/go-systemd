@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -174,6 +175,20 @@ func TestGetUnitProperties(t *testing.T) {
 	if names[0] != "system.slice" {
 		t.Fatal("unexpected wants for /")
 	}
+
+	prop, err := conn.GetUnitProperty(unit, "Wants")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if prop.Name != "Wants" {
+		t.Fatal("unexpected property name")
+	}
+
+	val := prop.Value.Value().([]string)
+	if !reflect.DeepEqual(val, names) {
+		t.Fatal("unexpected property value")
+	}
 }
 
 // TestGetUnitPropertiesRejectsInvalidName attempts to get the properties for a
@@ -185,7 +200,11 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 	unit := "//invalid#$^/"
 
 	_, err := conn.GetUnitProperties(unit)
+	if err == nil {
+		t.Fatal("Expected an error, got nil")
+	}
 
+	_, err = conn.GetUnitProperty(unit, "Wants")
 	if err == nil {
 		t.Fatal("Expected an error, got nil")
 	}
