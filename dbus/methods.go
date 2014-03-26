@@ -349,6 +349,6 @@ type DisableUnitFileChange struct {
 
 // Reload instructs systemd to scan for and reload unit files. This is
 // equivalent to a 'systemctl daemon-reload'.
-func (c *Conn) Reload() (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.Reload")
+func (c *Conn) Reload() error {
+	return c.sysobj.Call("org.freedesktop.systemd1.Manager.Reload", 0).Store()
 }
