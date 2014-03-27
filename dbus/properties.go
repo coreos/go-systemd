@@ -17,7 +17,7 @@ limitations under the License.
 package dbus
 
 import (
-	"github.com/guelfey/go.dbus"
+	"github.com/godbus/dbus"
 )
 
 // From the systemd docs:
