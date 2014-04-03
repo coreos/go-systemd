@@ -88,10 +88,20 @@ func (c *Conn) StartUnit(name string, mode string) (string, error) {
 	return c.runJob("org.freedesktop.systemd1.Manager.StartUnit", name, mode)
 }
 
+func (c *Conn) StartUnitJob(name string, mode string) error {
+	_, err := c.startJob("StartUnit", name, mode)
+	return err
+}
+
 // StopUnit is similar to StartUnit but stops the specified unit rather
 // than starting it.
 func (c *Conn) StopUnit(name string, mode string) (string, error) {
 	return c.runJob("org.freedesktop.systemd1.Manager.StopUnit", name, mode)
+}
+
+func (c *Conn) StopUnitJob(name string, mode string) error {
+	_, err := c.startJob("StopUnit", name, mode)
+	return err
 }
 
 // ReloadUnit reloads a unit.  Reloading is done only if the unit is already running and fails otherwise.
@@ -103,6 +113,11 @@ func (c *Conn) ReloadUnit(name string, mode string) (string, error) {
 // running it will be started.
 func (c *Conn) RestartUnit(name string, mode string) (string, error) {
 	return c.runJob("org.freedesktop.systemd1.Manager.RestartUnit", name, mode)
+}
+
+func (c *Conn) RestartUnitJob(name string, mode string) error {
+	_, err := c.startJob("RestartUnit", name, mode)
+	return err
 }
 
 // TryRestartUnit is like RestartUnit, except that a service that isn't running
