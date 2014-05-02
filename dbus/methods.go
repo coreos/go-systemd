@@ -204,7 +204,7 @@ func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]i
 // to modify. properties are the settings to set, encoded as an array of property
 // name and value pairs.
 func (c *Conn) SetUnitProperties(name string, runtime bool, properties ...Property) error {
-	return c.sysobj.Call("SetUnitProperties", 0, name, runtime, properties).Store()
+	return c.sysobj.Call("org.freedesktop.systemd1.Manager.SetUnitProperties", 0, name, runtime, properties).Store()
 }
 
 func (c *Conn) GetUnitTypeProperty(unit string, unitType string, propertyName string) (*Property, error) {
