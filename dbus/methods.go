@@ -317,7 +317,7 @@ type EnableUnitFileChange struct {
 // symlink.
 func (c *Conn) DisableUnitFiles(files []string, runtime bool) ([]DisableUnitFileChange, error) {
 	result := make([][]interface{}, 0)
-	err := c.sysobj.Call("DisableUnitFiles", 0, files, runtime).Store(&result)
+	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.DisableUnitFiles", 0, files, runtime).Store(&result)
 	if err != nil {
 		return nil, err
 	}
