@@ -253,6 +253,48 @@ type UnitStatus struct {
 	JobPath     dbus.ObjectPath // The job object path
 }
 
+type LinkUnitFileChange EnableUnitFileChange
+
+// LinkUnitFiles() links unit files (that are located outside of the
+// usual unit search paths) into the unit search path.
+//
+// It takes a list of absolute paths to unit files to link and two
+// booleans. The first boolean controls whether the unit shall be
+// enabled for runtime only (true, /run), or persistently (false,
+// /etc).
+// The second controls whether symlinks pointing to other units shall
+// be replaced if necessary.
+//
+// This call returns a list of the changes made. The list consists of
+// structures with three strings: the type of the change (one of symlink
+// or unlink), the file name of the symlink and the destination of the
+// symlink.
+func (c *Conn) LinkUnitFiles(files []string, runtime bool, force bool) ([]LinkUnitFileChange, error) {
+	result := make([][]interface{}, 0)
+	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.LinkUnitFiles", 0, files, runtime, force).Store(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	resultInterface := make([]interface{}, len(result))
+	for i := range result {
+		resultInterface[i] = result[i]
+	}
+
+	changes := make([]LinkUnitFileChange, len(result))
+	changesInterface := make([]interface{}, len(changes))
+	for i := range changes {
+		changesInterface[i] = &changes[i]
+	}
+
+	err = dbus.Store(resultInterface, changesInterface...)
+	if err != nil {
+		return nil, err
+	}
+
+	return changes, nil
+}
+
 // EnableUnitFiles() may be used to enable one or more units in the system (by
 // creating symlinks to them in /etc or /run).
 //

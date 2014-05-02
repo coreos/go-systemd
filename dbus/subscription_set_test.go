@@ -25,6 +25,7 @@ func TestSubscriptionSetUnit(t *testing.T) {
 
 	subSet.Add(target)
 	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
 
 	job, err := conn.StartUnit(target, "replace")
 	if err != nil {
