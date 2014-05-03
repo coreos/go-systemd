@@ -84,7 +84,7 @@ func TestStartStopUnit(t *testing.T) {
 	}
 
 	if job != "done" {
-		t.Fatal("Job is not done, %v", job)
+		t.Fatal("Job is not done:", job)
 	}
 
 	units, err := conn.ListUnits()
@@ -230,7 +230,7 @@ func TestSetUnitProperties(t *testing.T) {
 
 	value := info["CPUShares"].(uint64)
 	if value != 1023 {
-		t.Fatal("CPUShares of unit is not 1023, %s", value)
+		t.Fatal("CPUShares of unit is not 1023:", value)
 	}
 }
 
@@ -250,7 +250,7 @@ func TestStartStopTransientUnit(t *testing.T) {
 	}
 
 	if job != "done" {
-		t.Fatal("Job is not done, %v", job)
+		t.Fatal("Job is not done:", job)
 	}
 
 	units, err := conn.ListUnits()
