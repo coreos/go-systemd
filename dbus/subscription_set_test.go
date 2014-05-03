@@ -47,7 +47,7 @@ func TestSubscriptionSetUnit(t *testing.T) {
 			tCh, ok := changes[target]
 
 			if !ok {
-				t.Fatal("Unexpected event %v", changes)
+				t.Fatal("Unexpected event:", changes)
 			}
 
 			if tCh.ActiveState == "active" && tCh.Name == target {
@@ -63,5 +63,3 @@ func TestSubscriptionSetUnit(t *testing.T) {
 success:
 	return
 }
-
-
