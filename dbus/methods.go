@@ -18,6 +18,7 @@ package dbus
 
 import (
 	"errors"
+
 	"github.com/godbus/dbus"
 )
 
@@ -62,7 +63,7 @@ func (c *Conn) runJob(job string, args ...interface{}) (string, error) {
 	return <-respCh, nil
 }
 
-// StartUnit enqeues a start job and depending jobs, if any (unless otherwise
+// StartUnit enqueues a start job and depending jobs, if any (unless otherwise
 // specified by the mode string).
 //
 // Takes the unit to activate, plus a mode string. The mode needs to be one of
@@ -138,6 +139,11 @@ func (c *Conn) KillUnit(name string, signal int32) {
 	c.sysobj.Call("org.freedesktop.systemd1.Manager.KillUnit", 0, name, "all", signal).Store()
 }
 
+// ResetFailedUnit resets the "failed" state of a specific unit.
+func (c *Conn) ResetFailedUnit(name string) (string, error) {
+	return c.runJob("org.freedesktop.systemd1.Manager.ResetFailedUnit", name)
+}
+
 // getProperties takes the unit name and returns all of its dbus object properties, for the given dbus interface
 func (c *Conn) getProperties(unit string, dbusInterface string) (map[string]interface{}, error) {
 	var err error
@@ -208,7 +214,7 @@ func (c *Conn) SetUnitProperties(name string, runtime bool, properties ...Proper
 }
 
 func (c *Conn) GetUnitTypeProperty(unit string, unitType string, propertyName string) (*Property, error) {
-	return c.getProperty(unit, "org.freedesktop.systemd1." + unitType, propertyName)
+	return c.getProperty(unit, "org.freedesktop.systemd1."+unitType, propertyName)
 }
 
 // ListUnits returns an array with all currently loaded units. Note that

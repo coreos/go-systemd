@@ -38,7 +38,7 @@ func ObjectPath(path string) dbus.ObjectPath {
 	return dbus.ObjectPath(path)
 }
 
-// Conn is a connection to systemds dbus endpoint.
+// Conn is a connection to systemd's dbus endpoint.
 type Conn struct {
 	sysconn     *dbus.Conn
 	sysobj      *dbus.Object
