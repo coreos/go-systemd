@@ -17,7 +17,7 @@ limitations under the License.
 package dbus
 
 import (
-	"github.com/guelfey/go.dbus"
+	"github.com/godbus/dbus"
 )
 
 // From the systemd docs:
@@ -39,6 +39,11 @@ import (
 type Property struct {
 	Name  string
 	Value dbus.Variant
+}
+
+type PropertyCollection struct {
+	Name       string
+	Properties []Property
 }
 
 type execStart struct {
@@ -203,4 +208,13 @@ func PropPropagatesReloadTo(units ...string) Property {
 // http://www.freedesktop.org/software/systemd/man/systemd.unit.html#RequiresMountsFor=
 func PropRequiresMountsFor(units ...string) Property {
 	return propDependency("RequiresMountsFor", units)
+}
+
+// PropSlice sets the Slice unit property.  See
+// http://www.freedesktop.org/software/systemd/man/systemd.resource-control.html#Slice=
+func PropSlice(slice string) Property {
+	return Property{
+		Name:  "Slice",
+		Value: dbus.MakeVariant(slice),
+	}
 }

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/guelfey/go.dbus"
+	"github.com/godbus/dbus"
 )
 
 const (
@@ -40,7 +40,6 @@ func (c *Conn) Subscribe() error {
 
 	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Subscribe", 0).Store()
 	if err != nil {
-		c.sysconn.Close()
 		return err
 	}
 
@@ -51,7 +50,6 @@ func (c *Conn) Subscribe() error {
 func (c *Conn) Unsubscribe() error {
 	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
 	if err != nil {
-		c.sysconn.Close()
 		return err
 	}
 
@@ -69,14 +67,18 @@ func (c *Conn) initDispatch() {
 
 	go func() {
 		for {
-			signal := <-ch
+			signal, ok := <-ch
+			if !ok {
+				return
+			}
+
 			switch signal.Name {
 			case "org.freedesktop.systemd1.Manager.JobRemoved":
 				c.jobComplete(signal)
 
 				unitName := signal.Body[2].(string)
 				var unitPath dbus.ObjectPath
-				c.sysobj.Call("GetUnit", 0, unitName).Store(&unitPath)
+				c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnit", 0, unitName).Store(&unitPath)
 				if unitPath != dbus.ObjectPath("") {
 					c.sendSubStateUpdate(unitPath)
 				}
