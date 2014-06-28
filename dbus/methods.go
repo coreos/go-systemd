@@ -149,7 +149,7 @@ func (c *Conn) getProperties(unit string, dbusInterface string) (map[string]inte
 	var err error
 	var props map[string]dbus.Variant
 
-	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+	path := unitPath(unit)
 	if !path.IsValid() {
 		return nil, errors.New("invalid unit name: " + unit)
 	}
@@ -177,7 +177,7 @@ func (c *Conn) getProperty(unit string, dbusInterface string, propertyName strin
 	var err error
 	var prop dbus.Variant
 
-	path := ObjectPath("/org/freedesktop/systemd1/unit/" + unit)
+	path := unitPath(unit)
 	if !path.IsValid() {
 		return nil, errors.New("invalid unit name: " + unit)
 	}
@@ -399,4 +399,8 @@ type DisableUnitFileChange struct {
 // equivalent to a 'systemctl daemon-reload'.
 func (c *Conn) Reload() error {
 	return c.sysobj.Call("org.freedesktop.systemd1.Manager.Reload", 0).Store()
+}
+
+func unitPath(name string) dbus.ObjectPath {
+	return dbus.ObjectPath("/org/freedesktop/systemd1/unit/" + PathBusEscape(name))
 }
