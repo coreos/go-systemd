@@ -1,164 +1,282 @@
 package unit
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
 	"testing"
 )
 
-func TestDeserializeFile(t *testing.T) {
-	contents := `
-This=Ignored
+func TestDeserialize(t *testing.T) {
+	tests := []struct {
+		input  []byte
+		output []*UnitOption
+	}{
+		// multiple options underneath a section
+		{
+			[]byte(`[Unit]
+Description=Foo
+Description=Bar
+Requires=baz.service
+After=baz.service
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Foo"},
+				&UnitOption{"Unit", "Description", "Bar"},
+				&UnitOption{"Unit", "Requires", "baz.service"},
+				&UnitOption{"Unit", "After", "baz.service"},
+			},
+		},
+
+		// multiple sections
+		{
+			[]byte(`[Unit]
+Description=Foo
+
+[Service]
+ExecStart=/usr/bin/sleep infinity
+
+[X-Third-Party]
+Pants=on
+
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Foo"},
+				&UnitOption{"Service", "ExecStart", "/usr/bin/sleep infinity"},
+				&UnitOption{"X-Third-Party", "Pants", "on"},
+			},
+		},
+
+		// multiple sections with no options
+		{
+			[]byte(`[Unit]
+[Service]
+[X-Third-Party]
+`),
+			[]*UnitOption{},
+		},
+
+		// multiple values not special-cased
+		{
+			[]byte(`[Service]
+Environment= "FOO=BAR" "BAZ=QUX"
+`),
+			[]*UnitOption{
+				&UnitOption{"Service", "Environment", "\"FOO=BAR\" \"BAZ=QUX\""},
+			},
+		},
+
+		// line continuations respected
+		{
+			[]byte(`[Unit]
+Description= Unnecessarily wrapped \
+    words here
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Unnecessarily wrapped      words here"},
+			},
+		},
+
+		// comments ignored
+		{
+			[]byte(`; comment alpha
+# comment bravo
 [Unit]
-;ignore this guy
-Description = Foo
-
-[Service]
-ExecStart=echo "ping";
-ExecStop=echo "pong"
-# ignore me, too
-ExecStop=echo post
-
-[Fleet]
-X-ConditionMachineMetadata=foo=bar
-X-ConditionMachineMetadata=baz=qux
-`
-
-	expected := map[string]map[string][]string{
-		"Unit": {
-			"Description": {"Foo"},
+; comment charlie
+# comment delta
+#Description=Foo
+Description=Bar
+; comment echo
+# comment foxtrot
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Bar"},
+			},
 		},
-		"Service": {
-			"ExecStart": {`echo "ping";`},
-			"ExecStop":  {`echo "pong"`, "echo post"},
+
+		// apparent comment lines inside of line continuations not ignored
+		{
+			[]byte(`[Unit]
+Description=Bar\
+# comment alpha
+
+Description=Bar\
+# comment bravo \
+Baz
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Bar # comment alpha"},
+				&UnitOption{"Unit", "Description", "Bar # comment bravo  Baz"},
+			},
 		},
-		"Fleet": {
-			"X-ConditionMachineMetadata": {"foo=bar", "baz=qux"},
+
+		// options outside of sections are ignored
+		{
+			[]byte(`Description=Foo
+[Unit]
+Description=Bar
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Bar"},
+			},
+		},
+
+		// garbage outside of sections are ignored
+		{
+			[]byte(`<<<<<<<<
+[Unit]
+Description=Bar
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Bar"},
+			},
+		},
+
+		// garbage used as unit option
+		{
+			[]byte(`[Unit]
+<<<<<<<<=Bar
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "<<<<<<<<", "Bar"},
+			},
+		},
+
+		// option name with spaces are valid
+		{
+			[]byte(`[Unit]
+Some Thing = Bar
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Some Thing", "Bar"},
+			},
+		},
+
+		// lack of trailing newline doesn't cause problem for non-continued file
+		{
+			[]byte(`[Unit]
+Description=Bar`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Bar"},
+			},
+		},
+
+		// unit file with continuation but no following line is ok, too
+		{
+			[]byte(`[Unit]
+Description=Bar \`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "Bar"},
+			},
+		},
+
+		// Assert utf8 characters are preserved
+		{
+			[]byte(`[©]
+µ☃=ÇôrèÕ$`),
+			[]*UnitOption{
+				&UnitOption{"©", "µ☃", "ÇôrèÕ$"},
+			},
+		},
+
+		// whitespace removed around option name
+		{
+			[]byte(`[Unit]
+ Description   =words here
+`),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "words here"},
+			},
+		},
+
+		// whitespace around option value stripped
+		{
+			[]byte(`[Unit]
+Description= words here `),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "words here"},
+			},
+		},
+
+		// whitespace around option value stripped, regardless of continuation
+		{
+			[]byte(`[Unit]
+Description= words here \
+  `),
+			[]*UnitOption{
+				&UnitOption{"Unit", "Description", "words here"},
+			},
 		},
 	}
 
-	unitFile, err := DeserializeUnitFile(contents)
-	if err != nil {
-		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
+	assert := func(expect, output []*UnitOption) error {
+		if len(expect) != len(output) {
+			return fmt.Errorf("expected %d items, got %d", len(expect), len(output))
+		}
+
+		for i, _ := range expect {
+			if !reflect.DeepEqual(expect[i], output[i]) {
+				return fmt.Errorf("item %d: expected %v, got %v", i, expect[i], output[i])
+			}
+		}
+
+		return nil
 	}
 
-	if !reflect.DeepEqual(expected, unitFile) {
-		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", unitFile, expected)
-	}
-}
-
-func TestDeserializedUnitFileGarbage(t *testing.T) {
-	contents := `
->>>>>>>>>>>>>
-[Service]
-ExecStart=jim
-# As long as a line has an equals sign, systemd is happy, so we should pass it through
-<<<<<<<<<<<=bar
-`
-	expected := map[string]map[string][]string{
-		"Service": {
-			"ExecStart":   {"jim"},
-			"<<<<<<<<<<<": {"bar"},
-		},
-	}
-	unitFile, err := DeserializeUnitFile(contents)
-	if err != nil {
-		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
-	}
-
-	if !reflect.DeepEqual(expected, unitFile) {
-		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", unitFile, expected)
-	}
-}
-
-func TestDeserializeUnitFileEscapedMultilines(t *testing.T) {
-	contents := `
-[Service]
-ExecStart=echo \
-  "pi\
-  ng"
-ExecStop=\
-echo "po\
-ng"
-# comments within continuation should not be ignored
-ExecStopPre=echo\
-#pang
-ExecStopPost=echo\
-#peng\
-pung
-`
-	expected := map[string]map[string][]string{
-		"Service": {
-			"ExecStart":    {`echo    "pi   ng"`},
-			"ExecStop":     {`echo "po ng"`},
-			"ExecStopPre":  {`echo #pang`},
-			"ExecStopPost": {`echo #peng pung`},
-		},
-	}
-	unitFile, err := DeserializeUnitFile(contents)
-	if err != nil {
-		t.Fatalf("Unexpected error parsing unit %q: %v", contents, err)
-	}
-
-	if !reflect.DeepEqual(expected, unitFile) {
-		t.Fatalf("Map func did not produce expected output.\nActual=%v\nExpected=%v", unitFile, expected)
-	}
-}
-
-func TestDeserializeLine(t *testing.T) {
-	deserializeLineExamples := map[string][]string{
-		`key=foo=bar`:             {`foo=bar`},
-		`key="foo=bar"`:           {`foo=bar`},
-		`key="foo=bar" "baz=qux"`: {`foo=bar`, `baz=qux`},
-		`key="foo=bar baz"`:       {`foo=bar baz`},
-		`key="foo=bar" baz`:       {`"foo=bar" baz`},
-		`key=baz "foo=bar"`:       {`baz "foo=bar"`},
-		`key="foo=bar baz=qux"`:   {`foo=bar baz=qux`},
-	}
-
-	for q, w := range deserializeLineExamples {
-		k, g, err := deserializeUnitLine(q)
+	for i, tt := range tests {
+		output, err := Deserialize(bytes.NewReader(tt.input))
 		if err != nil {
-			t.Fatalf("Unexpected error testing %q: %v", q, err)
+			t.Errorf("case %d: unexpected error parsing unit: %v", i, err)
+			continue
 		}
-		if k != "key" {
-			t.Fatalf("Unexpected key, got %q, want %q", k, "key")
-		}
-		if !reflect.DeepEqual(g, w) {
-			t.Errorf("Unexpected line parse for %q:\ngot %q\nwant %q", q, g, w)
-		}
-	}
 
-	// Any non-empty line without an '=' is bad
-	badLines := []string{
-		`<<<<<<<<<<<<<<<<<<<<<<<<`,
-		`asdjfkl;`,
-		`>>>>>>>>>>>>>>>>>>>>>>>>`,
-		`!@#$%^&&*`,
-	}
-	for _, l := range badLines {
-		_, _, err := deserializeUnitLine(l)
-		if err == nil {
-			t.Fatalf("Did not get expected error deserializing %q", l)
+		err = assert(tt.output, output)
+		if err != nil {
+			t.Errorf("case %d: %v", i, err)
+			t.Log("Expected options:")
+			logUnitOptionSlice(t, tt.output)
+			t.Log("Actual options:")
+			logUnitOptionSlice(t, output)
 		}
 	}
 }
 
-func TestBadUnitsFail(t *testing.T) {
-	bad := []string{
-		`
-[Unit]
+func TestDeserializeFail(t *testing.T) {
+	tests := [][]byte{
+		// malformed section header
+		[]byte(`[Unit
+Description=Foo
+`),
 
-[Service]
-<<<<<<<<<<<<<<<<
-`,
-		`
-[Unit]
-nonsense upon stilts
-`,
+		// garbage following section header
+		[]byte(`[Unit] pants
+Description=Foo
+`),
+
+		// option without value
+		[]byte(`[Unit]
+Description
+`),
+
+		// garbage inside of section
+		[]byte(`[Unit]
+<<<<<<
+Description=Foo
+`),
 	}
-	for _, tt := range bad {
-		if _, err := DeserializeUnitFile(tt); err == nil {
-			t.Fatalf("Did not get expected error creating Unit from %q", tt)
+
+	for i, tt := range tests {
+		output, err := Deserialize(bytes.NewReader(tt))
+		if err == nil {
+			t.Errorf("case %d: unexpected non-nil error, received nil", i)
+			t.Log("Output:")
+			logUnitOptionSlice(t, output)
 		}
+	}
+}
+
+func logUnitOptionSlice(t *testing.T, opts []*UnitOption) {
+	for idx, opt := range opts {
+		t.Logf("%d: %v", idx, opt)
 	}
 }

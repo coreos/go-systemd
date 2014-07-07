@@ -1,111 +1,223 @@
 package unit
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
+	"unicode"
 )
 
-// DeserializeUnitFile parses a systemd unit file and attempts to map its various sections and values.
-// Currently this function is dangerously simple and should be rewritten to match the systemd unit file spec
-func DeserializeUnitFile(raw string) (map[string]map[string][]string, error) {
-	sections := make(map[string]map[string][]string)
-	var section string
-	var prev string
-	for i, line := range strings.Split(raw, "\n") {
+type UnitOption struct {
+	Section string
+	Name    string
+	Value   string
+}
 
-		// Join lines ending in backslash
-		if strings.HasSuffix(line, "\\") {
-			// Replace trailing slash with space
-			prev = prev + line[:len(line)-1] + " "
-			continue
-		}
+func (uo *UnitOption) String() string {
+	return fmt.Sprintf("{Section: %q, Name: %q, Value: %q}", uo.Section, uo.Name, uo.Value)
+}
 
-		// Concatenate any previous conjoined lines
-		if prev != "" {
-			line = prev + line
-			prev = ""
-		} else if strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
-			// Ignore commented-out lines that are not part of a continuation
-			continue
-		}
+// Deserialize parses a systemd unit file into a list of UnitOption objects.
+func Deserialize(f io.Reader) (opts []*UnitOption, err error) {
+	lexer, optchan, errchan := newLexer(f)
+	go lexer.lex()
 
-		line = strings.TrimSpace(line)
+	for opt := range optchan {
+		opts = append(opts, &(*opt))
+	}
 
-		// Ignore blank lines
-		if len(line) == 0 {
-			continue
-		}
+	err = <-errchan
+	return opts, err
+}
 
-		// Check for section
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			section = line[1 : len(line)-1]
-			sections[section] = make(map[string][]string)
-			continue
-		}
+func newLexer(f io.Reader) (*lexer, <-chan *UnitOption, <-chan error) {
+	optchan := make(chan *UnitOption)
+	errchan := make(chan error, 1)
+	buf := bufio.NewReader(f)
 
-		// ignore any lines that aren't within a section
-		if len(section) == 0 {
-			continue
-		}
+	return &lexer{buf, optchan, errchan, ""}, optchan, errchan
+}
 
-		key, values, err := deserializeUnitLine(line)
+type lexer struct {
+	buf     *bufio.Reader
+	optchan chan *UnitOption
+	errchan chan error
+	section string
+}
+
+func (l *lexer) lex() {
+	var err error
+	next := l.lexNextSection
+	for next != nil {
+		next, err = next()
 		if err != nil {
-			return nil, fmt.Errorf("error parsing line %d: %v", i+1, err)
-		}
-		for _, v := range values {
-			sections[section][key] = append(sections[section][key], v)
+			l.errchan <- err
+			break
 		}
 	}
 
-	return sections, nil
+	close(l.optchan)
+	close(l.errchan)
 }
 
-func deserializeUnitLine(line string) (key string, values []string, err error) {
-	e := strings.Index(line, "=")
-	if e == -1 {
-		err = errors.New("missing '='")
-		return
-	}
-	key = strings.TrimSpace(line[:e])
-	value := strings.TrimSpace(line[e+1:])
+type lexStep func() (lexStep, error)
 
-	if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
-		for _, v := range parseMultivalueLine(value) {
-			values = append(values, v)
-		}
-	} else {
-		values = append(values, value)
+func (l *lexer) lexSectionName() (lexStep, error) {
+	sec, err := l.buf.ReadBytes(']')
+	if err != nil {
+		return nil, errors.New("unable to find end of section")
 	}
-	return
+
+	return l.lexSectionSuffixFunc(string(sec[:len(sec)-1])), nil
 }
 
-// parseMultivalueLine parses a line that includes several quoted values separated by whitespaces.
-// Example: MachineMetadata="foo=bar" "baz=qux"
-func parseMultivalueLine(line string) (values []string) {
-	var v bytes.Buffer
-	w := false // check whether we're within quotes or not
-
-	for _, e := range []byte(line) {
-		// ignore quotes
-		if e == '"' {
-			w = !w
-			continue
+func (l *lexer) lexSectionSuffixFunc(section string) lexStep {
+	return func() (lexStep, error) {
+		garbage, err := l.toEOL()
+		if err != nil {
+			return nil, err
 		}
 
-		if e == ' ' {
-			if !w { // between quoted values, keep the previous value and reset.
-				values = append(values, v.String())
-				v.Reset()
-				continue
+		garbage = bytes.TrimSpace(garbage)
+		if len(garbage) > 0 {
+			return nil, fmt.Errorf("found garbage after section name %s: %v", l.section, garbage)
+		}
+
+		return l.lexNextSectionOrOptionFunc(section), nil
+	}
+}
+
+func (l *lexer) ignoreLineFunc(next lexStep) lexStep {
+	return func() (lexStep, error) {
+		for {
+			line, err := l.toEOL()
+			if err != nil {
+				return nil, err
+			}
+
+			line = bytes.TrimSuffix(line, []byte{' '})
+
+			// lack of continuation means this line has been exhausted
+			if !bytes.HasSuffix(line, []byte{'\\'}) {
+				break
 			}
 		}
 
-		v.WriteByte(e)
+		// reached end of buffer, safe to exit
+		return next, nil
+	}
+}
+
+func (l *lexer) lexNextSection() (lexStep, error) {
+	r, _, err := l.buf.ReadRune()
+	if err != nil {
+		if err == io.EOF {
+			err = nil
+		}
+		return nil, err
 	}
 
-	values = append(values, v.String())
+	if r == '[' {
+		return l.lexSectionName, nil
+	} else if isComment(r) {
+		return l.ignoreLineFunc(l.lexNextSection), nil
+	}
 
-	return
+	return l.lexNextSection, nil
+}
+
+func (l *lexer) lexNextSectionOrOptionFunc(section string) lexStep {
+	return func() (lexStep, error) {
+		r, _, err := l.buf.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			return nil, err
+		}
+
+		if unicode.IsSpace(r) {
+			return l.lexNextSectionOrOptionFunc(section), nil
+		} else if r == '[' {
+			return l.lexSectionName, nil
+		} else if isComment(r) {
+			return l.ignoreLineFunc(l.lexNextSectionOrOptionFunc(section)), nil
+		}
+
+		l.buf.UnreadRune()
+		return l.lexOptionNameFunc(section), nil
+	}
+}
+
+func (l *lexer) lexOptionNameFunc(section string) lexStep {
+	return func() (lexStep, error) {
+		var partial bytes.Buffer
+		for {
+			r, _, err := l.buf.ReadRune()
+			if err != nil {
+				return nil, err
+			}
+
+			if r == '\n' || r == '\r' {
+				return nil, errors.New("unexpected newline encountered while parsing option name")
+			}
+
+			if r == '=' {
+				break
+			}
+
+			partial.WriteRune(r)
+		}
+
+		name := strings.TrimSpace(partial.String())
+		return l.lexOptionValueFunc(section, name), nil
+	}
+}
+
+func (l *lexer) lexOptionValueFunc(section, name string) lexStep {
+	return func() (lexStep, error) {
+		var partial bytes.Buffer
+
+		for {
+			line, err := l.toEOL()
+			if err != nil {
+				return nil, err
+			}
+
+			// lack of continuation means this value has been exhausted
+			idx := bytes.LastIndex(line, []byte{'\\'})
+			if idx == -1 {
+				partial.Write(line)
+				break
+			}
+
+			partial.Write(line[0:idx])
+			partial.WriteRune(' ')
+		}
+
+		val := strings.TrimSpace(partial.String())
+		l.optchan <- &UnitOption{Section: section, Name: name, Value: val}
+
+		return l.lexNextSectionOrOptionFunc(section), nil
+	}
+}
+
+func (l *lexer) toEOL() ([]byte, error) {
+	line, err := l.buf.ReadBytes('\n')
+	// ignore EOF here since it's roughly equivalent to EOL
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	line = bytes.TrimSuffix(line, []byte{'\r'})
+	line = bytes.TrimSuffix(line, []byte{'\n'})
+
+	return line, nil
+}
+
+func isComment(r rune) bool {
+	return r == '#' || r == ';'
 }
