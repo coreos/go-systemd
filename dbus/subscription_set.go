@@ -11,7 +11,6 @@ type SubscriptionSet struct {
 	conn *Conn
 }
 
-
 func (s *SubscriptionSet) filter(unit string) bool {
 	return !s.Contains(unit)
 }
@@ -27,7 +26,7 @@ func (s *SubscriptionSet) Subscribe() (<-chan map[string]*UnitStatus, <-chan err
 }
 
 // NewSubscriptionSet returns a new subscription set.
-func (conn *Conn) NewSubscriptionSet() (*SubscriptionSet) {
+func (conn *Conn) NewSubscriptionSet() *SubscriptionSet {
 	return &SubscriptionSet{newSet(), conn}
 }
 
