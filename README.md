@@ -3,8 +3,8 @@
 Go bindings to systemd. The project has three packages:
 
 - activation - for writing and using socket activation from Go
-- journal - for writing to systemd's logging service, journal
 - dbus - for starting/stopping/inspecting running services and units
+- journal - for writing to systemd's logging service, journal
 
 Go docs for the entire project are here:
 
