@@ -17,58 +17,41 @@ limitations under the License.
 package activation
 
 import (
-	"io"
 	"net"
 	"os"
 	"os/exec"
 	"testing"
 )
 
-// correctStringWritten fails the text if the correct string wasn't written
-// to the other side of the pipe.
-func correctStringWrittenNet(t *testing.T, r net.Conn, expected string) bool {
-	bytes := make([]byte, len(expected))
-	io.ReadAtLeast(r, bytes, len(expected))
-
-	if string(bytes) != expected {
-		t.Fatalf("Unexpected string %s", string(bytes))
-	}
-
-	return true
-}
-
 // TestActivation forks out a copy of activation.go example and reads back two
 // strings from the pipes that are passed in.
-func TestListeners(t *testing.T) {
-	cmd := exec.Command("go", "run", "../examples/activation/listen.go")
+func TestPacketConns(t *testing.T) {
+	cmd := exec.Command("go", "run", "../examples/activation/udpconn.go")
 
-	l1, err := net.Listen("tcp", ":9999")
+	u1, err := net.ListenUDP("udp", &net.UDPAddr{Port: 9999})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	l2, err := net.Listen("tcp", ":1234")
+	u2, err := net.ListenUDP("udp", &net.UDPAddr{Port: 1234})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	t1 := l1.(*net.TCPListener)
-	t2 := l2.(*net.TCPListener)
-
-	f1, _ := t1.File()
-	f2, _ := t2.File()
+	f1, _ := u1.File()
+	f2, _ := u2.File()
 
 	cmd.ExtraFiles = []*os.File{
 		f1,
 		f2,
 	}
 
-	r1, err := net.Dial("tcp", "127.0.0.1:9999")
+	r1, err := net.Dial("udp", "127.0.0.1:9999")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	r1.Write([]byte("Hi"))
 
-	r2, err := net.Dial("tcp", "127.0.0.1:1234")
+	r2, err := net.Dial("udp", "127.0.0.1:1234")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -77,10 +60,9 @@ func TestListeners(t *testing.T) {
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LISTEN_FDS=2", "FIX_LISTEN_PID=1")
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		println(string(out))
-		t.Fatalf(err.Error())
+		t.Fatalf("Cmd output '%s', err: '%s'\n", out, err)
 	}
 
 	correctStringWrittenNet(t, r1, "Hello world")
