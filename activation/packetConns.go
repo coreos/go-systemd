@@ -20,16 +20,16 @@ import (
 	"net"
 )
 
-// Listeners returns net.Listeners for all socket activated fds passed to this process.
-func Listeners(unsetEnv bool) ([]net.Listener, error) {
+// PacketConns returns net.PacketConns for all applicable socket activated fds
+// passed to this process.
+func PacketConns(unsetEnv bool) ([]net.PacketConn, error) {
 	files := Files(unsetEnv)
-	listeners := make([]net.Listener, 0)
-
+	conns := make([]net.PacketConn, 0)
 	for _, f := range files {
-		if pc, err := net.FileListener(f); err == nil {
-			listeners = append(listeners, pc)
+		if pc, err := net.FilePacketConn(f); err == nil {
+			conns = append(conns, pc)
 			continue
 		}
 	}
-	return listeners, nil
+	return conns, nil
 }
