@@ -217,6 +217,15 @@ ExecStart=/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"
 				&UnitOption{"Service", "ExecStart", `/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"`},
 			},
 		},
+
+		// backslash not considered continuation if followed by whitespace, but still trimmed
+		{
+			[]byte(`[Service]
+ExecStart=/bin/bash echo poof \  `),
+			[]*UnitOption{
+				&UnitOption{"Service", "ExecStart", `/bin/bash echo poof \`},
+			},
+		},
 	}
 
 	assert := func(expect, output []*UnitOption) error {
