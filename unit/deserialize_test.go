@@ -207,6 +207,16 @@ Description= words here \
 				&UnitOption{"Unit", "Description", "words here"},
 			},
 		},
+
+		// backslash not considered continuation if followed by text
+		{
+			[]byte(`[Service]
+ExecStart=/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"
+`),
+			[]*UnitOption{
+				&UnitOption{"Service", "ExecStart", `/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"`},
+			},
+		},
 	}
 
 	assert := func(expect, output []*UnitOption) error {

@@ -179,7 +179,7 @@ func (l *lexer) lexOptionValueFunc(section, name string) lexStep {
 
 			// lack of continuation means this value has been exhausted
 			idx := bytes.LastIndex(line, []byte{'\\'})
-			if idx == -1 {
+			if idx == -1 || idx != (len(line)-1) {
 				partial.Write(line)
 				break
 			}
