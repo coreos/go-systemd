@@ -140,8 +140,8 @@ func (c *Conn) KillUnit(name string, signal int32) {
 }
 
 // ResetFailedUnit resets the "failed" state of a specific unit.
-func (c *Conn) ResetFailedUnit(name string) (string, error) {
-	return c.runJob("org.freedesktop.systemd1.Manager.ResetFailedUnit", name)
+func (c *Conn) ResetFailedUnit(name string) error {
+	return c.sysobj.Call("org.freedesktop.systemd1.Manager.ResetFailedUnit", 0, name).Store()
 }
 
 // getProperties takes the unit name and returns all of its dbus object properties, for the given dbus interface
