@@ -60,7 +60,7 @@ func TestPacketConns(t *testing.T) {
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LISTEN_FDS=2", "FIX_LISTEN_PID=1")
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Cmd output '%s', err: '%s'\n", out, err)
 	}
