@@ -20,15 +20,21 @@ import (
 	"net"
 )
 
-// PacketConns returns net.PacketConns for all applicable socket activated fds
+// PacketConns returns a slice containing a net.PacketConn for each matching socket type
 // passed to this process.
+//
+// The order of the file descriptors is preserved in the returned slice.
+// Nil values are used to fill any gaps. For example if systemd were to return file descriptors
+// corresponding with "udp, tcp, udp", then the slice would contain {net.PacketConn, nil, net.PacketConn}
 func PacketConns(unsetEnv bool) ([]net.PacketConn, error) {
 	files := Files(unsetEnv)
 	conns := make([]net.PacketConn, 0)
-	for _, f := range files {
-		if pc, err := net.FilePacketConn(f); err == nil {
+	for i := 0; i < len(files); i++ {
+		if pc, err := net.FilePacketConn(files[i]); err == nil {
 			conns = append(conns, pc)
 			continue
+		} else {
+			conns = append(conns, nil)
 		}
 	}
 	return conns, nil

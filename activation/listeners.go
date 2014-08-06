@@ -20,15 +20,22 @@ import (
 	"net"
 )
 
-// Listeners returns net.Listeners for all socket activated fds passed to this process.
+// Listeners returns a slice containing a net.Listener for each matching socket type
+// passed to this process.
+//
+// The order of the file descriptors is preserved in the returned slice.
+// Nil values are used to fill any gaps. For example if systemd were to return file descriptors
+// corresponding with "udp, tcp, tcp", then the slice would contain {nil, net.Listener, net.Listener}
 func Listeners(unsetEnv bool) ([]net.Listener, error) {
 	files := Files(unsetEnv)
 	listeners := make([]net.Listener, 0)
 
-	for _, f := range files {
-		if pc, err := net.FileListener(f); err == nil {
+	for i := 0; i < len(files); i++ {
+		if pc, err := net.FileListener(files[i]); err == nil {
 			listeners = append(listeners, pc)
 			continue
+		} else {
+			listeners = append(listeners, nil)
 		}
 	}
 	return listeners, nil
