@@ -9,7 +9,7 @@ import (
 
 var SdNotifyNoSocket = errors.New("No socket")
 
-// Send a message to the init daemon. It is common to ignore the error.
+// SdNotify sends a message to the init daemon. It is common to ignore the error.
 func SdNotify(state string) error {
 	socketAddr := &net.UnixAddr{
 		Name: os.Getenv("NOTIFY_SOCKET"),
@@ -27,9 +27,5 @@ func SdNotify(state string) error {
 	defer conn.Close()
 
 	_, err = conn.Write([]byte(state))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
