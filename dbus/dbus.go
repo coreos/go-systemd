@@ -82,9 +82,33 @@ type Conn struct {
 
 // New() establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
+	var err error
 	c := new(Conn)
 
-	if err := c.initConnection(); err != nil {
+	c.sysconn, err = dbus.SystemBusPrivate()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.initConnection(); err != nil {
+		return nil, err
+	}
+
+	c.initJobs()
+	return c, nil
+}
+
+// ConnectTo() establishes a connection to the given address and authenticates.
+func ConnectTo(address string) (*Conn, error) {
+	var err error
+	c := new(Conn)
+
+	c.sysconn, err = dbus.Dial(address)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.initConnection(); err != nil {
 		return nil, err
 	}
 
@@ -94,10 +118,6 @@ func New() (*Conn, error) {
 
 func (c *Conn) initConnection() error {
 	var err error
-	c.sysconn, err = dbus.SystemBusPrivate()
-	if err != nil {
-		return err
-	}
 
 	// Only use EXTERNAL method, and hardcode the uid (not username)
 	// to avoid a username lookup (which requires a dynamically linked
