@@ -84,10 +84,10 @@ type Conn struct {
 func New() (*Conn, error) {
 	var err error
 	c := new(Conn)
-	
+
 	c.sysconn, err = dbus.SystemBusPrivate()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = c.initConnection(); err != nil {
@@ -102,10 +102,10 @@ func New() (*Conn, error) {
 func ConnectTo(address string) (*Conn, error) {
 	var err error
 	c := new(Conn)
-	
+
 	c.sysconn, err = dbus.Dial(address)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = c.initConnection(); err != nil {
@@ -118,7 +118,7 @@ func ConnectTo(address string) (*Conn, error) {
 
 func (c *Conn) initConnection() error {
 	var err error
-	
+
 	// Only use EXTERNAL method, and hardcode the uid (not username)
 	// to avoid a username lookup (which requires a dynamically linked
 	// libc)
