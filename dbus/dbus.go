@@ -84,7 +84,7 @@ type Conn struct {
 func New() (*Conn, error) {
 	c := new(Conn)
 
-	if err := c.initConnection(); err != nil {
+	if err := c.initConnection(dbus.SystemBusPrivate); err != nil {
 		return nil, err
 	}
 
@@ -92,9 +92,22 @@ func New() (*Conn, error) {
 	return c, nil
 }
 
-func (c *Conn) initConnection() error {
+// NewUserConnection() establishes a connection to the session bus and
+// authenticates. This can be used to connect to systemd user instances.
+func NewUserConnection() (*Conn, error) {
+	c := new(Conn)
+
+	if err := c.initConnection(dbus.SessionBusPrivate); err != nil {
+		return nil, err
+	}
+
+	c.initJobs()
+	return c, nil
+}
+
+func (c *Conn) initConnection(createBus func()(*dbus.Conn, error)) error {
 	var err error
-	c.sysconn, err = dbus.SystemBusPrivate()
+	c.sysconn, err = createBus()
 	if err != nil {
 		return err
 	}
