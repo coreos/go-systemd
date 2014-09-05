@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // Priority of a journal message
@@ -49,7 +50,14 @@ var conn net.Conn
 
 func init() {
 	var err error
-	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
+
+	raddr, err := net.ResolveUnixAddr("unixgram", "/run/systemd/journal/socket")
+	if err != nil {
+		conn = nil
+		return // wat
+	}
+
+	conn, err = net.DialUnix("unixgram", nil, raddr)
 	if err != nil {
 		conn = nil
 	}
@@ -79,6 +87,7 @@ func Send(message string, priority Priority, vars map[string]string) error {
 		appendVariable(data, k, v)
 	}
 
+	conn.SetDeadline(time.Now().Add(10 * time.Millisecond))
 	_, err := io.Copy(conn, data)
 	if err != nil && isSocketSpaceError(err) {
 		file, err := tempFd()
