@@ -64,8 +64,9 @@ func PathBusEscape(path string) string {
 
 // Conn is a connection to systemd's dbus endpoint.
 type Conn struct {
-	sysconn     *dbus.Conn
-	sysobj      *dbus.Object
+	sysconn *dbus.Conn
+	sysobj  *dbus.Object
+
 	jobListener struct {
 		jobs map[dbus.ObjectPath]chan string
 		sync.Mutex
@@ -77,39 +78,45 @@ type Conn struct {
 		ignore      map[dbus.ObjectPath]int64
 		cleanIgnore int64
 	}
-	dispatch map[string]func(dbus.Signal)
 }
 
-// New() establishes a connection to the system bus and authenticates.
+// New establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
-	c := new(Conn)
-
-	if err := c.initConnection(dbus.SystemBusPrivate); err != nil {
-		return nil, err
-	}
-
-	c.initJobs()
-	return c, nil
+	return newConnection(dbus.SystemBusPrivate)
 }
 
-// NewUserConnection() establishes a connection to the session bus and
+// NewUserConnection establishes a connection to the session bus and
 // authenticates. This can be used to connect to systemd user instances.
 func NewUserConnection() (*Conn, error) {
-	c := new(Conn)
+	return newConnection(dbus.SessionBusPrivate)
+}
 
-	if err := c.initConnection(dbus.SessionBusPrivate); err != nil {
+func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
+	sysconn, err := dbusConnection(createBus)
+	if err != nil {
 		return nil, err
 	}
 
-	c.initJobs()
+	c := &Conn{
+		sysconn: sysconn,
+		sysobj:  systemdObject(sysconn),
+	}
+
+	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
+	c.jobListener.jobs = make(map[dbus.ObjectPath]chan string)
+
+	// Setup the listeners on jobs so that we can get completions
+	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
+
+	c.dispatch()
 	return c, nil
 }
 
-func (c *Conn) initConnection(createBus func()(*dbus.Conn, error)) error {
-	var err error
-	c.sysconn, err = createBus()
+func dbusConnection(createBus func() (*dbus.Conn, error)) (*dbus.Conn, error) {
+	conn, err := createBus()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Only use EXTERNAL method, and hardcode the uid (not username)
@@ -117,25 +124,21 @@ func (c *Conn) initConnection(createBus func()(*dbus.Conn, error)) error {
 	// libc)
 	methods := []dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Getuid()))}
 
-	err = c.sysconn.Auth(methods)
+	err = conn.Auth(methods)
 	if err != nil {
-		c.sysconn.Close()
-		return err
+		conn.Close()
+		return nil, err
 	}
 
-	err = c.sysconn.Hello()
+	err = conn.Hello()
 	if err != nil {
-		c.sysconn.Close()
-		return err
+		conn.Close()
+		return nil, err
 	}
 
-	c.sysobj = c.sysconn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
+	return conn, nil
+}
 
-	// Setup the listeners on jobs so that we can get completions
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
-		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
-	c.initSubscription()
-	c.initDispatch()
-
-	return nil
+func systemdObject(conn *dbus.Conn) *dbus.Object {
+	return conn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
 }

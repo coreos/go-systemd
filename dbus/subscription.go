@@ -56,11 +56,7 @@ func (c *Conn) Unsubscribe() error {
 	return nil
 }
 
-func (c *Conn) initSubscription() {
-	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
-}
-
-func (c *Conn) initDispatch() {
+func (c *Conn) dispatch() {
 	ch := make(chan *dbus.Signal, signalBuffer)
 
 	c.sysconn.Signal(ch)
