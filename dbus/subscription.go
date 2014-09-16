@@ -72,24 +72,32 @@ func (c *Conn) initDispatch() {
 				return
 			}
 
+			if signal.Name == "org.freedesktop.systemd1.Manager.JobRemoved" {
+				c.jobComplete(signal)
+			}
+
+			if c.subscriber.updateCh == nil {
+				continue
+			}
+
+			var unitPath dbus.ObjectPath
 			switch signal.Name {
 			case "org.freedesktop.systemd1.Manager.JobRemoved":
-				c.jobComplete(signal)
-
 				unitName := signal.Body[2].(string)
-				var unitPath dbus.ObjectPath
 				c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnit", 0, unitName).Store(&unitPath)
-				if unitPath != dbus.ObjectPath("") {
-					c.sendSubStateUpdate(unitPath)
-				}
 			case "org.freedesktop.systemd1.Manager.UnitNew":
-				c.sendSubStateUpdate(signal.Body[1].(dbus.ObjectPath))
+				unitPath = signal.Body[1].(dbus.ObjectPath)
 			case "org.freedesktop.DBus.Properties.PropertiesChanged":
 				if signal.Body[0].(string) == "org.freedesktop.systemd1.Unit" {
-					// we only care about SubState updates, which are a Unit property
-					c.sendSubStateUpdate(signal.Path)
+					unitPath = signal.Path
 				}
 			}
+
+			if unitPath == dbus.ObjectPath("") {
+				continue
+			}
+
+			c.sendSubStateUpdate(unitPath)
 		}
 	}()
 }
@@ -103,7 +111,7 @@ func (c *Conn) SubscribeUnits(interval time.Duration) (<-chan map[string]*UnitSt
 // SubscribeUnitsCustom is like SubscribeUnits but lets you specify the buffer
 // size of the channels, the comparison function for detecting changes and a filter
 // function for cutting down on the noise that your channel receives.
-func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func (string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
+func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func(string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
 	old := make(map[string]*UnitStatus)
 	statusChan := make(chan map[string]*UnitStatus, buffer)
 	errChan := make(chan error, buffer)
@@ -176,9 +184,6 @@ func (c *Conn) SetSubStateSubscriber(updateCh chan<- *SubStateUpdate, errCh chan
 func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 	c.subscriber.Lock()
 	defer c.subscriber.Unlock()
-	if c.subscriber.updateCh == nil {
-		return
-	}
 
 	if c.shouldIgnore(path) {
 		return
