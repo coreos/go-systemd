@@ -20,18 +20,16 @@ import (
 	"github.com/godbus/dbus"
 )
 
-const (
-	signalBuffer = 1000
-)
-
 func (c *Conn) initDispatch() {
 	// Setup the listeners on jobs so that we can get completions
 	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
 
-	sigCh := make(chan *dbus.Signal, signalBuffer)
-	c.sysconn.Signal(sigCh)
+	sigCh := make(chan *dbus.Signal)
+	slurpCh := make(chan *dbus.Signal)
+	c.sysconn.Signal(slurpCh)
 
+	go slurpSignals(slurpCh, sigCh)
 	go c.dispatch(sigCh)
 }
 
@@ -44,6 +42,13 @@ type jobRequest struct {
 type jobResult struct {
 	output string
 	err    error
+}
+
+func slurpSignals(in chan *dbus.Signal, out chan *dbus.Signal) {
+	for sig := range in {
+		sig := sig
+		go func() { out <- sig }()
+	}
 }
 
 func (c *Conn) dispatch(sigCh chan *dbus.Signal) {
