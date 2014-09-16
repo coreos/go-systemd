@@ -64,8 +64,13 @@ func PathBusEscape(path string) string {
 
 // Conn is a connection to systemd's dbus endpoint.
 type Conn struct {
+	// sysconn/sysobj are only used to call dbus methods
 	sysconn *dbus.Conn
 	sysobj  *dbus.Object
+
+	// sigconn/sigobj are only used to receive dbus signals
+	sigconn *dbus.Conn
+	sigobj  *dbus.Object
 
 	jobListener struct {
 		jobs map[dbus.ObjectPath]chan string
@@ -97,16 +102,23 @@ func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
 		return nil, err
 	}
 
+	sigconn, err := dbusConnection(createBus)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Conn{
 		sysconn: sysconn,
 		sysobj:  systemdObject(sysconn),
+		sigconn: sigconn,
+		sigobj:  systemdObject(sigconn),
 	}
 
 	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
 	c.jobListener.jobs = make(map[dbus.ObjectPath]chan string)
 
 	// Setup the listeners on jobs so that we can get completions
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+	c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
 
 	c.dispatch()

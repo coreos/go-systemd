@@ -33,12 +33,12 @@ const (
 // systemd will automatically stop sending signals so there is no need to
 // explicitly call Unsubscribe().
 func (c *Conn) Subscribe() error {
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+	c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.systemd1.Manager',member='UnitNew'")
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+	c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'")
 
-	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Subscribe", 0).Store()
+	err := c.sigobj.Call("org.freedesktop.systemd1.Manager.Subscribe", 0).Store()
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (c *Conn) Subscribe() error {
 
 // Unsubscribe this connection from systemd dbus events.
 func (c *Conn) Unsubscribe() error {
-	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
+	err := c.sigobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (c *Conn) Unsubscribe() error {
 func (c *Conn) dispatch() {
 	ch := make(chan *dbus.Signal, signalBuffer)
 
-	c.sysconn.Signal(ch)
+	c.sigconn.Signal(ch)
 
 	go func() {
 		for {
