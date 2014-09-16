@@ -22,47 +22,6 @@ import (
 	"github.com/godbus/dbus"
 )
 
-func (c *Conn) initJobs() {
-	c.jobListener.jobs = make(map[dbus.ObjectPath]chan string)
-}
-
-func (c *Conn) jobComplete(signal *dbus.Signal) {
-	var id uint32
-	var job dbus.ObjectPath
-	var unit string
-	var result string
-	dbus.Store(signal.Body, &id, &job, &unit, &result)
-	c.jobListener.Lock()
-	out, ok := c.jobListener.jobs[job]
-	if ok {
-		out <- result
-		delete(c.jobListener.jobs, job)
-	}
-	c.jobListener.Unlock()
-}
-
-func (c *Conn) startJob(job string, args ...interface{}) (<-chan string, error) {
-	c.jobListener.Lock()
-	defer c.jobListener.Unlock()
-
-	ch := make(chan string, 1)
-	var path dbus.ObjectPath
-	err := c.sysobj.Call(job, 0, args...).Store(&path)
-	if err != nil {
-		return nil, err
-	}
-	c.jobListener.jobs[path] = ch
-	return ch, nil
-}
-
-func (c *Conn) runJob(job string, args ...interface{}) (string, error) {
-	respCh, err := c.startJob(job, args...)
-	if err != nil {
-		return "", err
-	}
-	return <-respCh, nil
-}
-
 // StartUnit enqueues a start job and depending jobs, if any (unless otherwise
 // specified by the mode string).
 //

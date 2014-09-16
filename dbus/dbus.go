@@ -28,10 +28,9 @@ import (
 )
 
 const (
-	alpha        = `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`
-	num          = `0123456789`
-	alphanum     = alpha + num
-	signalBuffer = 100
+	alpha    = `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`
+	num      = `0123456789`
+	alphanum = alpha + num
 )
 
 // needsEscape checks whether a byte in a potential dbus ObjectPath needs to be escaped
@@ -64,12 +63,9 @@ func PathBusEscape(path string) string {
 
 // Conn is a connection to systemd's dbus endpoint.
 type Conn struct {
-	sysconn     *dbus.Conn
-	sysobj      *dbus.Object
-	jobListener struct {
-		jobs map[dbus.ObjectPath]chan string
-		sync.Mutex
-	}
+	sysconn    *dbus.Conn
+	sysobj     *dbus.Object
+	jobReqCh   chan *jobRequest
 	subscriber struct {
 		updateCh chan<- *SubStateUpdate
 		errCh    chan<- error
@@ -77,39 +73,25 @@ type Conn struct {
 		ignore      map[dbus.ObjectPath]int64
 		cleanIgnore int64
 	}
-	dispatch map[string]func(dbus.Signal)
 }
 
-// New() establishes a connection to the system bus and authenticates.
+// New establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
-	c := new(Conn)
-
-	if err := c.initConnection(dbus.SystemBusPrivate); err != nil {
-		return nil, err
-	}
-
-	c.initJobs()
-	return c, nil
+	return newConnection(dbus.SystemBusPrivate)
 }
 
-// NewUserConnection() establishes a connection to the session bus and
+// NewUserConnection establishes a connection to the session bus and
 // authenticates. This can be used to connect to systemd user instances.
 func NewUserConnection() (*Conn, error) {
-	c := new(Conn)
-
-	if err := c.initConnection(dbus.SessionBusPrivate); err != nil {
-		return nil, err
-	}
-
-	c.initJobs()
-	return c, nil
+	return newConnection(dbus.SessionBusPrivate)
 }
 
-func (c *Conn) initConnection(createBus func()(*dbus.Conn, error)) error {
+func newConnection(createBus func()(*dbus.Conn, error)) (*Conn, error) {
+	c := new(Conn)
 	var err error
 	c.sysconn, err = createBus()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Only use EXTERNAL method, and hardcode the uid (not username)
@@ -120,22 +102,20 @@ func (c *Conn) initConnection(createBus func()(*dbus.Conn, error)) error {
 	err = c.sysconn.Auth(methods)
 	if err != nil {
 		c.sysconn.Close()
-		return err
+		return nil, err
 	}
 
 	err = c.sysconn.Hello()
 	if err != nil {
 		c.sysconn.Close()
-		return err
+		return nil, err
 	}
 
 	c.sysobj = c.sysconn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
 
-	// Setup the listeners on jobs so that we can get completions
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
-		"type='signal', interface='org.freedesktop.systemd1.Manager', member='JobRemoved'")
-	c.initSubscription()
+	c.jobReqCh = make(chan *jobRequest)
+	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
 	c.initDispatch()
 
-	return nil
+	return c, nil
 }
