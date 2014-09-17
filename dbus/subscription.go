@@ -33,12 +33,12 @@ const (
 // systemd will automatically stop sending signals so there is no need to
 // explicitly call Unsubscribe().
 func (c *Conn) Subscribe() error {
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+	c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.systemd1.Manager',member='UnitNew'")
-	c.sysconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+	c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'")
 
-	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Subscribe", 0).Store()
+	err := c.sigobj.Call("org.freedesktop.systemd1.Manager.Subscribe", 0).Store()
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (c *Conn) Subscribe() error {
 
 // Unsubscribe this connection from systemd dbus events.
 func (c *Conn) Unsubscribe() error {
-	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
+	err := c.sigobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
 	if err != nil {
 		return err
 	}
@@ -56,14 +56,10 @@ func (c *Conn) Unsubscribe() error {
 	return nil
 }
 
-func (c *Conn) initSubscription() {
-	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
-}
-
-func (c *Conn) initDispatch() {
+func (c *Conn) dispatch() {
 	ch := make(chan *dbus.Signal, signalBuffer)
 
-	c.sysconn.Signal(ch)
+	c.sigconn.Signal(ch)
 
 	go func() {
 		for {
@@ -72,24 +68,32 @@ func (c *Conn) initDispatch() {
 				return
 			}
 
+			if signal.Name == "org.freedesktop.systemd1.Manager.JobRemoved" {
+				c.jobComplete(signal)
+			}
+
+			if c.subscriber.updateCh == nil {
+				continue
+			}
+
+			var unitPath dbus.ObjectPath
 			switch signal.Name {
 			case "org.freedesktop.systemd1.Manager.JobRemoved":
-				c.jobComplete(signal)
-
 				unitName := signal.Body[2].(string)
-				var unitPath dbus.ObjectPath
 				c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnit", 0, unitName).Store(&unitPath)
-				if unitPath != dbus.ObjectPath("") {
-					c.sendSubStateUpdate(unitPath)
-				}
 			case "org.freedesktop.systemd1.Manager.UnitNew":
-				c.sendSubStateUpdate(signal.Body[1].(dbus.ObjectPath))
+				unitPath = signal.Body[1].(dbus.ObjectPath)
 			case "org.freedesktop.DBus.Properties.PropertiesChanged":
 				if signal.Body[0].(string) == "org.freedesktop.systemd1.Unit" {
-					// we only care about SubState updates, which are a Unit property
-					c.sendSubStateUpdate(signal.Path)
+					unitPath = signal.Path
 				}
 			}
+
+			if unitPath == dbus.ObjectPath("") {
+				continue
+			}
+
+			c.sendSubStateUpdate(unitPath)
 		}
 	}()
 }
@@ -176,9 +180,6 @@ func (c *Conn) SetSubStateSubscriber(updateCh chan<- *SubStateUpdate, errCh chan
 func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 	c.subscriber.Lock()
 	defer c.subscriber.Unlock()
-	if c.subscriber.updateCh == nil {
-		return
-	}
 
 	if c.shouldIgnore(path) {
 		return

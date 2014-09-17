@@ -22,10 +22,6 @@ import (
 	"github.com/godbus/dbus"
 )
 
-func (c *Conn) initJobs() {
-	c.jobListener.jobs = make(map[dbus.ObjectPath]chan string)
-}
-
 func (c *Conn) jobComplete(signal *dbus.Signal) {
 	var id uint32
 	var job dbus.ObjectPath
