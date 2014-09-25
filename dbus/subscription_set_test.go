@@ -27,11 +27,13 @@ func TestSubscriptionSetUnit(t *testing.T) {
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
 
-	job, err := conn.StartUnit(target, "replace")
+	reschan := make(chan string)
+	_, err = conn.StartUnit(target, "replace", reschan)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	job := <-reschan
 	if job != "done" {
 		t.Fatal("Couldn't start", target)
 	}
