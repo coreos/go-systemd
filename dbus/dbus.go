@@ -86,14 +86,21 @@ type Conn struct {
 }
 
 // New establishes a connection to the system bus and authenticates.
+// Callers should call Close() when done with the connection.
 func New() (*Conn, error) {
 	return newConnection(dbus.SystemBusPrivate)
 }
 
 // NewUserConnection establishes a connection to the session bus and
 // authenticates. This can be used to connect to systemd user instances.
+// Callers should call Close() when done with the connection.
 func NewUserConnection() (*Conn, error) {
 	return newConnection(dbus.SessionBusPrivate)
+}
+
+// Close closes an established connection
+func (c *Conn) Close() {
+	c.sysconn.Close()
 }
 
 func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
