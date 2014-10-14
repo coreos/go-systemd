@@ -101,6 +101,7 @@ func NewUserConnection() (*Conn, error) {
 // Close closes an established connection
 func (c *Conn) Close() {
 	c.sysconn.Close()
+	c.sigconn.Close()
 }
 
 func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
@@ -111,6 +112,7 @@ func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
 
 	sigconn, err := dbusConnection(createBus)
 	if err != nil {
+		sysconn.Close()
 		return nil, err
 	}
 
