@@ -45,7 +45,7 @@ const (
 
 var conn net.Conn
 
-func init() {
+func Init() {
 	var err error
 	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
 	if err != nil {
