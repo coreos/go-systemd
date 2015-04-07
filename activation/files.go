@@ -28,10 +28,8 @@ const (
 
 func Files(unsetEnv bool) []*os.File {
 	if unsetEnv {
-		// there is no way to unset env in golang os package for now
-		// https://code.google.com/p/go/issues/detail?id=6423
-		defer os.Setenv("LISTEN_PID", "")
-		defer os.Setenv("LISTEN_FDS", "")
+		defer os.Unsetenv("LISTEN_PID")
+		defer os.Unsetenv("LISTEN_FDS")
 	}
 
 	pid, err := strconv.Atoi(os.Getenv("LISTEN_PID"))
