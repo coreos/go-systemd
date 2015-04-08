@@ -105,7 +105,7 @@ func (c *Conn) SubscribeUnits(interval time.Duration) (<-chan map[string]*UnitSt
 // SubscribeUnitsCustom is like SubscribeUnits but lets you specify the buffer
 // size of the channels, the comparison function for detecting changes and a filter
 // function for cutting down on the noise that your channel receives.
-func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func (string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
+func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func(string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
 	old := make(map[string]*UnitStatus)
 	statusChan := make(chan map[string]*UnitStatus, buffer)
 	errChan := make(chan error, buffer)
