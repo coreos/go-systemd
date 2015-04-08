@@ -31,17 +31,17 @@ func (s *set) Contains(value string) (exists bool) {
 	return
 }
 
-func (s *set) Length() (int) {
+func (s *set) Length() int {
 	return len(s.data)
 }
 
 func (s *set) Values() (values []string) {
-	 for val, _ := range s.data {
+	for val, _ := range s.data {
 		values = append(values, val)
-	 }
-	 return
+	}
+	return
 }
 
-func newSet() (*set) {
-	return &set{make(map[string] bool)}
+func newSet() *set {
+	return &set{make(map[string]bool)}
 }
