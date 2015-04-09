@@ -1,0 +1,14 @@
+{
+	"ImportPath": "github.com/coreos/go-systemd",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/godbus/dbus",
+			"Comment": "v2",
+			"Rev": "88765d85c0fdadcd98a54e30694fa4e4f5b51133"
+		}
+	]
+}

@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/godbus/dbus"
+	"github.com/coreos/go-systemd/Godeps/_workspace/src/github.com/godbus/dbus"
 )
 
 func setupConn(t *testing.T) *Conn {
