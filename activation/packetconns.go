@@ -26,13 +26,11 @@ import (
 // corresponding with "udp, tcp, udp", then the slice would contain {net.PacketConn, nil, net.PacketConn}
 func PacketConns(unsetEnv bool) ([]net.PacketConn, error) {
 	files := Files(unsetEnv)
-	conns := make([]net.PacketConn, 0)
-	for i := 0; i < len(files); i++ {
-		if pc, err := net.FilePacketConn(files[i]); err == nil {
-			conns = append(conns, pc)
-			continue
-		} else {
-			conns = append(conns, nil)
+	conns := make([]net.PacketConn, len(files))
+
+	for i, f := range files {
+		if pc, err := net.FilePacketConn(f); err == nil {
+			conns[i] = pc
 		}
 	}
 	return conns, nil

@@ -26,14 +26,11 @@ import (
 // corresponding with "udp, tcp, tcp", then the slice would contain {nil, net.Listener, net.Listener}
 func Listeners(unsetEnv bool) ([]net.Listener, error) {
 	files := Files(unsetEnv)
-	listeners := make([]net.Listener, 0)
+	listeners := make([]net.Listener, len(files))
 
-	for i := 0; i < len(files); i++ {
-		if pc, err := net.FileListener(files[i]); err == nil {
-			listeners = append(listeners, pc)
-			continue
-		} else {
-			listeners = append(listeners, nil)
+	for i, f := range files {
+		if pc, err := net.FileListener(f); err == nil {
+			listeners[i] = pc
 		}
 	}
 	return listeners, nil
