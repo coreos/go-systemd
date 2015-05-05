@@ -42,7 +42,7 @@ func Files(unsetEnv bool) []*os.File {
 		return nil
 	}
 
-	var files []*os.File
+	files := make([]*os.File, 0, nfds)
 	for fd := listenFdsStart; fd < listenFdsStart+nfds; fd++ {
 		syscall.CloseOnExec(fd)
 		files = append(files, os.NewFile(uintptr(fd), "LISTEN_FD_"+strconv.Itoa(fd)))
