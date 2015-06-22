@@ -86,14 +86,28 @@ type Conn struct {
 // New establishes a connection to the system bus and authenticates.
 // Callers should call Close() when done with the connection.
 func New() (*Conn, error) {
-	return newConnection(dbus.SystemBusPrivate)
+	return newConnection(func() (*dbus.Conn, error) {
+		return dbusAuthConnection(dbus.SystemBusPrivate)
+	})
 }
 
 // NewUserConnection establishes a connection to the session bus and
 // authenticates. This can be used to connect to systemd user instances.
 // Callers should call Close() when done with the connection.
 func NewUserConnection() (*Conn, error) {
-	return newConnection(dbus.SessionBusPrivate)
+	return newConnection(func() (*dbus.Conn, error) {
+		return dbusAuthConnection(dbus.SessionBusPrivate)
+	})
+}
+
+// NewSystemdConnection establishes a private, direct connection to systemd.
+// This can be used for communicating with systemd without a dbus daemon.
+// Callers should call Close() when done with the connection.
+func NewSystemdConnection() (*Conn, error) {
+	return newConnection(func() (*dbus.Conn, error) {
+		// We skip Auth and Hello when talking directly to systemd.
+		return dbus.Dial("unix:path=/run/systemd/private")
+	})
 }
 
 // Close closes an established connection
@@ -103,12 +117,12 @@ func (c *Conn) Close() {
 }
 
 func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
-	sysconn, err := dbusConnection(createBus)
+	sysconn, err := createBus()
 	if err != nil {
 		return nil, err
 	}
 
-	sigconn, err := dbusConnection(createBus)
+	sigconn, err := createBus()
 	if err != nil {
 		sysconn.Close()
 		return nil, err
@@ -132,7 +146,7 @@ func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
 	return c, nil
 }
 
-func dbusConnection(createBus func() (*dbus.Conn, error)) (*dbus.Conn, error) {
+func dbusAuthConnection(createBus func() (*dbus.Conn, error)) (*dbus.Conn, error) {
 	conn, err := createBus()
 	if err != nil {
 		return nil, err
