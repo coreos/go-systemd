@@ -87,7 +87,7 @@ type Conn struct {
 // Callers should call Close() when done with the connection.
 func New() (*Conn, error) {
 	return newConnection(func() (*dbus.Conn, error) {
-		return dbusAuthConnection(dbus.SystemBusPrivate)
+		return dbusAuthHelloConnection(dbus.SystemBusPrivate)
 	})
 }
 
@@ -96,7 +96,7 @@ func New() (*Conn, error) {
 // Callers should call Close() when done with the connection.
 func NewUserConnection() (*Conn, error) {
 	return newConnection(func() (*dbus.Conn, error) {
-		return dbusAuthConnection(dbus.SessionBusPrivate)
+		return dbusAuthHelloConnection(dbus.SessionBusPrivate)
 	})
 }
 
@@ -105,8 +105,10 @@ func NewUserConnection() (*Conn, error) {
 // Callers should call Close() when done with the connection.
 func NewSystemdConnection() (*Conn, error) {
 	return newConnection(func() (*dbus.Conn, error) {
-		// We skip Auth and Hello when talking directly to systemd.
-		return dbus.Dial("unix:path=/run/systemd/private")
+		// We skip Hello when talking directly to systemd.
+		return dbusAuthConnection(func() (*dbus.Conn, error) {
+			return dbus.Dial("unix:path=/run/systemd/private")
+		})
 	})
 }
 
@@ -163,8 +165,16 @@ func dbusAuthConnection(createBus func() (*dbus.Conn, error)) (*dbus.Conn, error
 		return nil, err
 	}
 
-	err = conn.Hello()
+	return conn, nil
+}
+
+func dbusAuthHelloConnection(createBus func() (*dbus.Conn, error)) (*dbus.Conn, error) {
+	conn, err := dbusAuthConnection(createBus)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = conn.Hello(); err != nil {
 		conn.Close()
 		return nil, err
 	}
