@@ -64,11 +64,11 @@ func PathBusEscape(path string) string {
 type Conn struct {
 	// sysconn/sysobj are only used to call dbus methods
 	sysconn *dbus.Conn
-	sysobj  *dbus.Object
+	sysobj  dbus.BusObject
 
 	// sigconn/sigobj are only used to receive dbus signals
 	sigconn *dbus.Conn
-	sigobj  *dbus.Object
+	sigobj  dbus.BusObject
 
 	jobListener struct {
 		jobs map[dbus.ObjectPath]chan<- string
@@ -182,6 +182,6 @@ func dbusAuthHelloConnection(createBus func() (*dbus.Conn, error)) (*dbus.Conn, 
 	return conn, nil
 }
 
-func systemdObject(conn *dbus.Conn) *dbus.Object {
+func systemdObject(conn *dbus.Conn) dbus.BusObject {
 	return conn.Object("org.freedesktop.systemd1", dbus.ObjectPath("/org/freedesktop/systemd1"))
 }
