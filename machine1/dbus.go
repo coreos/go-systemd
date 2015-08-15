@@ -32,7 +32,7 @@ const (
 // Conn is a connection to systemds dbus endpoint.
 type Conn struct {
 	conn   *dbus.Conn
-	object *dbus.Object
+	object dbus.BusObject
 }
 
 // New() establishes a connection to the system bus and authenticates.
