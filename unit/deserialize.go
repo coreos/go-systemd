@@ -24,6 +24,20 @@ import (
 	"unicode"
 )
 
+const (
+	// SYSTEMD_LINE_MAX mimics the maximum line length that systemd can use.
+	// On typical systemd platforms (i.e. modern Linux), this will most
+	// commonly be 2048, so let's use that as a sanity check.
+	// Technically, we should probably pull this at runtime:
+	//    SYSTEMD_LINE_MAX = int(C.sysconf(C.__SC_LINE_MAX))
+	// but this would introduce an (unfortunate) dependency on cgo
+	SYSTEMD_LINE_MAX = 2048
+)
+
+var (
+	ErrLineTooLong = fmt.Errorf("line too long (max %d bytes)", SYSTEMD_LINE_MAX)
+)
+
 // Deserialize parses a systemd unit file into a list of UnitOption objects.
 func Deserialize(f io.Reader) (opts []*UnitOption, err error) {
 	lexer, optchan, errchan := newLexer(f)
@@ -54,17 +68,34 @@ type lexer struct {
 
 func (l *lexer) lex() {
 	var err error
+	defer func() {
+		close(l.optchan)
+		close(l.errchan)
+	}()
 	next := l.lexNextSection
 	for next != nil {
+		if l.buf.Buffered() >= SYSTEMD_LINE_MAX {
+			// systemd truncates lines longer than LINE_MAX
+			// https://bugs.freedesktop.org/show_bug.cgi?id=85308
+			// Rather than allowing this to pass silently, let's
+			// explicitly gate people from encountering this
+			line, err := l.buf.Peek(SYSTEMD_LINE_MAX)
+			if err != nil {
+				l.errchan <- err
+				return
+			}
+			if bytes.IndexRune(line, '\n') == -1 {
+				l.errchan <- ErrLineTooLong
+				return
+			}
+		}
+
 		next, err = next()
 		if err != nil {
 			l.errchan <- err
-			break
+			return
 		}
 	}
-
-	close(l.optchan)
-	close(l.errchan)
 }
 
 type lexStep func() (lexStep, error)
