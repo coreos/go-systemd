@@ -191,15 +191,15 @@ func (l *lexer) lexOptionValueFunc(section, name string) lexStep {
 				return nil, err
 			}
 
+			partial.Write(line)
+
 			// lack of continuation means this value has been exhausted
 			idx := bytes.LastIndex(line, []byte{'\\'})
 			if idx == -1 || idx != (len(line)-1) {
-				partial.Write(line)
 				break
 			}
 
-			partial.Write(line[0:idx])
-			partial.WriteRune(' ')
+			partial.WriteRune('\n')
 		}
 
 		val := strings.TrimSpace(partial.String())
