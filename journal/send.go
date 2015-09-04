@@ -53,7 +53,7 @@ func init() {
 	}
 }
 
-// Enabled returns true iff the systemd journal is available for logging
+// Enabled returns true if the systemd journal is available for logging
 func Enabled() bool {
 	return conn != nil
 }
