@@ -77,3 +77,8 @@ func (c *Conn) initConnection() error {
 func (c *Conn) Reboot(askForAuth bool) {
 	c.object.Call(dbusInterface+".Reboot", 0, askForAuth)
 }
+
+// PowerOff asks logind for a power off optionally asking for auth.
+func (c *Conn) PowerOff(askForAuth bool) {
+	c.object.Call(dbusInterface+".PowerOff", 0, askForAuth)
+}
