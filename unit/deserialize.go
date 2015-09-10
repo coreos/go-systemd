@@ -32,6 +32,9 @@ const (
 	//    SYSTEMD_LINE_MAX = int(C.sysconf(C.__SC_LINE_MAX))
 	// but this would introduce an (unfortunate) dependency on cgo
 	SYSTEMD_LINE_MAX = 2048
+
+	// characters that systemd considers indicate a newline
+	SYSTEMD_NEWLINE = "\r\n"
 )
 
 var (
@@ -84,7 +87,7 @@ func (l *lexer) lex() {
 				l.errchan <- err
 				return
 			}
-			if bytes.IndexRune(line, '\n') == -1 {
+			if bytes.IndexAny(line, SYSTEMD_NEWLINE) == -1 {
 				l.errchan <- ErrLineTooLong
 				return
 			}
