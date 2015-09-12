@@ -119,10 +119,10 @@ func (j *Journal) GetData(field string) (string, error) {
 
 	if err < 0 {
 		return "", fmt.Errorf("failed to read message: %d", err)
-	} else {
-		msg := C.GoStringN((*C.char)(d), C.int(l))
-		return msg, nil
 	}
+
+	msg := C.GoStringN((*C.char)(d), C.int(l))
+	return msg, nil
 }
 
 func (j *Journal) GetRealtimeUsec() (uint64, error) {
@@ -143,11 +143,11 @@ func (j *Journal) Print(priority int, message string) error {
 
 	err := C.go_sd_journal_print(C.LOG_INFO, m)
 
-	if err == 0 {
-		return nil
-	} else {
+	if err != 0 {
 		return fmt.Errorf("failed to print message: %s", err)
 	}
+
+	return nil
 }
 
 func (j *Journal) SeekTail() error {
@@ -155,9 +155,9 @@ func (j *Journal) SeekTail() error {
 
 	if err != 0 {
 		return fmt.Errorf("failed to seek to tail of journal: %s", err)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (j *Journal) SeekRealtimeUsec(usec uint64) error {
