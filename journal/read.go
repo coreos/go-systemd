@@ -159,7 +159,7 @@ process:
 			case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
 				// TODO: need to account for any of these?
 			default:
-				fmt.Printf("Received unknown event: %s\n", e)
+				fmt.Printf("Received unknown event: %d\n", e)
 			}
 			continue process
 		}
