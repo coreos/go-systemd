@@ -80,14 +80,15 @@ Environment= "FOO=BAR" "BAZ=QUX"
 			},
 		},
 
-		// line continuations respected
+		// line continuations unmodified
 		{
 			[]byte(`[Unit]
 Description= Unnecessarily wrapped \
     words here
 `),
 			[]*UnitOption{
-				&UnitOption{"Unit", "Description", "Unnecessarily wrapped      words here"},
+				&UnitOption{"Unit", "Description", `Unnecessarily wrapped \
+    words here`},
 			},
 		},
 
@@ -119,8 +120,8 @@ Description=Bar\
 Baz
 `),
 			[]*UnitOption{
-				&UnitOption{"Unit", "Description", "Bar # comment alpha"},
-				&UnitOption{"Unit", "Description", "Bar # comment bravo  Baz"},
+				&UnitOption{"Unit", "Description", "Bar\\\n# comment alpha"},
+				&UnitOption{"Unit", "Description", "Bar\\\n# comment bravo \\\nBaz"},
 			},
 		},
 
@@ -180,7 +181,7 @@ Description=Bar`),
 			[]byte(`[Unit]
 Description=Bar \`),
 			[]*UnitOption{
-				&UnitOption{"Unit", "Description", "Bar"},
+				&UnitOption{"Unit", "Description", "Bar \\"},
 			},
 		},
 
@@ -218,7 +219,7 @@ Description= words here `),
 Description= words here \
   `),
 			[]*UnitOption{
-				&UnitOption{"Unit", "Description", "words here"},
+				&UnitOption{"Unit", "Description", "words here \\"},
 			},
 		},
 
