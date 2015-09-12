@@ -29,6 +29,12 @@ import (
 // http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
 const (
 	SD_JOURNAL_FIELD_SYSTEMD_UNIT = "_SYSTEMD_UNIT"
+	SD_JOURNAL_FIELD_MESSAGE      = "MESSAGE"
+	SD_JOURNAL_FIELD_PID          = "_PID"
+	SD_JOURNAL_FIELD_UID          = "_UID"
+	SD_JOURNAL_FIELD_GID          = "_GID"
+	SD_JOURNAL_FIELD_HOSTNAME     = "_HOSTNAME"
+	SD_JOURNAL_FIELD_MACHINE_ID   = "_MACHINE_ID"
 )
 
 // Journal event constants
@@ -54,6 +60,7 @@ func (m *Match) String() string {
 	return m.Field + "=" + m.Value
 }
 
+// NewJournal returns a new Journal instance pointing to the local journal
 func NewJournal() (*Journal, error) {
 	j := &Journal{}
 	err := C.sd_journal_open(&j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
