@@ -21,7 +21,6 @@ int go_sd_journal_print(int priority, char* s) {
 */
 import "C"
 import (
-	"errors"
 	"fmt"
 	"unsafe"
 )
@@ -60,7 +59,7 @@ func NewJournal() (*Journal, error) {
 	err := C.sd_journal_open(&j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
 
 	if err < 0 {
-		return nil, errors.New(fmt.Sprintf("Failed to open journal: %s\n", err))
+		return nil, fmt.Errorf("failed to open journal: %s", err)
 	}
 
 	return j, nil
@@ -83,7 +82,7 @@ func (j *Journal) Next() (int, error) {
 	r := C.sd_journal_next(j.cjournal)
 
 	if r < 0 {
-		return int(r), errors.New(fmt.Sprintf("Failed to iterate journal: %d\n", r))
+		return int(r), fmt.Errorf("failed to iterate journal: %d", r)
 	}
 
 	return int(r), nil
@@ -93,7 +92,7 @@ func (j *Journal) Previous() (uint64, error) {
 	r := C.sd_journal_previous(j.cjournal)
 
 	if r < 0 {
-		return uint64(r), errors.New(fmt.Sprintf("Failed to iterate journal: %d\n", r))
+		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
 	}
 
 	return uint64(r), nil
@@ -103,7 +102,7 @@ func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
 	r := C.sd_journal_previous_skip(j.cjournal, C.uint64_t(skip))
 
 	if r < 0 {
-		return uint64(r), errors.New(fmt.Sprintf("Failed to iterate journal: %d\n", r))
+		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
 	}
 
 	return uint64(r), nil
@@ -119,7 +118,7 @@ func (j *Journal) GetData(field string) (string, error) {
 	err := C.sd_journal_get_data(j.cjournal, f, &d, &l)
 
 	if err < 0 {
-		return "", errors.New(fmt.Sprintf("Failed to read message: %d\n", err))
+		return "", fmt.Errorf("failed to read message: %d", err)
 	} else {
 		msg := C.GoStringN((*C.char)(d), C.int(l))
 		return msg, nil
@@ -132,7 +131,7 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	r := C.sd_journal_get_realtime_usec(j.cjournal, &usec)
 
 	if r < 0 {
-		return 0, errors.New(fmt.Sprintf("Error getting timestamp for entry: %d\n", r))
+		return 0, fmt.Errorf("error getting timestamp for entry: %d", r)
 	}
 
 	return uint64(usec), nil
@@ -147,7 +146,7 @@ func (j *Journal) Print(priority int, message string) error {
 	if err == 0 {
 		return nil
 	} else {
-		return errors.New(fmt.Sprintf("Failed to print message: %s\n", err))
+		return fmt.Errorf("failed to print message: %s", err)
 	}
 }
 
@@ -155,7 +154,7 @@ func (j *Journal) SeekTail() error {
 	err := C.sd_journal_seek_tail(j.cjournal)
 
 	if err != 0 {
-		return errors.New(fmt.Sprintf("Failed to seek to tail of journal: %s\n", err))
+		return fmt.Errorf("failed to seek to tail of journal: %s", err)
 	} else {
 		return nil
 	}
@@ -165,7 +164,7 @@ func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 	err := C.sd_journal_seek_realtime_usec(j.cjournal, C.uint64_t(usec))
 
 	if err != 0 {
-		return errors.New(fmt.Sprintf("Failed to seek to %d: %d\n", usec, int(err)))
+		return fmt.Errorf("failed to seek to %d: %d", usec, int(err))
 	}
 
 	return nil
