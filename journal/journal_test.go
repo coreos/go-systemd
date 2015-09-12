@@ -20,7 +20,7 @@ func TestJournalFollow(t *testing.T) {
 	})
 
 	if err != nil {
-		t.Fatalf("Error opening journal: %s\n", err)
+		t.Fatalf("Error opening journal: %s", err)
 	}
 
 	if r == nil {
@@ -30,7 +30,7 @@ func TestJournalFollow(t *testing.T) {
 	defer r.Close()
 
 	// start writing some test entries
-	done := make(chan bool, 1)
+	done := make(chan struct{}, 1)
 	go func() {
 		j, err := NewJournal()
 		defer j.Close()
@@ -57,7 +57,7 @@ func TestJournalFollow(t *testing.T) {
 	err = r.Follow(time.After(timeout), os.Stdout)
 
 	// shut down the test writer
-	done <- true
+	close(done)
 
 	if err != nil {
 		t.Fatalf("Error during follow: %s", err)
