@@ -1,12 +1,12 @@
 # go-systemd
 
-Go bindings to systemd. The project has three packages:
+Go bindings to systemd. The project has several packages:
 
-- activation - for writing and using socket activation from Go
-- dbus - for starting/stopping/inspecting running services and units
-- journal - for writing to systemd's logging service, journal
-- unit - for (de)serialization and comparison of unit files
-- machine1 - for registering machines/containers with systemd
+- `activation` - for writing and using socket activation from Go
+- `dbus` - for starting/stopping/inspecting running services and units
+- `journal` - for writing to systemd's logging service, journal
+- `machine1` - for registering machines/containers with systemd
+- `unit` - for (de)serialization and comparison of unit files
 
 Go docs for the entire project are here:
 
@@ -14,18 +14,18 @@ http://godoc.org/github.com/coreos/go-systemd
 
 ## Socket Activation
 
-An example HTTP server using socket activation can be quickly setup by
+An example HTTP server using socket activation can be quickly set up by
 following this README on a Linux machine running systemd:
 
 https://github.com/coreos/go-systemd/tree/master/examples/activation/httpserver
 
 ## Journal
 
-Using this package you can submit journal entries directly to systemd's journal taking advantage of features like indexed key/value pairs for each log entry.
+Using this package you can submit journal entries directly to systemd's journal, taking advantage of features like indexed key/value pairs for each log entry.
 
 ## D-Bus
 
-The D-Bus API lets you start, stop and introspect systemd units. The API docs are here:
+The `dbus` package connects to the [systemd D-Bus API](http://www.freedesktop.org/wiki/Software/systemd/dbus/) and lets you start, stop and introspect systemd units. The API docs are here:
 
 http://godoc.org/github.com/coreos/go-systemd/dbus
 
@@ -44,3 +44,11 @@ Create `/etc/dbus-1/system-local.conf` that looks like this:
     </policy>
 </busconfig>
 ```
+
+## machined
+
+The `machine1` package allows interaction with the [systemd machined D-Bus API](http://www.freedesktop.org/wiki/Software/systemd/machined/).
+
+## Units
+
+The `unit` package provides various functions for working with [systemd unit files](http://www.freedesktop.org/software/systemd/man/systemd.unit.html).
