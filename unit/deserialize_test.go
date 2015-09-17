@@ -219,7 +219,7 @@ Description= words here `),
 Description= words here \
   `),
 			[]*UnitOption{
-				&UnitOption{"Unit", "Description", "words here \\"},
+				&UnitOption{"Unit", "Description", "words here \\\n"},
 			},
 		},
 

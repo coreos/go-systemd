@@ -42,6 +42,18 @@ Description=Unnecessarily wrapped \
 `,
 		},
 		{
+			`[Unit]
+Description=Demo \
+
+Requires=docker.service
+`,
+			`[Unit]
+Description=Demo \
+
+Requires=docker.service
+`,
+		},
+		{
 			`; comment alpha
 # comment bravo
 [Unit]
