@@ -80,7 +80,7 @@ func (l *lexer) lexSectionName() (lexStep, error) {
 
 func (l *lexer) lexSectionSuffixFunc(section string) lexStep {
 	return func() (lexStep, error) {
-		garbage, err := l.toEOL()
+		garbage, _, err := l.toEOL()
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +97,7 @@ func (l *lexer) lexSectionSuffixFunc(section string) lexStep {
 func (l *lexer) ignoreLineFunc(next lexStep) lexStep {
 	return func() (lexStep, error) {
 		for {
-			line, err := l.toEOL()
+			line, _, err := l.toEOL()
 			if err != nil {
 				return nil, err
 			}
@@ -186,40 +186,55 @@ func (l *lexer) lexOptionValueFunc(section, name string) lexStep {
 		var partial bytes.Buffer
 
 		for {
-			line, err := l.toEOL()
+			line, eof, err := l.toEOL()
 			if err != nil {
 				return nil, err
 			}
 
-			// lack of continuation means this value has been exhausted
-			idx := bytes.LastIndex(line, []byte{'\\'})
-			if idx == -1 || idx != (len(line)-1) {
-				partial.Write(line)
+			if len(bytes.TrimSpace(line)) == 0 {
 				break
 			}
 
-			partial.Write(line[0:idx])
-			partial.WriteRune(' ')
+			partial.Write(line)
+
+			// lack of continuation means this value has been exhausted
+			idx := bytes.LastIndex(line, []byte{'\\'})
+			if idx == -1 || idx != (len(line)-1) {
+				break
+			}
+
+			if !eof {
+				partial.WriteRune('\n')
+			}
 		}
 
-		val := strings.TrimSpace(partial.String())
+		val := partial.String()
+		if strings.HasSuffix(val, "\n") {
+			// A newline was added to the end, so the file didn't end with a backslash.
+			// => Keep the newline
+			val = strings.TrimSpace(val) + "\n"
+		} else {
+			val = strings.TrimSpace(val)
+		}
 		l.optchan <- &UnitOption{Section: section, Name: name, Value: val}
 
 		return l.lexNextSectionOrOptionFunc(section), nil
 	}
 }
 
-func (l *lexer) toEOL() ([]byte, error) {
+// toEOL reads until the end-of-line or end-of-file.
+// Returns (data, EOFfound, error)
+func (l *lexer) toEOL() ([]byte, bool, error) {
 	line, err := l.buf.ReadBytes('\n')
 	// ignore EOF here since it's roughly equivalent to EOL
 	if err != nil && err != io.EOF {
-		return nil, err
+		return nil, false, err
 	}
 
 	line = bytes.TrimSuffix(line, []byte{'\r'})
 	line = bytes.TrimSuffix(line, []byte{'\n'})
 
-	return line, nil
+	return line, err == io.EOF, nil
 }
 
 func isComment(r rune) bool {
