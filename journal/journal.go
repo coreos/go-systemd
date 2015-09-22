@@ -22,6 +22,8 @@ int go_sd_journal_print(int priority, char* s) {
 import "C"
 import (
 	"fmt"
+	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -47,6 +49,7 @@ const (
 // A Journal is a Go wrapper of an sd_journal structure.
 type Journal struct {
 	cjournal *C.sd_journal
+	mu       sync.Mutex
 }
 
 // A Match is a convenience wrapper to describe filters supplied to AddMatch.
@@ -73,7 +76,9 @@ func NewJournal() (*Journal, error) {
 }
 
 func (j *Journal) Close() error {
+	j.mu.Lock()
 	C.sd_journal_close(j.cjournal)
+	j.mu.Unlock()
 	return nil
 }
 
@@ -81,12 +86,17 @@ func (j *Journal) AddMatch(match string) error {
 	m := C.CString(match)
 	defer C.free(unsafe.Pointer(m))
 
+	j.mu.Lock()
 	C.sd_journal_add_match(j.cjournal, unsafe.Pointer(m), C.size_t(len(match)))
+	j.mu.Unlock()
+
 	return nil
 }
 
 func (j *Journal) Next() (int, error) {
+	j.mu.Lock()
 	r := C.sd_journal_next(j.cjournal)
+	j.mu.Unlock()
 
 	if r < 0 {
 		return int(r), fmt.Errorf("failed to iterate journal: %d", r)
@@ -96,7 +106,9 @@ func (j *Journal) Next() (int, error) {
 }
 
 func (j *Journal) Previous() (uint64, error) {
+	j.mu.Lock()
 	r := C.sd_journal_previous(j.cjournal)
+	j.mu.Unlock()
 
 	if r < 0 {
 		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
@@ -106,7 +118,9 @@ func (j *Journal) Previous() (uint64, error) {
 }
 
 func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
+	j.mu.Lock()
 	r := C.sd_journal_previous_skip(j.cjournal, C.uint64_t(skip))
+	j.mu.Unlock()
 
 	if r < 0 {
 		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
@@ -122,7 +136,9 @@ func (j *Journal) GetData(field string) (string, error) {
 	var d unsafe.Pointer
 	var l C.size_t
 
+	j.mu.Lock()
 	err := C.sd_journal_get_data(j.cjournal, f, &d, &l)
+	j.mu.Unlock()
 
 	if err < 0 {
 		return "", fmt.Errorf("failed to read message: %d", err)
@@ -135,7 +151,9 @@ func (j *Journal) GetData(field string) (string, error) {
 func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	var usec C.uint64_t
 
+	j.mu.Lock()
 	r := C.sd_journal_get_realtime_usec(j.cjournal, &usec)
+	j.mu.Unlock()
 
 	if r < 0 {
 		return 0, fmt.Errorf("error getting timestamp for entry: %d", r)
@@ -158,7 +176,9 @@ func (j *Journal) Print(priority int, message string) error {
 }
 
 func (j *Journal) SeekTail() error {
+	j.mu.Lock()
 	err := C.sd_journal_seek_tail(j.cjournal)
+	j.mu.Unlock()
 
 	if err != 0 {
 		return fmt.Errorf("failed to seek to tail of journal: %s", err)
@@ -168,7 +188,9 @@ func (j *Journal) SeekTail() error {
 }
 
 func (j *Journal) SeekRealtimeUsec(usec uint64) error {
+	j.mu.Lock()
 	err := C.sd_journal_seek_realtime_usec(j.cjournal, C.uint64_t(usec))
+	j.mu.Unlock()
 
 	if err != 0 {
 		return fmt.Errorf("failed to seek to %d: %d", usec, int(err))
@@ -177,8 +199,11 @@ func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 	return nil
 }
 
-func (j *Journal) Wait(timeout uint64) int {
-	r := C.sd_journal_wait(j.cjournal, C.uint64_t(timeout))
+func (j *Journal) Wait(timeout time.Duration) int {
+	to := uint64(time.Now().Add(timeout).Unix() / 1000)
+	j.mu.Lock()
+	r := C.sd_journal_wait(j.cjournal, C.uint64_t(to))
+	j.mu.Unlock()
 
 	return int(r)
 }
