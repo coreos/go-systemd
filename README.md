@@ -1,5 +1,8 @@
 # go-systemd
 
+[![Build Status](https://travis-ci.org/coreos/go-systemd.png?branch=master)](https://travis-ci.org/coreos/go-systemd)
+[![godoc](https://godoc.org/github.com/coreos/go-systemd?status.svg)](http://godoc.org/github.com/coreos/go-systemd)
+
 Go bindings to systemd. The project has several packages:
 
 - `activation` - for writing and using socket activation from Go
@@ -7,10 +10,6 @@ Go bindings to systemd. The project has several packages:
 - `journal` - for writing to systemd's logging service, journal
 - `machine1` - for registering machines/containers with systemd
 - `unit` - for (de)serialization and comparison of unit files
-
-Go docs for the entire project are here:
-
-http://godoc.org/github.com/coreos/go-systemd
 
 ## Socket Activation
 
