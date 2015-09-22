@@ -12,12 +12,6 @@ package journal
 #include <systemd/sd-journal.h>
 #include <stdlib.h>
 #include <syslog.h>
-
-int go_sd_journal_print(int priority, char* s) {
-	int r;
-	r = sd_journal_print(priority, "%s", s);
-	return r;
-}
 */
 import "C"
 import (
@@ -160,19 +154,6 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	}
 
 	return uint64(usec), nil
-}
-
-func (j *Journal) Print(priority int, message string) error {
-	m := C.CString(message)
-	defer C.free(unsafe.Pointer(m))
-
-	err := C.go_sd_journal_print(C.LOG_INFO, m)
-
-	if err != 0 {
-		return fmt.Errorf("failed to print message: %s", err)
-	}
-
-	return nil
 }
 
 func (j *Journal) SeekTail() error {
