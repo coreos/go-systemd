@@ -107,24 +107,6 @@ func (r *JournalReader) Close() error {
 // Follow synchronously follows the JournalReader, writing each new journal entry to writer. The
 // follow will continue until a single time.Time is received on the until channel.
 func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) error {
-	// Holds journal events to process. Tightly bounded for now unless there's a
-	// reason to unblock the journal watch routine more quickly.
-	events := make(chan int, 1)
-
-	// Start a poll routine to notify us of journal events
-	// TODO: the timeout logic here isn't very good.
-	pollDone := make(chan bool, 1)
-	go func() {
-	poll:
-		for {
-			select {
-			case <-pollDone:
-				break poll
-			default:
-				events <- r.journal.Wait(uint64(time.Duration(2) * time.Second))
-			}
-		}
-	}()
 
 	// Process journal entries and events. Entries are flushed until the tail or
 	// timeout is reached, and then we wait for new events or the timeout.
@@ -150,11 +132,29 @@ process:
 		}
 
 		// We're at the tail, so wait for new events or time out.
+		// Holds journal events to process. Tightly bounded for now unless there's a
+		// reason to unblock the journal watch routine more quickly.
+		events := make(chan int, 1)
+		pollDone := make(chan bool, 1)
+		go func() {
+		poll:
+			for {
+				select {
+				case <-pollDone:
+					break poll
+				default:
+					events <- r.journal.Wait(time.Duration(1) * time.Second)
+				}
+			}
+		}()
+
 		select {
 		case <-until:
 			fmt.Println("Timed out waiting for events")
+			pollDone <- true
 			break process
 		case e := <-events:
+			pollDone <- true
 			switch e {
 			case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
 				// TODO: need to account for any of these?
@@ -164,8 +164,6 @@ process:
 			continue process
 		}
 	}
-
-	pollDone <- true
 
 	return nil
 }
