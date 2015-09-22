@@ -1,8 +1,6 @@
 package journal
 
 import (
-	"fmt"
-	"log/syslog"
 	"os"
 	"testing"
 	"time"
@@ -12,7 +10,7 @@ func TestJournalFollow(t *testing.T) {
 	r, err := NewJournalReader(JournalReaderConfig{
 		Since: time.Duration(-15) * time.Second,
 		Matches: []Match{
-			Match{
+			{
 				Field: SD_JOURNAL_FIELD_SYSTEMD_UNIT,
 				Value: "NetworkManager.service",
 			},
@@ -35,19 +33,16 @@ func TestJournalFollow(t *testing.T) {
 		j, err := NewJournal()
 		defer j.Close()
 
-	writer:
 		for {
 			select {
 			case <-done:
-				break writer
+				return
 			default:
-				err = j.Print(int(syslog.LOG_INFO), fmt.Sprintf("test message %s", time.Now()))
-
-				if err != nil {
-					t.Fatalf("Error writing to journal: %s\n", err)
+				if err = Printf(PriInfo, "test message %s", time.Now()); err != nil {
+					t.Fatalf("Error writing to journal: %s", err)
 				}
 
-				time.Sleep(time.Duration(1) * time.Second)
+				time.Sleep(time.Second)
 			}
 		}
 	}()
