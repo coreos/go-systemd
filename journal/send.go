@@ -102,6 +102,11 @@ func Send(message string, priority Priority, vars map[string]string) error {
 	return nil
 }
 
+// Printf prints a message to the systemd journal using Send().
+func Printf(priority Priority, format string, a ...interface{}) error {
+	return Send(fmt.Sprintf(format, a...), priority, nil)
+}
+
 func appendVariable(w io.Writer, name, value string) {
 	if !validVarName(name) {
 		journalError("variable name contains invalid character, ignoring")

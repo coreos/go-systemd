@@ -26,7 +26,7 @@ if [ -z "$GOPATH" ]; then
 	go get -u github.com/godbus/dbus
 fi
 
-TESTABLE="activation login1 machine1 unit"
+TESTABLE="activation journal login1 machine1 unit"
 FORMATTABLE="$TESTABLE dbus"
 if [ "$EUID" == "0" ]; then
 	# testing actual systemd behaviour requires root
