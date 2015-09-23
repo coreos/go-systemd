@@ -4,9 +4,15 @@ Provides high-level systemd journal access.
 package journal
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"time"
+)
+
+var (
+	ErrExpired = errors.New("Timeout expired")
 )
 
 // JournalReaderConfig represents options to drive the behavior of a JournalReader.
@@ -122,8 +128,7 @@ process:
 
 		select {
 		case <-until:
-			fmt.Println("Timed out flushing new entries")
-			break process
+			return ErrExpired
 		default:
 			if c > 0 {
 				writer.Write(msg)
@@ -137,11 +142,10 @@ process:
 		events := make(chan int, 1)
 		pollDone := make(chan bool, 1)
 		go func() {
-		poll:
 			for {
 				select {
 				case <-pollDone:
-					break poll
+					return
 				default:
 					events <- r.journal.Wait(time.Duration(1) * time.Second)
 				}
@@ -150,16 +154,15 @@ process:
 
 		select {
 		case <-until:
-			fmt.Println("Timed out waiting for events")
 			pollDone <- true
-			break process
+			return ErrExpired
 		case e := <-events:
 			pollDone <- true
 			switch e {
 			case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
 				// TODO: need to account for any of these?
 			default:
-				fmt.Printf("Received unknown event: %d\n", e)
+				log.Printf("Received unknown event: %d\n", e)
 			}
 			continue process
 		}
