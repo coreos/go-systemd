@@ -29,6 +29,7 @@ func TestJournalFollow(t *testing.T) {
 
 	// start writing some test entries
 	done := make(chan struct{}, 1)
+	defer close(done)
 	go func() {
 		j, err := NewJournal()
 		defer j.Close()
@@ -49,12 +50,7 @@ func TestJournalFollow(t *testing.T) {
 
 	// and follow the reader synchronously
 	timeout := time.Duration(5) * time.Second
-	err = r.Follow(time.After(timeout), os.Stdout)
-
-	// shut down the test writer
-	close(done)
-
-	if err != nil {
+	if err = r.Follow(time.After(timeout), os.Stdout); err != ErrExpired {
 		t.Fatalf("Error during follow: %s", err)
 	}
 }

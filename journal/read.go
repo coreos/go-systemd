@@ -4,9 +4,15 @@ Provides high-level systemd journal access.
 package journal
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"time"
+)
+
+var (
+	ErrExpired = errors.New("Timeout expired")
 )
 
 // JournalReaderConfig represents options to drive the behavior of a JournalReader.
@@ -106,7 +112,7 @@ func (r *JournalReader) Close() error {
 
 // Follow synchronously follows the JournalReader, writing each new journal entry to writer. The
 // follow will continue until a single time.Time is received on the until channel.
-func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) error {
+func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) (err error) {
 
 	// Process journal entries and events. Entries are flushed until the tail or
 	// timeout is reached, and then we wait for new events or the timeout.
@@ -115,15 +121,13 @@ process:
 		var msg = make([]byte, 64*1<<(10))
 
 		c, err := r.Read(msg)
-
 		if err != nil && err != io.EOF {
-			return err
+			break process
 		}
 
 		select {
 		case <-until:
-			fmt.Println("Timed out flushing new entries")
-			break process
+			return ErrExpired
 		default:
 			if c > 0 {
 				writer.Write(msg)
@@ -137,11 +141,10 @@ process:
 		events := make(chan int, 1)
 		pollDone := make(chan bool, 1)
 		go func() {
-		poll:
 			for {
 				select {
 				case <-pollDone:
-					break poll
+					return
 				default:
 					events <- r.journal.Wait(time.Duration(1) * time.Second)
 				}
@@ -150,22 +153,21 @@ process:
 
 		select {
 		case <-until:
-			fmt.Println("Timed out waiting for events")
 			pollDone <- true
-			break process
+			return ErrExpired
 		case e := <-events:
 			pollDone <- true
 			switch e {
 			case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
 				// TODO: need to account for any of these?
 			default:
-				fmt.Printf("Received unknown event: %d\n", e)
+				log.Printf("Received unknown event: %d\n", e)
 			}
 			continue process
 		}
 	}
 
-	return nil
+	return
 }
 
 // buildMessage returns a string representing the current journal entry in a simple format which
