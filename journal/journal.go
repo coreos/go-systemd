@@ -117,6 +117,20 @@ func (j *Journal) Next() (int, error) {
 	return int(r), nil
 }
 
+// NextSkip advances the read pointer by multiple entries at once,
+// as specified by the skip parameter.
+func (j *Journal) NextSkip(skip uint64) (uint64, error) {
+	j.mu.Lock()
+	r := C.sd_journal_next_skip(j.cjournal, C.uint64_t(skip))
+	j.mu.Unlock()
+
+	if r < 0 {
+		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
+	}
+
+	return uint64(r), nil
+}
+
 // Previous sets the read pointer into the journal back by one entry.
 func (j *Journal) Previous() (uint64, error) {
 	j.mu.Lock()
