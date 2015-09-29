@@ -1,10 +1,24 @@
-/* Provides a low-level Go interface to the systemd journal C API.
+// Copyright 2015 RedHat, Inc.
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-All public methods map closely to the sd-journal API functions. See the
-sd-journal.h documentation[1] for information about each function.
-
-[1] http://www.freedesktop.org/software/systemd/man/sd-journal.html
-*/
+// Provides a low-level Go interface to the systemd journal C API.
+//
+// All public methods map closely to the sd-journal API functions. See the
+// sd-journal.h documentation[1] for information about each function.
+//
+// [1] http://www.freedesktop.org/software/systemd/man/sd-journal.html
 package journal
 
 /*
