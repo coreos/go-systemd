@@ -83,13 +83,16 @@ func NewJournal() (*Journal, error) {
 	return j, nil
 }
 
+// Close closes a journal opened with NewJournal.
 func (j *Journal) Close() error {
 	j.mu.Lock()
 	C.sd_journal_close(j.cjournal)
 	j.mu.Unlock()
+
 	return nil
 }
 
+// AddMatch adds a match by which to filter the entries of the journal.
 func (j *Journal) AddMatch(match string) error {
 	m := C.CString(match)
 	defer C.free(unsafe.Pointer(m))
@@ -101,6 +104,7 @@ func (j *Journal) AddMatch(match string) error {
 	return nil
 }
 
+// Next advances the read pointer into the journal by one entry.
 func (j *Journal) Next() (int, error) {
 	j.mu.Lock()
 	r := C.sd_journal_next(j.cjournal)
@@ -113,6 +117,7 @@ func (j *Journal) Next() (int, error) {
 	return int(r), nil
 }
 
+// Previous sets the read pointer into the journal back by one entry.
 func (j *Journal) Previous() (uint64, error) {
 	j.mu.Lock()
 	r := C.sd_journal_previous(j.cjournal)
@@ -125,6 +130,8 @@ func (j *Journal) Previous() (uint64, error) {
 	return uint64(r), nil
 }
 
+// PreviousSkip sets back the read pointer by multiple entries at once,
+// as specified by the skip parameter.
 func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
 	j.mu.Lock()
 	r := C.sd_journal_previous_skip(j.cjournal, C.uint64_t(skip))
@@ -137,6 +144,8 @@ func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
 	return uint64(r), nil
 }
 
+// GetData gets the data object associated with a specific field from the
+// current journal entry.
 func (j *Journal) GetData(field string) (string, error) {
 	f := C.CString(field)
 	defer C.free(unsafe.Pointer(f))
@@ -153,9 +162,12 @@ func (j *Journal) GetData(field string) (string, error) {
 	}
 
 	msg := C.GoStringN((*C.char)(d), C.int(l))
+
 	return msg, nil
 }
 
+// GetRealtimeUsec gets the realtime (wallclock) timestamp of the current
+// journal entry.
 func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	var usec C.uint64_t
 
@@ -170,6 +182,8 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	return uint64(usec), nil
 }
 
+// SeekTail may be used to seek to the end of the journal, i.e. the most recent
+// available entry.
 func (j *Journal) SeekTail() error {
 	j.mu.Lock()
 	err := C.sd_journal_seek_tail(j.cjournal)
@@ -182,6 +196,8 @@ func (j *Journal) SeekTail() error {
 	return nil
 }
 
+// SeekRealtimeUsec seeks to the entry with the specified realtime (wallclock)
+// timestamp, i.e. CLOCK_REALTIME.
 func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 	j.mu.Lock()
 	err := C.sd_journal_seek_realtime_usec(j.cjournal, C.uint64_t(usec))
@@ -194,6 +210,8 @@ func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 	return nil
 }
 
+// Wait will synchronously wait until the journal gets changed. The maximum time
+// this call sleeps may be controlled with the timeout parameter.
 func (j *Journal) Wait(timeout time.Duration) int {
 	to := uint64(time.Now().Add(timeout).Unix() / 1000)
 	j.mu.Lock()
