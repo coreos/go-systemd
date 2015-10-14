@@ -211,14 +211,12 @@ func (l *lexer) lexOptionNameFunc(section string) lexStep {
 		}
 
 		name := strings.TrimSpace(partial.String())
-		return l.lexOptionValueFunc(section, name), nil
+		return l.lexOptionValueFunc(section, name, bytes.Buffer{}), nil
 	}
 }
 
-func (l *lexer) lexOptionValueFunc(section, name string) lexStep {
+func (l *lexer) lexOptionValueFunc(section, name string, partial bytes.Buffer) lexStep {
 	return func() (lexStep, error) {
-		var partial bytes.Buffer
-
 		for {
 			line, eof, err := l.toEOL()
 			if err != nil {
@@ -240,6 +238,8 @@ func (l *lexer) lexOptionValueFunc(section, name string) lexStep {
 			if !eof {
 				partial.WriteRune('\n')
 			}
+
+			return l.lexOptionValueFunc(section, name, partial), nil
 		}
 
 		val := partial.String()
