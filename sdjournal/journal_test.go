@@ -19,6 +19,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/coreos/go-systemd/journal"
 )
 
 func TestJournalFollow(t *testing.T) {
@@ -46,15 +48,12 @@ func TestJournalFollow(t *testing.T) {
 	done := make(chan struct{}, 1)
 	defer close(done)
 	go func() {
-		j, err := NewJournal()
-		defer j.Close()
-
 		for {
 			select {
 			case <-done:
 				return
 			default:
-				if err = Print(PriInfo, "test message %s", time.Now()); err != nil {
+				if err = journal.Print(journal.PriInfo, "test message %s", time.Now()); err != nil {
 					t.Fatalf("Error writing to journal: %s", err)
 				}
 
