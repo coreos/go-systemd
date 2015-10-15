@@ -26,10 +26,10 @@ if [ -z "$GOPATH" ]; then
 	go get -u github.com/godbus/dbus
 fi
 
-TESTABLE="activation login1 machine1 unit"
-FORMATTABLE="$TESTABLE journal dbus"
+TESTABLE="activation journal login1 machine1 unit"
+FORMATTABLE="$TESTABLE sdjournal dbus"
 if [ -e "/run/systemd/system/" ]; then
-	TESTABLE="${TESTABLE} journal"
+	TESTABLE="${TESTABLE} sdjournal"
 	if [ "$EUID" == "0" ]; then
 		# testing actual systemd behaviour requires root
 		TESTABLE="${TESTABLE} dbus"

@@ -7,7 +7,8 @@ Go bindings to systemd. The project has several packages:
 
 - `activation` - for writing and using socket activation from Go
 - `dbus` - for starting/stopping/inspecting running services and units
-- `journal` - for writing to and reading from systemd's logging service, journald
+- `journal` - for writing to systemd's logging service, journald
+- `sdjournal` - for reading from journald by wrapping its C API
 - `machine1` - for registering machines/containers with systemd
 - `unit` - for (de)serialization and comparison of unit files
 
@@ -19,8 +20,8 @@ https://github.com/coreos/go-systemd/tree/master/examples/activation/httpserver
 
 ## Journal
 
-Using this package you can submit journal entries directly to systemd's journal, taking advantage of features like indexed key/value pairs for each log entry.
-The package also provides read access to the journal.
+Using the pure-Go `journal` package you can submit journal entries directly to systemd's journal, taking advantage of features like indexed key/value pairs for each log entry.
+The `sdjournal` package provides read access to the journal by wrapping around journald's native C API; consequently it requires cgo and the journal headers to be available.
 
 ## D-Bus
 
