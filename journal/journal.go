@@ -1,4 +1,3 @@
-// Copyright 2015 RedHat, Inc.
 // Copyright 2015 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,224 +12,167 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Provides a low-level Go interface to the systemd journal C API.
+// Package journal provides write bindings to the local systemd journal.
+// It is implemented in pure Go and connects to the journal directly over its
+// unix socket.
 //
-// All public methods map closely to the sd-journal API functions. See the
-// sd-journal.h documentation[1] for information about each function.
+// To read from the journal, see the "sdjournal" package, which wraps the
+// sd-journal a C API.
 //
-// [1] http://www.freedesktop.org/software/systemd/man/sd-journal.html
+// http://www.freedesktop.org/software/systemd/man/systemd-journald.service.html
 package journal
 
-/*
-#cgo pkg-config: libsystemd-journal
-#include <systemd/sd-journal.h>
-#include <stdlib.h>
-#include <syslog.h>
-*/
-import "C"
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
 	"fmt"
-	"sync"
-	"time"
-	"unsafe"
+	"io"
+	"io/ioutil"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+	"syscall"
 )
 
-// Journal entry field strings which correspond to:
-// http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
+// Priority of a journal message
+type Priority int
+
 const (
-	SD_JOURNAL_FIELD_SYSTEMD_UNIT = "_SYSTEMD_UNIT"
-	SD_JOURNAL_FIELD_MESSAGE      = "MESSAGE"
-	SD_JOURNAL_FIELD_PID          = "_PID"
-	SD_JOURNAL_FIELD_UID          = "_UID"
-	SD_JOURNAL_FIELD_GID          = "_GID"
-	SD_JOURNAL_FIELD_HOSTNAME     = "_HOSTNAME"
-	SD_JOURNAL_FIELD_MACHINE_ID   = "_MACHINE_ID"
+	PriEmerg Priority = iota
+	PriAlert
+	PriCrit
+	PriErr
+	PriWarning
+	PriNotice
+	PriInfo
+	PriDebug
 )
 
-// Journal event constants
-const (
-	SD_JOURNAL_NOP        = int(C.SD_JOURNAL_NOP)
-	SD_JOURNAL_APPEND     = int(C.SD_JOURNAL_APPEND)
-	SD_JOURNAL_INVALIDATE = int(C.SD_JOURNAL_INVALIDATE)
-)
+var conn net.Conn
 
-// A Journal is a Go wrapper of an sd_journal structure.
-type Journal struct {
-	cjournal *C.sd_journal
-	mu       sync.Mutex
+func init() {
+	var err error
+	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
+	if err != nil {
+		conn = nil
+	}
 }
 
-// A Match is a convenience wrapper to describe filters supplied to AddMatch.
-type Match struct {
-	Field string
-	Value string
+// Enabled returns true if the local systemd journal is available for logging
+func Enabled() bool {
+	return conn != nil
 }
 
-// String returns a string representation of a Match suitable for use with AddMatch.
-func (m *Match) String() string {
-	return m.Field + "=" + m.Value
-}
-
-// NewJournal returns a new Journal instance pointing to the local journal
-func NewJournal() (*Journal, error) {
-	j := &Journal{}
-	err := C.sd_journal_open(&j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
-
-	if err < 0 {
-		return nil, fmt.Errorf("failed to open journal: %s", err)
+// Send a message to the local systemd journal. vars is a map of journald
+// fields to values.  Fields must be composed of uppercase letters, numbers,
+// and underscores, but must not start with an underscore. Within these
+// restrictions, any arbitrary field name may be used.  Some names have special
+// significance: see the journalctl documentation
+// (http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
+// for more details.  vars may be nil.
+func Send(message string, priority Priority, vars map[string]string) error {
+	if conn == nil {
+		return journalError("could not connect to journald socket")
 	}
 
-	return j, nil
-}
+	data := new(bytes.Buffer)
+	appendVariable(data, "PRIORITY", strconv.Itoa(int(priority)))
+	appendVariable(data, "MESSAGE", message)
+	for k, v := range vars {
+		appendVariable(data, k, v)
+	}
 
-// Close closes a journal opened with NewJournal.
-func (j *Journal) Close() error {
-	j.mu.Lock()
-	C.sd_journal_close(j.cjournal)
-	j.mu.Unlock()
+	_, err := io.Copy(conn, data)
+	if err != nil && isSocketSpaceError(err) {
+		file, err := tempFd()
+		if err != nil {
+			return journalError(err.Error())
+		}
+		_, err = io.Copy(file, data)
+		if err != nil {
+			return journalError(err.Error())
+		}
 
+		rights := syscall.UnixRights(int(file.Fd()))
+
+		/* this connection should always be a UnixConn, but better safe than sorry */
+		unixConn, ok := conn.(*net.UnixConn)
+		if !ok {
+			return journalError("can't send file through non-Unix connection")
+		}
+		unixConn.WriteMsgUnix([]byte{}, rights, nil)
+	} else if err != nil {
+		return journalError(err.Error())
+	}
 	return nil
 }
 
-// AddMatch adds a match by which to filter the entries of the journal.
-func (j *Journal) AddMatch(match string) error {
-	m := C.CString(match)
-	defer C.free(unsafe.Pointer(m))
-
-	j.mu.Lock()
-	C.sd_journal_add_match(j.cjournal, unsafe.Pointer(m), C.size_t(len(match)))
-	j.mu.Unlock()
-
-	return nil
+// Print prints a message to the local systemd journal using Send().
+func Print(priority Priority, format string, a ...interface{}) error {
+	return Send(fmt.Sprintf(format, a...), priority, nil)
 }
 
-// Next advances the read pointer into the journal by one entry.
-func (j *Journal) Next() (int, error) {
-	j.mu.Lock()
-	r := C.sd_journal_next(j.cjournal)
-	j.mu.Unlock()
+func appendVariable(w io.Writer, name, value string) {
+	if !validVarName(name) {
+		journalError("variable name contains invalid character, ignoring")
+	}
+	if strings.ContainsRune(value, '\n') {
+		/* When the value contains a newline, we write:
+		 * - the variable name, followed by a newline
+		 * - the size (in 64bit little endian format)
+		 * - the data, followed by a newline
+		 */
+		fmt.Fprintln(w, name)
+		binary.Write(w, binary.LittleEndian, uint64(len(value)))
+		fmt.Fprintln(w, value)
+	} else {
+		/* just write the variable and value all on one line */
+		fmt.Fprintf(w, "%s=%s\n", name, value)
+	}
+}
 
-	if r < 0 {
-		return int(r), fmt.Errorf("failed to iterate journal: %d", r)
+func validVarName(name string) bool {
+	/* The variable name must be in uppercase and consist only of characters,
+	 * numbers and underscores, and may not begin with an underscore. (from the docs)
+	 */
+
+	valid := name[0] != '_'
+	for _, c := range name {
+		valid = valid && ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_'
+	}
+	return valid
+}
+
+func isSocketSpaceError(err error) bool {
+	opErr, ok := err.(*net.OpError)
+	if !ok {
+		return false
 	}
 
-	return int(r), nil
-}
-
-// NextSkip advances the read pointer by multiple entries at once,
-// as specified by the skip parameter.
-func (j *Journal) NextSkip(skip uint64) (uint64, error) {
-	j.mu.Lock()
-	r := C.sd_journal_next_skip(j.cjournal, C.uint64_t(skip))
-	j.mu.Unlock()
-
-	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
+	sysErr, ok := opErr.Err.(syscall.Errno)
+	if !ok {
+		return false
 	}
 
-	return uint64(r), nil
+	return sysErr == syscall.EMSGSIZE || sysErr == syscall.ENOBUFS
 }
 
-// Previous sets the read pointer into the journal back by one entry.
-func (j *Journal) Previous() (uint64, error) {
-	j.mu.Lock()
-	r := C.sd_journal_previous(j.cjournal)
-	j.mu.Unlock()
-
-	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
+func tempFd() (*os.File, error) {
+	file, err := ioutil.TempFile("/dev/shm/", "journal.XXXXX")
+	if err != nil {
+		return nil, err
 	}
-
-	return uint64(r), nil
-}
-
-// PreviousSkip sets back the read pointer by multiple entries at once,
-// as specified by the skip parameter.
-func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
-	j.mu.Lock()
-	r := C.sd_journal_previous_skip(j.cjournal, C.uint64_t(skip))
-	j.mu.Unlock()
-
-	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
+	syscall.Unlink(file.Name())
+	if err != nil {
+		return nil, err
 	}
-
-	return uint64(r), nil
+	return file, nil
 }
 
-// GetData gets the data object associated with a specific field from the
-// current journal entry.
-func (j *Journal) GetData(field string) (string, error) {
-	f := C.CString(field)
-	defer C.free(unsafe.Pointer(f))
-
-	var d unsafe.Pointer
-	var l C.size_t
-
-	j.mu.Lock()
-	err := C.sd_journal_get_data(j.cjournal, f, &d, &l)
-	j.mu.Unlock()
-
-	if err < 0 {
-		return "", fmt.Errorf("failed to read message: %d", err)
-	}
-
-	msg := C.GoStringN((*C.char)(d), C.int(l))
-
-	return msg, nil
-}
-
-// GetRealtimeUsec gets the realtime (wallclock) timestamp of the current
-// journal entry.
-func (j *Journal) GetRealtimeUsec() (uint64, error) {
-	var usec C.uint64_t
-
-	j.mu.Lock()
-	r := C.sd_journal_get_realtime_usec(j.cjournal, &usec)
-	j.mu.Unlock()
-
-	if r < 0 {
-		return 0, fmt.Errorf("error getting timestamp for entry: %d", r)
-	}
-
-	return uint64(usec), nil
-}
-
-// SeekTail may be used to seek to the end of the journal, i.e. the most recent
-// available entry.
-func (j *Journal) SeekTail() error {
-	j.mu.Lock()
-	err := C.sd_journal_seek_tail(j.cjournal)
-	j.mu.Unlock()
-
-	if err != 0 {
-		return fmt.Errorf("failed to seek to tail of journal: %s", err)
-	}
-
-	return nil
-}
-
-// SeekRealtimeUsec seeks to the entry with the specified realtime (wallclock)
-// timestamp, i.e. CLOCK_REALTIME.
-func (j *Journal) SeekRealtimeUsec(usec uint64) error {
-	j.mu.Lock()
-	err := C.sd_journal_seek_realtime_usec(j.cjournal, C.uint64_t(usec))
-	j.mu.Unlock()
-
-	if err != 0 {
-		return fmt.Errorf("failed to seek to %d: %d", usec, int(err))
-	}
-
-	return nil
-}
-
-// Wait will synchronously wait until the journal gets changed. The maximum time
-// this call sleeps may be controlled with the timeout parameter.
-func (j *Journal) Wait(timeout time.Duration) int {
-	to := uint64(time.Now().Add(timeout).Unix() / 1000)
-	j.mu.Lock()
-	r := C.sd_journal_wait(j.cjournal, C.uint64_t(to))
-	j.mu.Unlock()
-
-	return int(r)
+func journalError(s string) error {
+	s = "journal error: " + s
+	fmt.Fprintln(os.Stderr, s)
+	return errors.New(s)
 }

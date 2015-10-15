@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Provides high-level systemd journal access.
-package journal
+package sdjournal
 
 import (
 	"errors"
