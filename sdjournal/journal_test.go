@@ -68,3 +68,23 @@ func TestJournalFollow(t *testing.T) {
 		t.Fatalf("Error during follow: %s", err)
 	}
 }
+
+func TestJournalGetUsage(t *testing.T) {
+	j, err := NewJournal()
+
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+
+	if j == nil {
+		t.Fatal("Got a nil journal")
+	}
+
+	defer j.Close()
+
+	_, err = j.GetUsage()
+
+	if err != nil {
+		t.Fatalf("Error getting journal size: %s", err)
+	}
+}

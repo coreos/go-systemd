@@ -237,3 +237,17 @@ func (j *Journal) Wait(timeout time.Duration) int {
 
 	return int(r)
 }
+
+// GetUsage returns the journal disk space usage, in bytes.
+func (j *Journal) GetUsage() (uint64, error) {
+	var out C.uint64_t
+	j.mu.Lock()
+	err := C.sd_journal_get_usage(j.cjournal, &out)
+	j.mu.Unlock()
+
+	if err != 0 {
+		return 0, fmt.Errorf("failed to get journal disk space usage: %d", err)
+	}
+
+	return uint64(out), nil
+}
