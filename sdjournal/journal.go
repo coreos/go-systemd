@@ -107,6 +107,32 @@ func (j *Journal) AddMatch(match string) error {
 	return nil
 }
 
+// AddDisjunction inserts a logical OR in the match list.
+func (j *Journal) AddDisjunction() error {
+	j.mu.Lock()
+	r := C.sd_journal_add_disjunction(j.cjournal)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to add a disjunction in the match list: %d", r)
+	}
+
+	return nil
+}
+
+// AddConjunction inserts a logical AND in the match list.
+func (j *Journal) AddConjunction() error {
+	j.mu.Lock()
+	r := C.sd_journal_add_conjunction(j.cjournal)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to add a conjunction in the match list: %d", r)
+	}
+
+	return nil
+}
+
 // Next advances the read pointer into the journal by one entry.
 func (j *Journal) Next() (int, error) {
 	j.mu.Lock()
