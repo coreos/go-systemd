@@ -133,6 +133,13 @@ func (j *Journal) AddConjunction() error {
 	return nil
 }
 
+// FlushMatches flushes all matches, disjunctions and conjunctions.
+func (j *Journal) FlushMatches() {
+	j.mu.Lock()
+	C.sd_journal_flush_matches(j.cjournal)
+	j.mu.Unlock()
+}
+
 // Next advances the read pointer into the journal by one entry.
 func (j *Journal) Next() (int, error) {
 	j.mu.Lock()
