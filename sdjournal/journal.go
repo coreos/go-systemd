@@ -101,8 +101,12 @@ func (j *Journal) AddMatch(match string) error {
 	defer C.free(unsafe.Pointer(m))
 
 	j.mu.Lock()
-	C.sd_journal_add_match(j.cjournal, unsafe.Pointer(m), C.size_t(len(match)))
+	r := C.sd_journal_add_match(j.cjournal, unsafe.Pointer(m), C.size_t(len(match)))
 	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to add match: %d", r)
+	}
 
 	return nil
 }
