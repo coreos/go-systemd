@@ -101,10 +101,47 @@ func (j *Journal) AddMatch(match string) error {
 	defer C.free(unsafe.Pointer(m))
 
 	j.mu.Lock()
-	C.sd_journal_add_match(j.cjournal, unsafe.Pointer(m), C.size_t(len(match)))
+	r := C.sd_journal_add_match(j.cjournal, unsafe.Pointer(m), C.size_t(len(match)))
 	j.mu.Unlock()
 
+	if r < 0 {
+		return fmt.Errorf("failed to add match: %d", r)
+	}
+
 	return nil
+}
+
+// AddDisjunction inserts a logical OR in the match list.
+func (j *Journal) AddDisjunction() error {
+	j.mu.Lock()
+	r := C.sd_journal_add_disjunction(j.cjournal)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to add a disjunction in the match list: %d", r)
+	}
+
+	return nil
+}
+
+// AddConjunction inserts a logical AND in the match list.
+func (j *Journal) AddConjunction() error {
+	j.mu.Lock()
+	r := C.sd_journal_add_conjunction(j.cjournal)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to add a conjunction in the match list: %d", r)
+	}
+
+	return nil
+}
+
+// FlushMatches flushes all matches, disjunctions and conjunctions.
+func (j *Journal) FlushMatches() {
+	j.mu.Lock()
+	C.sd_journal_flush_matches(j.cjournal)
+	j.mu.Unlock()
 }
 
 // Next advances the read pointer into the journal by one entry.
