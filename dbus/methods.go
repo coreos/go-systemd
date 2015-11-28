@@ -16,10 +16,9 @@ package dbus
 
 import (
 	"errors"
+	"github.com/godbus/dbus"
 	"path"
 	"strconv"
-
-	"github.com/godbus/dbus"
 )
 
 func (c *Conn) jobComplete(signal *dbus.Signal) {
@@ -248,6 +247,37 @@ func (c *Conn) ListUnits() ([]UnitStatus, error) {
 	}
 
 	return status, nil
+}
+
+type UnitFile struct {
+	Path string
+	Type string
+}
+
+// ListUnitFiles returns an array of with all available units in disk.
+func (c *Conn) ListUnitFiles() ([]UnitFile, error) {
+	result := make([][]interface{}, 0)
+	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.ListUnitFiles", 0).Store(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	resultInterface := make([]interface{}, len(result))
+	for i := range result {
+		resultInterface[i] = result[i]
+	}
+
+	files := make([]UnitFile, len(result))
+	fileInterface := make([]interface{}, len(files))
+
+	for i := range result {
+		fileInterface[i] = &files[i]
+	}
+	err = dbus.Store(resultInterface, fileInterface...)
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
 }
 
 type UnitStatus struct {
