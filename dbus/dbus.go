@@ -148,6 +148,17 @@ func newConnection(createBus func() (*dbus.Conn, error)) (*Conn, error) {
 	return c, nil
 }
 
+// GetManagerProperty returns the value of a property on the org.freedesktop.systemd1.Manager
+// interface. The value is returned in its string representation, as defined at
+// https://developer.gnome.org/glib/unstable/gvariant-text.html
+func (c *Conn) GetManagerProperty(prop string) (string, error) {
+	variant, err := c.sysobj.GetProperty("org.freedesktop.systemd1.Manager." + prop)
+	if err != nil {
+		return "", err
+	}
+	return variant.String(), nil
+}
+
 func dbusAuthConnection(createBus func() (*dbus.Conn, error)) (*dbus.Conn, error) {
 	conn, err := createBus()
 	if err != nil {
