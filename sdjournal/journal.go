@@ -220,6 +220,22 @@ func (j *Journal) GetData(field string) (string, error) {
 	return msg, nil
 }
 
+// SetDataThresold sets the data field size threshold for data returned by
+// GetData. To retrieve the complete data fields this threshold should be
+// turned off by setting it to 0, so that the library always returns the
+// complete data objects.
+func (j *Journal) SetDataThreshold(threshold uint64) error {
+	j.mu.Lock()
+	r := C.sd_journal_set_data_threshold(j.cjournal, C.size_t(threshold))
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to set data threshold: %d", r)
+	}
+
+	return nil
+}
+
 // GetRealtimeUsec gets the realtime (wallclock) timestamp of the current
 // journal entry.
 func (j *Journal) GetRealtimeUsec() (uint64, error) {

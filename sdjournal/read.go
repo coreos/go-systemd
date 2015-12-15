@@ -37,8 +37,6 @@ type JournalReaderConfig struct {
 	// Show only journal entries whose fields match the supplied values. If
 	// the array is empty, entries will not be filtered.
 	Matches []Match
-
-	MaxEntryLength uint64 // the max allowable length for an entry (default is 64K)
 }
 
 // JournalReader is an io.ReadCloser which provides a simple interface for iterating through the
@@ -50,9 +48,9 @@ type JournalReader struct {
 // NewJournalReader creates a new JournalReader with configuration options that are similar to the
 // systemd journalctl tool's iteration and filtering features.
 func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
-	var err error
 	r := &JournalReader{}
 
+	var err error
 	// Open the journal
 	if r.journal, err = NewJournal(); err != nil {
 		return nil, err
