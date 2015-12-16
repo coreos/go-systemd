@@ -22,6 +22,7 @@ package util
 // #include <stdlib.h>
 // #include <dlfcn.h>
 // #include <sys/types.h>
+// #include <unistd.h>
 //
 // int
 // my_sd_pid_get_owner_uid(void *f, pid_t pid, uid_t *uid)
@@ -41,6 +42,11 @@ package util
 //   return sd_pid_get_slice(pid, slice);
 // }
 //
+// int
+// am_session_leader()
+// {
+//   return (getsid(0) == getpid());
+// }
 import "C"
 import (
 	"errors"
@@ -133,13 +139,17 @@ func GetRunningSlice() (slice string, err error) {
 // process is _not_ a user process. User processes are those running in session
 // scopes or under per-user `systemd --user` instances.
 //
-// This function is a wrapper around the libsystemd C library, which results in
-// the following caveats:
-//   1) An error will be returned if this is unable to successfully open a
-//      handle to the library for any reason (e.g. it cannot be found)
-//   2) Since the implementation of sessions in systemd relies on the
-//     `pam_systemd` module, this function can result in false positives if that
-//      module (or PAM itself) is not present or properly configured on the system
+// To avoid false positives on systems without `pam_systemd` (which is
+// responsible for creating user sessions), this function also uses a heuristic
+// to detect whether it's being invoked from a session leader process. This is
+// the case if the current process is executed directly from a service file
+// (e.g. with `ExecStart=/this/cmd`). Note that this heuristic will fail if the
+// command is instead launched in a subshell or similar so that it is not
+// session leader (e.g. `ExecStart=/bin/bash -c "/this/cmd"`)
+//
+// This function is a wrapper around the libsystemd C library; if this is
+// unable to successfully open a handle to the library for any reason (e.g. it
+// cannot be found), an errr will be returned
 func RunningFromSystemService() (ret bool, err error) {
 	var h *libHandle
 	h, err = getHandle()
@@ -168,14 +178,20 @@ func RunningFromSystemService() (ret bool, err error) {
 	switch {
 	case errno >= 0:
 		ret = false
-		return
 	case serrno == syscall.ENOENT, serrno == syscall.ENXIO:
-		ret = true
-		return
+		// Since the implementation of sessions in systemd relies on
+		// the `pam_systemd` module, using the sd_pid_get_owner_uid
+		// heuristic alone can result in false positives if that module
+		// (or PAM itself) is not present or properly configured on the
+		// system. As such, we also check if we're the session leader,
+		// which should be the case if we're invoked from a unit file,
+		// but not if e.g. we're invoked from the command line from a
+		// user's login session
+		ret = C.am_session_leader() == 1
 	default:
 		err = fmt.Errorf("error calling sd_pid_get_owner_uid: %v", syscall.Errno(-errno))
-		return
 	}
+	return
 }
 
 // IsRunningSystemd checks whether the host was booted with systemd as its init
