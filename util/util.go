@@ -43,17 +43,31 @@ package util
 //
 import "C"
 import (
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
 	"unsafe"
 )
 
+// libHandle represents an open handle to the systemd C library
+type libHandle struct {
+	handle  unsafe.Pointer
+	libname string
+}
+
+func (h *libHandle) Close() error {
+	if r := C.dlclose(h.handle); r != 0 {
+		return fmt.Errorf("error closing %v: %d", h.libname, r)
+	}
+	return nil
+}
+
 // getHandle tries to get a handle to a systemd library (.so), attempting to
 // access it by several different names and returning the first that is
 // successfully opened. Callers are responsible for closing the handler.
-// Returns nil if no library can be found.
-func getHandle() (unsafe.Pointer, string) {
+// If no library can be successfully opened, an error is returned.
+func getHandle() (*libHandle, error) {
 	for _, name := range []string{
 		// systemd < 209
 		"libsystemd-login.so",
@@ -67,29 +81,35 @@ func getHandle() (unsafe.Pointer, string) {
 		defer C.free(unsafe.Pointer(libname))
 		handle := C.dlopen(libname, C.RTLD_LAZY)
 		if handle != nil {
-			return handle, name
+			h := &libHandle{
+				handle:  handle,
+				libname: name,
+			}
+			return h, nil
 		}
 	}
-	return nil, ""
+	return nil, errors.New("unable to open a handle to libsystemd")
 }
 
 // GetRunningSlice attempts to retrieve the name of the systemd slice in which
 // the current process is running.
+// This function is a wrapper around the libsystemd C library; if it cannot be
+// opened, an error is returned.
 func GetRunningSlice() (slice string, err error) {
-	handle, libname := getHandle()
-	if handle == nil {
-		err = fmt.Errorf("error opening libsystemd-login.so")
+	var h *libHandle
+	h, err = getHandle()
+	if err != nil {
 		return
 	}
 	defer func() {
-		if r := C.dlclose(handle); r != 0 {
-			err = fmt.Errorf("error closing %v", libname)
+		if err1 := h.Close(); err1 != nil {
+			err = err1
 		}
 	}()
 
 	sym := C.CString("sd_pid_get_slice")
 	defer C.free(unsafe.Pointer(sym))
-	sd_pid_get_slice := C.dlsym(handle, sym)
+	sd_pid_get_slice := C.dlsym(h.handle, sym)
 	if sd_pid_get_slice == nil {
 		err = fmt.Errorf("error resolving sd_pid_get_slice function")
 		return
@@ -105,31 +125,36 @@ func GetRunningSlice() (slice string, err error) {
 		return
 	}
 
-	slice = C.GoString(sl)
-	return
+	return C.GoString(sl), nil
 }
 
-// RunningFromSystemService detects whether the current process has been invoked
-// from a system service. The condition for this is whether the process is
-// _not_ a user process. User processes are those running in session scopes or
-// under per-user `systemd --user` instances
+// RunningFromSystemService tries to detect whether the current process has
+// been invoked from a system service. The condition for this is whether the
+// process is _not_ a user process. User processes are those running in session
+// scopes or under per-user `systemd --user` instances.
+//
+// This function is a wrapper around the libsystemd C library, which results in
+// the following caveats:
+//   1) An error will be returned if this is unable to successfully open a
+//      handle to the library for any reason (e.g. it cannot be found)
+//   2) Since the implementation of sessions in systemd relies on the
+//     `pam_systemd` module, this function can result in false positives if that
+//      module (or PAM itself) is not present or properly configured on the system
 func RunningFromSystemService() (ret bool, err error) {
-	handle, libname := getHandle()
-	if handle == nil {
-		// can't open libsystemd so we assume systemd is not
-		// installed and we're not running from a unit file
-		ret = false
+	var h *libHandle
+	h, err = getHandle()
+	if err != nil {
 		return
 	}
 	defer func() {
-		if r := C.dlclose(handle); r != 0 {
-			err = fmt.Errorf("error closing %v", libname)
+		if err1 := h.Close(); err1 != nil {
+			err = err1
 		}
 	}()
 
 	sym := C.CString("sd_pid_get_owner_uid")
 	defer C.free(unsafe.Pointer(sym))
-	sd_pid_get_owner_uid := C.dlsym(handle, sym)
+	sd_pid_get_owner_uid := C.dlsym(h.handle, sym)
 	if sd_pid_get_owner_uid == nil {
 		err = fmt.Errorf("error resolving sd_pid_get_owner_uid function")
 		return
