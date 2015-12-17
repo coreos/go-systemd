@@ -34,6 +34,15 @@ package util
 // }
 //
 // int
+// my_sd_pid_get_unit(void *f, pid_t pid, char **unit)
+// {
+//   int (*sd_pid_get_unit)(pid_t, char **);
+//
+//   sd_pid_get_unit = (int (*)(pid_t, char **))f;
+//   return sd_pid_get_unit(pid, unit);
+// }
+//
+// int
 // my_sd_pid_get_slice(void *f, pid_t pid, char **slice)
 // {
 //   int (*sd_pid_get_slice)(pid_t, char **);
@@ -191,6 +200,44 @@ func RunningFromSystemService() (ret bool, err error) {
 	default:
 		err = fmt.Errorf("error calling sd_pid_get_owner_uid: %v", syscall.Errno(-errno))
 	}
+	return
+}
+
+// CurrentUnitName attempts to retrieve the name of the systemd system unit
+// from which the calling process has been invoked. It wraps the systemd
+// `sd_pid_get_unit` call, with the same caveat: for processes not part of a
+// systemd system unit, this function will return an error.
+func CurrentUnitName() (unit string, err error) {
+	var h *libHandle
+	h, err = getHandle()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err1 := h.Close(); err1 != nil {
+			err = err1
+		}
+	}()
+
+	sym := C.CString("sd_pid_get_unit")
+	defer C.free(unsafe.Pointer(sym))
+	sd_pid_get_unit := C.dlsym(h.handle, sym)
+	if sd_pid_get_unit == nil {
+		err = fmt.Errorf("error resolving sd_pid_get_unit function")
+		return
+	}
+
+	var s string
+	u := C.CString(s)
+	defer C.free(unsafe.Pointer(u))
+
+	ret := C.my_sd_pid_get_unit(sd_pid_get_unit, 0, &u)
+	if ret < 0 {
+		err = fmt.Errorf("error calling sd_pid_get_unit: %v", syscall.Errno(-ret))
+		return
+	}
+
+	unit = C.GoString(u)
 	return
 }
 
