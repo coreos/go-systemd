@@ -65,6 +65,8 @@ import (
 	"unsafe"
 )
 
+var ErrSoNotFound = errors.New("unable to open a handle to libsystemd")
+
 // libHandle represents an open handle to the systemd C library
 type libHandle struct {
 	handle  unsafe.Pointer
@@ -103,7 +105,7 @@ func getHandle() (*libHandle, error) {
 			return h, nil
 		}
 	}
-	return nil, errors.New("unable to open a handle to libsystemd")
+	return nil, ErrSoNotFound
 }
 
 // GetRunningSlice attempts to retrieve the name of the systemd slice in which
