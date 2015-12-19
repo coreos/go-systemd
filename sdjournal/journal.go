@@ -291,6 +291,19 @@ func (j *Journal) Wait(timeout time.Duration) int {
 	return int(r)
 }
 
+// WaitIndefinitely will synchronously wait until the journal gets changed.  This
+// call will sleep indefinitely while it waits for a change.
+func (j *Journal) WaitIndefinitely() int {
+        j.mu.Lock()
+        // sd_journal_wait(3) calls for a (uint64_t) -1 to be passed to signify
+        // indefinite wait, but using a -1 overflows our C.uint64_t, so we use an
+        // equivalent hex value
+        r := C.sd_journal_wait(j.cjournal, (C.uint64_t)(0xffffffffffffffff))
+        j.mu.Unlock()
+
+        return int(r)
+}
+
 // GetUsage returns the journal disk space usage, in bytes.
 func (j *Journal) GetUsage() (uint64, error) {
 	var out C.uint64_t
