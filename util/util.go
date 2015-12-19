@@ -60,6 +60,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"syscall"
 	"unsafe"
@@ -253,4 +254,20 @@ func IsRunningSystemd() bool {
 		return false
 	}
 	return fi.IsDir()
+}
+
+// GetMachineID returns a host's 128-bit machine ID as a string.
+func GetMachineID() (machineID string, err error) {
+	// There is a systemd library function, sd_id128_get_machine, which can be used
+	// to obtain the machine ID.  However, that function simply reads the string
+	// from /etc/machine-id on the filesystem. To simplify things, we'll just read
+	// it directly from the file, too.
+	systemID, err := ioutil.ReadFile("/etc/machine-id")
+	if err != nil {
+		fmt.Errorf("Failed to read /etc/machine-id: %v", err)
+		return
+	}
+	// Chop off the trailing newline
+	machineID = string(systemID[:len(systemID)-1])
+	return machineID, nil
 }
