@@ -33,6 +33,7 @@ package sdjournal
 import "C"
 import (
 	"fmt"
+	"path/filepath"
 	"sync"
 	"time"
 	"unsafe"
@@ -90,8 +91,9 @@ func NewJournal() (*Journal, error) {
 // in a given directory.  Typically, the directory will be appended with /<machine-id>
 // which can be generated from util.GetMachineID() from this same library.
 func NewJournalFromDir(path string) (*Journal, error) {
-	if len(path) == 0 {
-		return nil, fmt.Errorf("failed to open journal; provided path is nil:")
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
 	}
 
 	p := C.CString(path)
