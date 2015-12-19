@@ -25,7 +25,7 @@
 package sdjournal
 
 /*
-#cgo pkg-config: libsystemd-journal
+#cgo pkg-config: libsystemd
 #include <systemd/sd-journal.h>
 #include <stdlib.h>
 #include <syslog.h>
@@ -81,6 +81,26 @@ func NewJournal() (*Journal, error) {
 
 	if err < 0 {
 		return nil, fmt.Errorf("failed to open journal: %s", err)
+	}
+
+	return j, nil
+}
+
+// NewJournalFromDir returns a new Journal instance pointing to a journal residing
+// in a given directory.  Typically, the directory will be appended with /<machine-id>
+// which can be generated from util.GetMachineID() from this same library.
+func NewJournalFromDir(path string) (*Journal, error) {
+	if len(path) == 0 {
+		return nil, fmt.Errorf("failed to open journal; provided path is nil:")
+	}
+
+	p := C.CString(path)
+	defer C.free(unsafe.Pointer(p))
+
+	j := &Journal{}
+	errInt := C.sd_journal_open_directory(&j.cjournal, p, 0)
+	if errInt < 0 {
+		return nil, fmt.Errorf("failed to open journal in directory %v: %v", path, errInt)
 	}
 
 	return j, nil
