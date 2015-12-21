@@ -100,9 +100,9 @@ func NewJournalFromDir(path string) (*Journal, error) {
 	defer C.free(unsafe.Pointer(p))
 
 	j := &Journal{}
-	err := C.sd_journal_open_directory(&j.cjournal, p, 0)
-	if err < 0 {
-		return nil, fmt.Errorf("failed to open journal in directory %v: %v", path, err)
+	errInt := C.sd_journal_open_directory(&j.cjournal, p, 0)
+	if errInt < 0 {
+		return nil, fmt.Errorf("failed to open journal in directory %v: %v", path, errInt)
 	}
 
 	return j, nil
