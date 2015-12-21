@@ -88,8 +88,8 @@ func NewJournal() (*Journal, error) {
 }
 
 // NewJournalFromDir returns a new Journal instance pointing to a journal residing
-// in a given directory.  Typically, the directory will be appended with /<machine-id>
-// which can be generated from util.GetMachineID() from this same library.
+// in a given directory. The supplied path may be relative or absolute; if
+// relative, it will be converted to an absolute path before being opened.
 func NewJournalFromDir(path string) (*Journal, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -100,9 +100,9 @@ func NewJournalFromDir(path string) (*Journal, error) {
 	defer C.free(unsafe.Pointer(p))
 
 	j := &Journal{}
-	errInt := C.sd_journal_open_directory(&j.cjournal, p, 0)
-	if errInt < 0 {
-		return nil, fmt.Errorf("failed to open journal in directory %v: %v", path, errInt)
+	err := C.sd_journal_open_directory(&j.cjournal, p, 0)
+	if err < 0 {
+		return nil, fmt.Errorf("failed to open journal in directory %v: %v", path, err)
 	}
 
 	return j, nil

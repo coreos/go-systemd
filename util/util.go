@@ -246,7 +246,7 @@ func CurrentUnitName() (unit string, err error) {
 }
 
 // IsRunningSystemd checks whether the host was booted with systemd as its init
-// system. This functions similar to systemd's `sd_booted(3)`: internally, it
+// system. This functions similarly to systemd's `sd_booted(3)`: internally, it
 // checks whether /run/systemd/system/ exists and is a directory.
 // http://www.freedesktop.org/software/systemd/man/sd_booted.html
 func IsRunningSystemd() bool {
@@ -257,10 +257,10 @@ func IsRunningSystemd() bool {
 	return fi.IsDir()
 }
 
-// GetMachineID returns a host's 128-bit machine ID as a string. There is a systemd
-// library function, sd_id128_get_machine, which can be used to obtain the
-// machine ID.  However, this function simply reads the string from /etc/machine-id.
-// To simplify things, we'll just read it directly from the file, too.
+// GetMachineID returns a host's 128-bit machine ID as a string. This functions
+// similarly to systemd's `sd_id128_get_machine`: internally, it simply reads
+// the contents of /etc/machine-id
+// http://www.freedesktop.org/software/systemd/man/sd_id128_get_machine.html
 func GetMachineID() (string, error) {
 	machineID, err := ioutil.ReadFile("/etc/machine-id")
 	if err != nil {
