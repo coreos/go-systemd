@@ -78,10 +78,10 @@ func (m *Match) String() string {
 // NewJournal returns a new Journal instance pointing to the local journal
 func NewJournal() (*Journal, error) {
 	j := &Journal{}
-	err := C.sd_journal_open(&j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
+	r := C.sd_journal_open(&j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
 
-	if err < 0 {
-		return nil, fmt.Errorf("failed to open journal: %s", err)
+	if r < 0 {
+		return nil, fmt.Errorf("failed to open journal: %d", r)
 	}
 
 	return j, nil
@@ -100,9 +100,9 @@ func NewJournalFromDir(path string) (*Journal, error) {
 	defer C.free(unsafe.Pointer(p))
 
 	j := &Journal{}
-	err := C.sd_journal_open_directory(&j.cjournal, p, 0)
-	if err < 0 {
-		return nil, fmt.Errorf("failed to open journal in directory %v: %v", path, err)
+	r := C.sd_journal_open_directory(&j.cjournal, p, 0)
+	if r < 0 {
+		return nil, fmt.Errorf("failed to open journal in directory %q: %d", path, r)
 	}
 
 	return j, nil
@@ -230,11 +230,11 @@ func (j *Journal) GetData(field string) (string, error) {
 	var l C.size_t
 
 	j.mu.Lock()
-	err := C.sd_journal_get_data(j.cjournal, f, &d, &l)
+	r := C.sd_journal_get_data(j.cjournal, f, &d, &l)
 	j.mu.Unlock()
 
-	if err < 0 {
-		return "", fmt.Errorf("failed to read message: %d", err)
+	if r < 0 {
+		return "", fmt.Errorf("failed to read message: %d", r)
 	}
 
 	msg := C.GoStringN((*C.char)(d), C.int(l))
@@ -278,11 +278,11 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 // available entry.
 func (j *Journal) SeekTail() error {
 	j.mu.Lock()
-	err := C.sd_journal_seek_tail(j.cjournal)
+	r := C.sd_journal_seek_tail(j.cjournal)
 	j.mu.Unlock()
 
-	if err != 0 {
-		return fmt.Errorf("failed to seek to tail of journal: %s", err)
+	if r < 0 {
+		return fmt.Errorf("failed to seek to tail of journal: %d", r)
 	}
 
 	return nil
@@ -292,11 +292,11 @@ func (j *Journal) SeekTail() error {
 // timestamp, i.e. CLOCK_REALTIME.
 func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 	j.mu.Lock()
-	err := C.sd_journal_seek_realtime_usec(j.cjournal, C.uint64_t(usec))
+	r := C.sd_journal_seek_realtime_usec(j.cjournal, C.uint64_t(usec))
 	j.mu.Unlock()
 
-	if err != 0 {
-		return fmt.Errorf("failed to seek to %d: %d", usec, int(err))
+	if r < 0 {
+		return fmt.Errorf("failed to seek to %d: %d", usec, r)
 	}
 
 	return nil
@@ -317,11 +317,11 @@ func (j *Journal) Wait(timeout time.Duration) int {
 func (j *Journal) GetUsage() (uint64, error) {
 	var out C.uint64_t
 	j.mu.Lock()
-	err := C.sd_journal_get_usage(j.cjournal, &out)
+	r := C.sd_journal_get_usage(j.cjournal, &out)
 	j.mu.Unlock()
 
-	if err != 0 {
-		return 0, fmt.Errorf("failed to get journal disk space usage: %d", err)
+	if r < 0 {
+		return 0, fmt.Errorf("failed to get journal disk space usage: %d", r)
 	}
 
 	return uint64(out), nil
