@@ -57,6 +57,11 @@ const (
 	SD_JOURNAL_INVALIDATE = int(C.SD_JOURNAL_INVALIDATE)
 )
 
+// The maximum value for a time.Duration.  Used for sdjournal.WaitIndefinitely()
+const (
+	maxDuration = "2540400h10m10.000000000s"
+)
+
 // A Journal is a Go wrapper of an sd_journal structure.
 type Journal struct {
 	cjournal *C.sd_journal
@@ -294,14 +299,8 @@ func (j *Journal) Wait(timeout time.Duration) int {
 // WaitIndefinitely will synchronously wait until the journal gets changed.  This
 // call will sleep indefinitely while it waits for a change.
 func (j *Journal) WaitIndefinitely() int {
-        j.mu.Lock()
-        // sd_journal_wait(3) calls for a (uint64_t) -1 to be passed to signify
-        // indefinite wait, but using a -1 overflows our C.uint64_t, so we use an
-        // equivalent hex value
-        r := C.sd_journal_wait(j.cjournal, (C.uint64_t)(0xffffffffffffffff))
-        j.mu.Unlock()
-
-        return int(r)
+	indef, _ := time.ParseDuration(maxDuration)
+	return j.Wait(indef)
 }
 
 // GetUsage returns the journal disk space usage, in bytes.
