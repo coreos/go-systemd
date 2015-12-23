@@ -57,9 +57,10 @@ const (
 	SD_JOURNAL_INVALIDATE = int(C.SD_JOURNAL_INVALIDATE)
 )
 
-// The maximum value for a time.Duration.  Used for sdjournal.WaitIndefinitely()
+// The maximum value for a time.Duration.  Can be passed to sdjournal.Wait() to
+// signal an indefinite wait for new journal events.
 const (
-	maxDuration = "2540400h10m10.000000000s"
+	IndefiniteWait time.Duration = 2540400*time.Hour + 10*time.Minute + 10*time.Second
 )
 
 // A Journal is a Go wrapper of an sd_journal structure.
@@ -286,21 +287,24 @@ func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 }
 
 // Wait will synchronously wait until the journal gets changed. The maximum time
-// this call sleeps may be controlled with the timeout parameter.
+// this call sleeps may be controlled with the timeout parameter.  If
+// sdjournal.IndefiniteWait is passed as the timeout parameter, Wait will
+// wait indefinitely for a journal change.
 func (j *Journal) Wait(timeout time.Duration) int {
-	to := uint64(time.Now().Add(timeout).Unix() / 1000)
+	var to uint64
+	if timeout == IndefiniteWait {
+		// sd_journal_wait(3) calls for a (uint64_t) -1 to be passed to signify
+		// indefinite wait, but using a -1 overflows our C.uint64_t, so we use an
+		// equivalent hex value.
+		to = 0xffffffffffffffff
+	} else {
+		to = uint64(time.Now().Add(timeout).Unix() / 1000)
+	}
 	j.mu.Lock()
 	r := C.sd_journal_wait(j.cjournal, C.uint64_t(to))
 	j.mu.Unlock()
 
 	return int(r)
-}
-
-// WaitIndefinitely will synchronously wait until the journal gets changed.  This
-// call will sleep indefinitely while it waits for a change.
-func (j *Journal) WaitIndefinitely() int {
-	indef, _ := time.ParseDuration(maxDuration)
-	return j.Wait(indef)
 }
 
 // GetUsage returns the journal disk space usage, in bytes.
