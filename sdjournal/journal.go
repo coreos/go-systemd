@@ -242,6 +242,16 @@ func (j *Journal) GetData(field string) (string, error) {
 	return msg, nil
 }
 
+// GetDataValue gets the data object associated with a specific field from the
+// current journal entry, returning only the value of the object.
+func (j *Journal) GetDataValue(field string) (string, error) {
+	val, err := j.GetData(field)
+	if err != nil {
+		return "", err
+	}
+	return strings.SplitN(val, "=", 2)[1], nil
+}
+
 // SetDataThresold sets the data field size threshold for data returned by
 // GetData. To retrieve the complete data fields this threshold should be
 // turned off by setting it to 0, so that the library always returns the
