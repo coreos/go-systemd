@@ -58,19 +58,21 @@ const (
 	SD_JOURNAL_INVALIDATE = int(C.SD_JOURNAL_INVALIDATE)
 )
 
-// The maximum value for a time.Duration.  Can be passed to sdjournal.Wait() to
-// signal an indefinite wait for new journal events.
 const (
-	IndefiniteWait time.Duration = 2540400*time.Hour + 10*time.Minute + 10*time.Second
+	// IndefiniteWait is a sentinel value that can be passed to
+	// sdjournal.Wait() to signal an indefinite wait for new journal
+	// events. It is implemented as the maximum value for a time.Duration:
+	// https://github.com/golang/go/blob/e4dcf5c8c22d98ac9eac7b9b226596229624cb1d/src/time/time.go#L434
+	IndefiniteWait time.Duration = 1<<63 - 1
 )
 
-// A Journal is a Go wrapper of an sd_journal structure.
+// Journal is a Go wrapper of an sd_journal structure.
 type Journal struct {
 	cjournal *C.sd_journal
 	mu       sync.Mutex
 }
 
-// A Match is a convenience wrapper to describe filters supplied to AddMatch.
+// Match is a convenience wrapper to describe filters supplied to AddMatch.
 type Match struct {
 	Field string
 	Value string
