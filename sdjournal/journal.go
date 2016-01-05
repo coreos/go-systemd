@@ -27,6 +27,7 @@ package sdjournal
 /*
 #cgo pkg-config: libsystemd
 #include <systemd/sd-journal.h>
+#include <systemd/sd-id128.h>
 #include <stdlib.h>
 #include <syslog.h>
 */
@@ -34,6 +35,7 @@ import "C"
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -258,6 +260,61 @@ func (j *Journal) GetDataValue(field string) (string, error) {
 		return "", err
 	}
 	return strings.SplitN(val, "=", 2)[1], nil
+}
+
+// GetDataMap returns all the Key-Value pairs of data for the current journal
+// entry. Mimics the behavior of output_export in logs-show.c
+func (j *Journal) GetDataMap() (map[string]string, error) {
+	var r C.int
+	var d unsafe.Pointer
+	var l C.size_t
+
+	resultMap := make(map[string]string)
+
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	var realtimeUsec C.uint64_t
+	r = C.sd_journal_get_realtime_usec(j.cjournal, &realtimeUsec)
+	if r < 0 {
+		return nil, fmt.Errorf("Failed to get realtime timestamp: %d", r)
+	}
+	resultMap["__REALTIME_TIMESTAMP"] = fmt.Sprintf("%d", realtimeUsec)
+
+	var monotonicUsec C.uint64_t
+	var bootid C.sd_id128_t // We don't do anything with this since we get it below
+	r = C.sd_journal_get_monotonic_usec(j.cjournal, &monotonicUsec, &bootid)
+	if r < 0 {
+		return nil, fmt.Errorf("Failed to get realtime timestamp: %d", r)
+	}
+	resultMap["__MONOTONIC_TIMESTAMP"] = fmt.Sprintf("%d", monotonicUsec)
+
+	var cursor *C.char
+	r = C.sd_journal_get_cursor(j.cjournal, &cursor)
+	if r < 0 {
+		return nil, fmt.Errorf("Failed to get realtime timestamp: %d", r)
+	}
+	resultMap["__CURSOR"] = C.GoString(cursor)
+
+	// Implements the JOURNAL_FOREACH_DATA_RETVAL macro from journal-internal.h
+	C.sd_journal_restart_data(j.cjournal)
+	for {
+		r = C.sd_journal_enumerate_data(j.cjournal, &d, &l)
+		if r <= 0 {
+			if r < 0 {
+				return nil, fmt.Errorf("Failed to read message field: %d", r)
+			}
+			break
+		}
+		msg := C.GoStringN((*C.char)(d), C.int(l))
+		kv := strings.SplitN(msg, "=", 2)
+		if len(kv) < 2 {
+			return nil, fmt.Errorf("Invalid field")
+		}
+		resultMap[kv[0]] = kv[1]
+	}
+
+	return resultMap, nil
 }
 
 // SetDataThresold sets the data field size threshold for data returned by
