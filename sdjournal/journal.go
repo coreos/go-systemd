@@ -34,6 +34,7 @@ import "C"
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
