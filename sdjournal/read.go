@@ -37,6 +37,10 @@ type JournalReaderConfig struct {
 	// Show only journal entries whose fields match the supplied values. If
 	// the array is empty, entries will not be filtered.
 	Matches []Match
+
+	// If not empty, the journal instance will point to a journal residing
+	// in this directory. The supplied path may be relative or absolute.
+	Path string
 }
 
 // JournalReader is an io.ReadCloser which provides a simple interface for iterating through the
@@ -50,9 +54,14 @@ type JournalReader struct {
 func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
 	r := &JournalReader{}
 
-	var err error
 	// Open the journal
-	if r.journal, err = NewJournal(); err != nil {
+	var err error
+	if config.Path != "" {
+		r.journal, err = NewJournalFromDir(config.Path)
+	} else {
+		r.journal, err = NewJournal()
+	}
+	if err != nil {
 		return nil, err
 	}
 
