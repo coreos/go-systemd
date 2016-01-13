@@ -135,10 +135,9 @@ func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) (err er
 
 	// Process journal entries and events. Entries are flushed until the tail or
 	// timeout is reached, and then we wait for new events or the timeout.
+	var msg = make([]byte, 64*1<<(10))
 process:
 	for {
-		var msg = make([]byte, 64*1<<(10))
-
 		c, err := r.Read(msg)
 		if err != nil && err != io.EOF {
 			break process
@@ -149,7 +148,7 @@ process:
 			return ErrExpired
 		default:
 			if c > 0 {
-				writer.Write(msg)
+				writer.Write(msg[:c])
 				continue process
 			}
 		}
