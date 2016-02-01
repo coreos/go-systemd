@@ -196,6 +196,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -291,7 +292,7 @@ func NewJournal() (*Journal, error) {
 	r := C.my_sd_journal_open(sd_journal_open, &j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
 
 	if r < 0 {
-		return nil, fmt.Errorf("failed to open journal: %d", r)
+		return nil, fmt.Errorf("failed to open journal: %d", syscall.Errno(-r))
 	}
 
 	return j, nil
@@ -323,7 +324,7 @@ func NewJournalFromDir(path string) (*Journal, error) {
 
 	r := C.my_sd_journal_open_directory(sd_journal_open_directory, &j.cjournal, p, 0)
 	if r < 0 {
-		return nil, fmt.Errorf("failed to open journal in directory %q: %d", path, r)
+		return nil, fmt.Errorf("failed to open journal in directory %q: %d", path, syscall.Errno(-r))
 	}
 
 	return j, nil
@@ -358,7 +359,7 @@ func (j *Journal) AddMatch(match string) error {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return fmt.Errorf("failed to add match: %d", r)
+		return fmt.Errorf("failed to add match: %d", syscall.Errno(-r))
 	}
 
 	return nil
@@ -376,7 +377,7 @@ func (j *Journal) AddDisjunction() error {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return fmt.Errorf("failed to add a disjunction in the match list: %d", r)
+		return fmt.Errorf("failed to add a disjunction in the match list: %d", syscall.Errno(-r))
 	}
 
 	return nil
@@ -394,7 +395,7 @@ func (j *Journal) AddConjunction() error {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return fmt.Errorf("failed to add a conjunction in the match list: %d", r)
+		return fmt.Errorf("failed to add a conjunction in the match list: %d", syscall.Errno(-r))
 	}
 
 	return nil
@@ -424,7 +425,7 @@ func (j *Journal) Next() (int, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return int(r), fmt.Errorf("failed to iterate journal: %d", r)
+		return int(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
 	return int(r), nil
@@ -443,7 +444,7 @@ func (j *Journal) NextSkip(skip uint64) (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
+		return uint64(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
 	return uint64(r), nil
@@ -461,7 +462,7 @@ func (j *Journal) Previous() (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
+		return uint64(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
 	return uint64(r), nil
@@ -480,7 +481,7 @@ func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
+		return uint64(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
 	return uint64(r), nil
@@ -505,7 +506,7 @@ func (j *Journal) GetData(field string) (string, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return "", fmt.Errorf("failed to read message: %d", r)
+		return "", fmt.Errorf("failed to read message: %d", syscall.Errno(-r))
 	}
 
 	msg := C.GoStringN((*C.char)(d), C.int(l))
@@ -538,7 +539,7 @@ func (j *Journal) SetDataThreshold(threshold uint64) error {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return fmt.Errorf("failed to set data threshold: %d", r)
+		return fmt.Errorf("failed to set data threshold: %d", syscall.Errno(-r))
 	}
 
 	return nil
@@ -559,7 +560,7 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return 0, fmt.Errorf("error getting timestamp for entry: %d", r)
+		return 0, fmt.Errorf("error getting timestamp for entry: %d", syscall.Errno(-r))
 	}
 
 	return uint64(usec), nil
@@ -578,7 +579,7 @@ func (j *Journal) SeekTail() error {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return fmt.Errorf("failed to seek to tail of journal: %d", r)
+		return fmt.Errorf("failed to seek to tail of journal: %d", syscall.Errno(-r))
 	}
 
 	return nil
@@ -597,7 +598,7 @@ func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return fmt.Errorf("failed to seek to %d: %d", usec, r)
+		return fmt.Errorf("failed to seek to %d: %d", usec, syscall.Errno(-r))
 	}
 
 	return nil
@@ -644,7 +645,7 @@ func (j *Journal) GetUsage() (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return 0, fmt.Errorf("failed to get journal disk space usage: %d", r)
+		return 0, fmt.Errorf("failed to get journal disk space usage: %d", syscall.Errno(-r))
 	}
 
 	return uint64(out), nil
