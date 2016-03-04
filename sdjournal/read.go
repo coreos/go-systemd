@@ -41,6 +41,9 @@ type JournalReaderConfig struct {
 	// If not empty, the journal instance will point to a journal residing
 	// in this directory. The supplied path may be relative or absolute.
 	Path string
+
+	// Do not protect against concurrent sd-journal C API accesses.
+	NoMutex bool
 }
 
 // JournalReader is an io.ReadCloser which provides a simple interface for iterating through the
@@ -57,9 +60,9 @@ func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
 	// Open the journal
 	var err error
 	if config.Path != "" {
-		r.journal, err = NewJournalFromDir(config.Path)
+		r.journal, err = NewJournalFromDir(config.Path, config.NoMutex)
 	} else {
-		r.journal, err = NewJournal()
+		r.journal, err = NewJournal(config.NoMutex)
 	}
 	if err != nil {
 		return nil, err
