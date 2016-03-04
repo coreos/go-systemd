@@ -70,7 +70,7 @@ func TestJournalFollow(t *testing.T) {
 }
 
 func TestJournalGetUsage(t *testing.T) {
-	j, err := NewJournal()
+	j, err := NewJournal(false)
 
 	if err != nil {
 		t.Fatalf("Error opening journal: %s", err)

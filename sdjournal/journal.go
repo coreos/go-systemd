@@ -70,7 +70,7 @@ const (
 // Journal is a Go wrapper of an sd_journal structure.
 type Journal struct {
 	cjournal *C.sd_journal
-	mu       sync.Mutex
+	l        sync.Locker
 }
 
 // Match is a convenience wrapper to describe filters supplied to AddMatch.
@@ -84,9 +84,24 @@ func (m *Match) String() string {
 	return m.Field + "=" + m.Value
 }
 
+// NoOpLocker is a custom sync.Locker which essentially does nothing.
+type NoOpLocker struct{}
+
+func (*NoOpLocker) Lock()   {}
+func (*NoOpLocker) Unlock() {}
+
+// newLocker returns an NoOpLocker or sync.Mutex depending on the supplied boolean.
+func newLocker(bool noMutex) sync.Locker {
+	if noMutex {
+		return &NoOpLocker{}
+	} else {
+		return &sync.Mutex{}
+	}
+}
+
 // NewJournal returns a new Journal instance pointing to the local journal
-func NewJournal() (*Journal, error) {
-	j := &Journal{}
+func NewJournal(noMutex bool) (*Journal, error) {
+	j := &Journal{l: newLocker(noMutex)}
 	r := C.sd_journal_open(&j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
 
 	if r < 0 {
@@ -99,7 +114,7 @@ func NewJournal() (*Journal, error) {
 // NewJournalFromDir returns a new Journal instance pointing to a journal residing
 // in a given directory. The supplied path may be relative or absolute; if
 // relative, it will be converted to an absolute path before being opened.
-func NewJournalFromDir(path string) (*Journal, error) {
+func NewJournalFromDir(path string, noMutex bool) (*Journal, error) {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
@@ -108,7 +123,7 @@ func NewJournalFromDir(path string) (*Journal, error) {
 	p := C.CString(path)
 	defer C.free(unsafe.Pointer(p))
 
-	j := &Journal{}
+	j := &Journal{l: newLocker(noMutex)}
 	r := C.sd_journal_open_directory(&j.cjournal, p, 0)
 	if r < 0 {
 		return nil, fmt.Errorf("failed to open journal in directory %q: %d", path, r)
@@ -119,9 +134,9 @@ func NewJournalFromDir(path string) (*Journal, error) {
 
 // Close closes a journal opened with NewJournal.
 func (j *Journal) Close() error {
-	j.mu.Lock()
+	j.l.Lock()
 	C.sd_journal_close(j.cjournal)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	return nil
 }
@@ -131,9 +146,9 @@ func (j *Journal) AddMatch(match string) error {
 	m := C.CString(match)
 	defer C.free(unsafe.Pointer(m))
 
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_add_match(j.cjournal, unsafe.Pointer(m), C.size_t(len(match)))
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return fmt.Errorf("failed to add match: %d", r)
@@ -144,9 +159,9 @@ func (j *Journal) AddMatch(match string) error {
 
 // AddDisjunction inserts a logical OR in the match list.
 func (j *Journal) AddDisjunction() error {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_add_disjunction(j.cjournal)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return fmt.Errorf("failed to add a disjunction in the match list: %d", r)
@@ -157,9 +172,9 @@ func (j *Journal) AddDisjunction() error {
 
 // AddConjunction inserts a logical AND in the match list.
 func (j *Journal) AddConjunction() error {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_add_conjunction(j.cjournal)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return fmt.Errorf("failed to add a conjunction in the match list: %d", r)
@@ -170,16 +185,16 @@ func (j *Journal) AddConjunction() error {
 
 // FlushMatches flushes all matches, disjunctions and conjunctions.
 func (j *Journal) FlushMatches() {
-	j.mu.Lock()
+	j.l.Lock()
 	C.sd_journal_flush_matches(j.cjournal)
-	j.mu.Unlock()
+	j.l.Unlock()
 }
 
 // Next advances the read pointer into the journal by one entry.
 func (j *Journal) Next() (int, error) {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_next(j.cjournal)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return int(r), fmt.Errorf("failed to iterate journal: %d", r)
@@ -191,9 +206,9 @@ func (j *Journal) Next() (int, error) {
 // NextSkip advances the read pointer by multiple entries at once,
 // as specified by the skip parameter.
 func (j *Journal) NextSkip(skip uint64) (uint64, error) {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_next_skip(j.cjournal, C.uint64_t(skip))
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
@@ -204,9 +219,9 @@ func (j *Journal) NextSkip(skip uint64) (uint64, error) {
 
 // Previous sets the read pointer into the journal back by one entry.
 func (j *Journal) Previous() (uint64, error) {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_previous(j.cjournal)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
@@ -218,9 +233,9 @@ func (j *Journal) Previous() (uint64, error) {
 // PreviousSkip sets back the read pointer by multiple entries at once,
 // as specified by the skip parameter.
 func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_previous_skip(j.cjournal, C.uint64_t(skip))
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return uint64(r), fmt.Errorf("failed to iterate journal: %d", r)
@@ -238,9 +253,9 @@ func (j *Journal) GetData(field string) (string, error) {
 	var d unsafe.Pointer
 	var l C.size_t
 
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_get_data(j.cjournal, f, &d, &l)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return "", fmt.Errorf("failed to read message: %d", r)
@@ -266,9 +281,9 @@ func (j *Journal) GetDataValue(field string) (string, error) {
 // turned off by setting it to 0, so that the library always returns the
 // complete data objects.
 func (j *Journal) SetDataThreshold(threshold uint64) error {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_set_data_threshold(j.cjournal, C.size_t(threshold))
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return fmt.Errorf("failed to set data threshold: %d", r)
@@ -282,9 +297,9 @@ func (j *Journal) SetDataThreshold(threshold uint64) error {
 func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	var usec C.uint64_t
 
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_get_realtime_usec(j.cjournal, &usec)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return 0, fmt.Errorf("error getting timestamp for entry: %d", r)
@@ -296,9 +311,9 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 // SeekTail may be used to seek to the end of the journal, i.e. the most recent
 // available entry.
 func (j *Journal) SeekTail() error {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_seek_tail(j.cjournal)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return fmt.Errorf("failed to seek to tail of journal: %d", r)
@@ -310,9 +325,9 @@ func (j *Journal) SeekTail() error {
 // SeekRealtimeUsec seeks to the entry with the specified realtime (wallclock)
 // timestamp, i.e. CLOCK_REALTIME.
 func (j *Journal) SeekRealtimeUsec(usec uint64) error {
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_seek_realtime_usec(j.cjournal, C.uint64_t(usec))
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return fmt.Errorf("failed to seek to %d: %d", usec, r)
@@ -335,9 +350,9 @@ func (j *Journal) Wait(timeout time.Duration) int {
 	} else {
 		to = uint64(time.Now().Add(timeout).Unix() / 1000)
 	}
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_wait(j.cjournal, C.uint64_t(to))
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	return int(r)
 }
@@ -345,9 +360,9 @@ func (j *Journal) Wait(timeout time.Duration) int {
 // GetUsage returns the journal disk space usage, in bytes.
 func (j *Journal) GetUsage() (uint64, error) {
 	var out C.uint64_t
-	j.mu.Lock()
+	j.l.Lock()
 	r := C.sd_journal_get_usage(j.cjournal, &out)
-	j.mu.Unlock()
+	j.l.Unlock()
 
 	if r < 0 {
 		return 0, fmt.Errorf("failed to get journal disk space usage: %d", r)
