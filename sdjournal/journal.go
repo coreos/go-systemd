@@ -278,13 +278,22 @@ func (j *Journal) getFunction(name string) (unsafe.Pointer, error) {
 }
 
 // NewJournal returns a new Journal instance pointing to the local journal
-func NewJournal() (*Journal, error) {
+func NewJournal() (j *Journal, err error) {
 	h, err := dlopen.GetHandle(libsystemdNames)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		err2 := h.Close()
+		if err2 != nil {
+			err = fmt.Errorf(`%q and "error closing handle: %v"`, err, err2)
+		}
+	}()
 
-	j := &Journal{lib: h}
+	j = &Journal{lib: h}
 
 	sd_journal_open, err := j.getFunction("sd_journal_open")
 	if err != nil {
@@ -303,18 +312,27 @@ func NewJournal() (*Journal, error) {
 // NewJournalFromDir returns a new Journal instance pointing to a journal residing
 // in a given directory. The supplied path may be relative or absolute; if
 // relative, it will be converted to an absolute path before being opened.
-func NewJournalFromDir(path string) (*Journal, error) {
+func NewJournalFromDir(path string) (j *Journal, err error) {
 	h, err := dlopen.GetHandle(libsystemdNames)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		err2 := h.Close()
+		if err2 != nil {
+			err = fmt.Errorf(`%q and "error closing handle: %v"`, err, err2)
+		}
+	}()
 
 	path, err = filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
 
-	j := &Journal{lib: h}
+	j = &Journal{lib: h}
 
 	sd_journal_open_directory, err := j.getFunction("sd_journal_open_directory")
 	if err != nil {
