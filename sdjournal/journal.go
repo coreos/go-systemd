@@ -261,6 +261,8 @@ func (m *Match) String() string {
 }
 
 func (j *Journal) getFunction(name string) (unsafe.Pointer, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	f, ok := libsystemdFunctions[name]
 	if !ok {
 		var err error
