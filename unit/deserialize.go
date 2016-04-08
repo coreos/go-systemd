@@ -173,13 +173,16 @@ func (l *lexer) lexNextSectionOrOptionFunc(section string) lexStep {
 		if err != nil {
 			if err == io.EOF {
 				err = nil
+				l.optchan <- &UnitOption{Section: section, Name: "", Value: ""}
 			}
 			return nil, err
 		}
 
 		if unicode.IsSpace(r) {
+			l.optchan <- &UnitOption{Section: section, Name: "", Value: fmt.Sprintf("%c", r)}
 			return l.lexNextSectionOrOptionFunc(section), nil
 		} else if r == '[' {
+			l.optchan <- &UnitOption{Section: section, Name: "", Value: ""}
 			return l.lexSectionName, nil
 		} else if isComment(r) {
 			return l.ignoreLineFunc(l.lexNextSectionOrOptionFunc(section)), nil
