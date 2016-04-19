@@ -44,13 +44,16 @@ import (
 // Journal entry field strings which correspond to:
 // http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
 const (
-	SD_JOURNAL_FIELD_SYSTEMD_UNIT = "_SYSTEMD_UNIT"
-	SD_JOURNAL_FIELD_MESSAGE      = "MESSAGE"
-	SD_JOURNAL_FIELD_PID          = "_PID"
-	SD_JOURNAL_FIELD_UID          = "_UID"
-	SD_JOURNAL_FIELD_GID          = "_GID"
-	SD_JOURNAL_FIELD_HOSTNAME     = "_HOSTNAME"
-	SD_JOURNAL_FIELD_MACHINE_ID   = "_MACHINE_ID"
+	SD_JOURNAL_FIELD_SYSTEMD_UNIT        = "_SYSTEMD_UNIT"
+	SD_JOURNAL_FIELD_MESSAGE             = "MESSAGE"
+	SD_JOURNAL_FIELD_PID                 = "_PID"
+	SD_JOURNAL_FIELD_UID                 = "_UID"
+	SD_JOURNAL_FIELD_GID                 = "_GID"
+	SD_JOURNAL_FIELD_HOSTNAME            = "_HOSTNAME"
+	SD_JOURNAL_FIELD_MACHINE_ID          = "_MACHINE_ID"
+	SD_JOURNAL_FIELD_REALTIME_TIMESTAMP  = "__REALTIME_TIMESTAMP"
+	SD_JOURNAL_FIELD_MONOTONIC_TIMESTAMP = "__MONOTONIC_TIMESTAMP"
+	SD_JOURNAL_FIELD_CURSOR              = "__CURSOR"
 )
 
 // Journal event constants
@@ -262,7 +265,7 @@ func (j *Journal) GetDataValue(field string) (string, error) {
 	return strings.SplitN(val, "=", 2)[1], nil
 }
 
-// GetDataMap returns all the Key-Value pairs of data for the current journal
+// GetJournalEntry returns all the Key-Value pairs of data for the current journal
 // entry. Mimics the behavior of output_export in logs-show.c
 func (j *Journal) GetDataMap() (map[string]string, error) {
 	var r C.int
@@ -277,39 +280,41 @@ func (j *Journal) GetDataMap() (map[string]string, error) {
 	var realtimeUsec C.uint64_t
 	r = C.sd_journal_get_realtime_usec(j.cjournal, &realtimeUsec)
 	if r < 0 {
-		return nil, fmt.Errorf("Failed to get realtime timestamp: %d", r)
+		return nil, fmt.Errorf("failed to get realtime timestamp: %d", r)
 	}
-	resultMap["__REALTIME_TIMESTAMP"] = fmt.Sprintf("%d", realtimeUsec)
+	resultMap[SD_JOURNAL_FIELD_REALTIME_TIMESTAMP] = fmt.Sprintf("%d", realtimeUsec)
 
 	var monotonicUsec C.uint64_t
 	var bootid C.sd_id128_t // We don't do anything with this since we get it below
 	r = C.sd_journal_get_monotonic_usec(j.cjournal, &monotonicUsec, &bootid)
 	if r < 0 {
-		return nil, fmt.Errorf("Failed to get realtime timestamp: %d", r)
+		return nil, fmt.Errorf("failed to get monotonic timestamp: %d", r)
 	}
-	resultMap["__MONOTONIC_TIMESTAMP"] = fmt.Sprintf("%d", monotonicUsec)
+	resultMap[SD_JOURNAL_FIELD_MONOTONIC_TIMESTAMP] = fmt.Sprintf("%d", monotonicUsec)
 
 	var cursor *C.char
 	r = C.sd_journal_get_cursor(j.cjournal, &cursor)
 	if r < 0 {
-		return nil, fmt.Errorf("Failed to get realtime timestamp: %d", r)
+		return nil, fmt.Errorf("failed to get cursor: %d", r)
 	}
-	resultMap["__CURSOR"] = C.GoString(cursor)
+	resultMap[SD_JOURNAL_FIELD_CURSOR] = C.GoString(cursor)
 
 	// Implements the JOURNAL_FOREACH_DATA_RETVAL macro from journal-internal.h
 	C.sd_journal_restart_data(j.cjournal)
 	for {
 		r = C.sd_journal_enumerate_data(j.cjournal, &d, &l)
-		if r <= 0 {
-			if r < 0 {
-				return nil, fmt.Errorf("Failed to read message field: %d", r)
-			}
+		if r == 0 {
 			break
 		}
+
+		if r < 0 {
+			return nil, fmt.Errorf("failed to read message field: %d", r)
+		}
+
 		msg := C.GoStringN((*C.char)(d), C.int(l))
 		kv := strings.SplitN(msg, "=", 2)
 		if len(kv) < 2 {
-			return nil, fmt.Errorf("Invalid field")
+			return nil, fmt.Errorf("invalid field")
 		}
 		resultMap[kv[0]] = kv[1]
 	}
