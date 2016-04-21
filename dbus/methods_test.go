@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -96,6 +97,7 @@ func TestStartStopUnit(t *testing.T) {
 	for _, u := range units {
 		if u.Name == target {
 			unit = &u
+			break
 		}
 	}
 
@@ -122,11 +124,244 @@ func TestStartStopUnit(t *testing.T) {
 	for _, u := range units {
 		if u.Name == target {
 			unit = &u
+			break
 		}
 	}
 
 	if unit != nil {
 		t.Fatalf("Test unit found in list, should be stopped")
+	}
+}
+
+// Ensure that ListUnitsByNames works.
+func TestListUnitsByNames(t *testing.T) {
+	target1 := "systemd-journald.service"
+	target2 := "unexisting.service"
+
+	conn := setupConn(t)
+
+	units, err := conn.ListUnitsByNames([]string{target1, target2})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var unit *UnitStatus
+	for _, u := range units {
+		if u.Name == target1 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("%s unit not found in list", target1)
+	}
+
+	if unit.ActiveState != "active" {
+		t.Fatalf("%s unit should be active but it is %s", target1, unit.ActiveState)
+	}
+
+	unit = nil
+	for _, u := range units {
+		if u.Name == target2 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("Unexisting test unit not found in list")
+	}
+
+	if unit.ActiveState != "inactive" {
+		t.Fatalf("Test unit should be inactive")
+	}
+}
+
+// Ensure that ListUnitsByPatterns works.
+func TestListUnitsByPatterns(t *testing.T) {
+	target1 := "systemd-journald.service"
+	target2 := "unexisting.service"
+
+	conn := setupConn(t)
+
+	units, err := conn.ListUnitsByPatterns([]string{}, []string{"systemd-journald*", target2})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var unit *UnitStatus
+	for _, u := range units {
+		if u.Name == target1 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("%s unit not found in list", target1)
+	}
+
+	if unit.ActiveState != "active" {
+		t.Fatalf("Test unit should be active")
+	}
+
+	unit = nil
+	for _, u := range units {
+		if u.Name == target2 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit != nil {
+		t.Fatalf("Unexisting test unit found in list")
+	}
+}
+
+// Ensure that ListUnitsFiltered works.
+func TestListUnitsFiltered(t *testing.T) {
+	target := "systemd-journald.service"
+
+	conn := setupConn(t)
+
+	units, err := conn.ListUnitsFiltered([]string{"active"})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var unit *UnitStatus
+	for _, u := range units {
+		if u.Name == target {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("%s unit not found in list", target)
+	}
+
+	if unit.ActiveState != "active" {
+		t.Fatalf("Test unit should be active")
+	}
+
+	units, err = conn.ListUnitsFiltered([]string{"inactive"})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unit = nil
+	for _, u := range units {
+		if u.Name == target {
+			unit = &u
+			break
+		}
+	}
+
+	if unit != nil {
+		t.Fatalf("Inactive unit should not be found in list")
+	}
+}
+
+// Ensure that ListUnitFilesByPatterns works.
+func TestListUnitFilesByPatterns(t *testing.T) {
+	target1 := "systemd-journald.service"
+	target2 := "exit.target"
+
+	conn := setupConn(t)
+
+	units, err := conn.ListUnitFilesByPatterns([]string{"static"}, []string{"systemd-journald*", target2})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var unit *UnitFile
+	for _, u := range units {
+		if path.Base(u.Path) == target1 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("%s unit not found in list", target1)
+	}
+
+	if unit.Type != "static" {
+		t.Fatalf("Test unit file should be static")
+	}
+
+	units, err = conn.ListUnitFilesByPatterns([]string{"disabled"}, []string{"systemd-journald*", target2})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	unit = nil
+	for _, u := range units {
+		if path.Base(u.Path) == target2 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("%s unit not found in list", target2)
+	}
+
+	if unit.Type != "disabled" {
+		t.Fatalf("%s unit file should be disabled", target2)
+	}
+}
+
+func TestListUnitFiles(t *testing.T) {
+	target1 := "systemd-journald.service"
+	target2 := "exit.target"
+
+	conn := setupConn(t)
+
+	units, err := conn.ListUnitFiles()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var unit *UnitFile
+	for _, u := range units {
+		if path.Base(u.Path) == target1 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("%s unit not found in list", target1)
+	}
+
+	if unit.Type != "static" {
+		t.Fatalf("Test unit file should be static")
+	}
+
+	unit = nil
+	for _, u := range units {
+		if path.Base(u.Path) == target2 {
+			unit = &u
+			break
+		}
+	}
+
+	if unit == nil {
+		t.Fatalf("%s unit not found in list", target2)
+	}
+
+	if unit.Type != "disabled" {
+		t.Fatalf("%s unit file should be disabled", target2)
 	}
 }
 
@@ -302,6 +537,7 @@ func TestStartStopTransientUnit(t *testing.T) {
 	for _, u := range units {
 		if u.Name == target {
 			unit = &u
+			break
 		}
 	}
 
@@ -328,6 +564,7 @@ func TestStartStopTransientUnit(t *testing.T) {
 	for _, u := range units {
 		if u.Name == target {
 			unit = &u
+			break
 		}
 	}
 
