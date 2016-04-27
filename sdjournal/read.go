@@ -16,13 +16,14 @@
 package sdjournal
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 	"time"
+
+	"golang.org/x/net/context"
 )
 
 var (
@@ -49,6 +50,22 @@ type JournalReaderConfig struct {
 // systemd journal.
 type JournalReader struct {
 	journal *Journal
+}
+
+// FollowFilter is a function which you pass into Follow to determine if you to
+// filter key value pair from a journal entry.
+type FollowFilter func(key, value string) bool
+
+// AllKeys is a FollowFilter that allows all keys of a given journal entry through the filter
+func AllKeys(key, value string) bool {
+	return true
+}
+
+func OnlyMessages(key, value string) bool {
+	if key == "MESSAGE" {
+		return true
+	}
+	return false
 }
 
 // NewJournalReader creates a new JournalReader with configuration options that are similar to the
@@ -131,140 +148,85 @@ func (r *JournalReader) Close() error {
 	return r.journal.Close()
 }
 
-// Follow synchronously follows the JournalReader, writing each new journal entry to writer. The
-// follow will continue until a single time.Time is received on the until channel.
-func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) (err error) {
-
-	// Process journal entries and events. Entries are flushed until the tail or
-	// timeout is reached, and then we wait for new events or the timeout.
-	var msg = make([]byte, 64*1<<(10))
-process:
-	for {
-		c, err := r.Read(msg)
-		if err != nil && err != io.EOF {
-			break process
-		}
-
-		select {
-		case <-until:
-			return ErrExpired
-		default:
-			if c > 0 {
-				writer.Write(msg[:c])
-				continue process
-			}
-		}
-
-		// We're at the tail, so wait for new events or time out.
-		// Holds journal events to process. Tightly bounded for now unless there's a
-		// reason to unblock the journal watch routine more quickly.
-		events := make(chan int, 1)
-		pollDone := make(chan bool, 1)
-		go func() {
-			for {
-				select {
-				case <-pollDone:
-					return
-				default:
-					events <- r.journal.Wait(time.Duration(1) * time.Second)
-				}
-			}
-		}()
-
-		select {
-		case <-until:
-			pollDone <- true
-			return ErrExpired
-		case e := <-events:
-			pollDone <- true
-			switch e {
-			case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
-				// TODO: need to account for any of these?
+// Follow asynchronously follows the JournalReader it takes in a context to stop the following the Journal, it returns a
+// buffered channel of errors and will stop following the journal on the first given error
+func (r *JournalReader) Follow(ctx context.Context, msgs chan<- map[string]interface{}, filter FollowFilter) <-chan error {
+	errChan := make(chan error, 1)
+	go func() {
+		for {
+			kvMap := make(map[string]interface{})
+			select {
+			case <-ctx.Done():
+				errChan <- ctx.Err()
+				return
 			default:
-				log.Printf("Received unknown event: %d\n", e)
-			}
-			continue process
-		}
-	}
+				var err error
+				var c int
 
-	return
-}
+				// Advance the journal cursor
+				c, err = r.journal.Next()
 
-// FollowWithFields synchronously follows the Journal, writing each full Journal Entry with all its given fields
-// as a map to the writer. Similar to Follow(), it will continue until a single time.Time is
-// received on the until channel.
-func (r *JournalReader) FollowWithFields(until <-chan time.Time, writer io.Writer) (err error) {
-	enc := json.NewEncoder(writer)
-journal:
-	for {
-		kvMap := make(map[string]string)
-		select {
-		case <-until:
-			return ErrExpired
-		default:
-			var err error
-			var c int
+				// An unexpected error
+				if err != nil {
+					errChan <- err
+					return
+				}
 
-			// Advance the journal cursor
-			c, err = r.journal.Next()
-
-			// An unexpected error
-			if err != nil {
-				return err
-			}
-
-			// We have a new journal entry go over the fields
-			// get the data for what we care about and return
-			r.journal.RestartData()
-			if c > 0 {
-			fields:
-				for {
-					s, err := r.journal.EnumerateData()
-					if err != nil || len(s) == 0 {
-						break fields
+				// We have a new journal entry go over the fields
+				// get the data for what we care about and return
+				r.journal.RestartData()
+				if c > 0 {
+				fields:
+					for {
+						s, err := r.journal.EnumerateData()
+						if err != nil || len(s) == 0 {
+							break fields
+						}
+						s = s[:len(s)]
+						arr := strings.SplitN(s, "=", 2)
+						// if we want the pair,
+						// add it to the map
+						if filter(arr[0], arr[1]) {
+							kvMap[arr[0]] = arr[1]
+						}
 					}
-					s = s[:len(s)]
-					arr := strings.SplitN(s, "=", 2)
-					kvMap[arr[0]] = arr[1]
-				}
-				if err := enc.Encode(kvMap); err != nil {
-					return err
+					msgs <- kvMap
 				}
 			}
-		}
 
-		// we're at the tail, so wait for new events or time out.
-		// holds journal events to process. tightly bounded for now unless there's a
-		// reason to unblock the journal watch routine more quickly
-		events := make(chan int, 1)
-		pollDone := make(chan bool, 1)
-		go func() {
-			for {
-				select {
-				case <-pollDone:
-					return
+			// we're at the tail, so wait for new events or time out.
+			// holds journal events to process. tightly bounded for now unless there's a
+			// reason to unblock the journal watch routine more quickly
+			events := make(chan int, 1)
+			pollDone := make(chan bool, 1)
+			go func() {
+				for {
+					select {
+					case <-pollDone:
+						return
+					default:
+						events <- r.journal.Wait(time.Duration(1) * time.Second)
+					}
+				}
+			}()
+
+			select {
+			case <-ctx.Done():
+				errChan <- ctx.Err()
+				pollDone <- true
+				return
+			case e := <-events:
+				pollDone <- true
+				switch e {
+				case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
+					// TODO: need to account for any of these?
 				default:
-					events <- r.journal.Wait(time.Duration(1) * time.Second)
+					log.Printf("Received unknown event: %d\n", e)
 				}
 			}
-		}()
-
-		select {
-		case <-until:
-			pollDone <- true
-			return ErrExpired
-		case e := <-events:
-			pollDone <- true
-			switch e {
-			case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
-				// TODO: need to account for any of these?
-			default:
-				log.Printf("Received unknown event: %d\n", e)
-			}
-			continue journal
 		}
-	}
-	return
+	}()
+	return errChan
 }
 
 // buildMessage returns a string representing the current journal entry in a simple format which
