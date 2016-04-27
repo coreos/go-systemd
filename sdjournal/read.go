@@ -190,7 +190,10 @@ process:
 	return
 }
 
-func (r *JournalReader) FollowWithFields(until <-chan time.Time, fields map[string]struct{}, writer io.Writer) (err error) {
+// FollowWithFields synchronously follows the Journal, writing each full Journal Entry with all its given fields
+// as a map to the writer. Similar to Follow(), it will continue until a single time.Time is
+// received on the until channel.
+func (r *JournalReader) FollowWithFields(until <-chan time.Time, writer io.Writer) (err error) {
 	enc := json.NewEncoder(writer)
 journal:
 	for {
@@ -222,10 +225,7 @@ journal:
 					}
 					s = s[:len(s)]
 					arr := strings.SplitN(s, "=", 2)
-					if _, ok := fields[arr[0]]; ok {
-						kvMap[arr[0]] = arr[1]
-					}
-
+					kvMap[arr[0]] = arr[1]
 				}
 				if err := enc.Encode(kvMap); err != nil {
 					return err
