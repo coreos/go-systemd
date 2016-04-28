@@ -205,7 +205,7 @@ func (r *JournalReader) Follow(ctx context.Context, msgs chan<- map[string]inter
 					case <-pollDone:
 						return
 					default:
-						events <- r.journal.Wait(time.Duration(1) * time.Second)
+						events <- r.journal.Wait(time.Duration(300) * time.Second)
 					}
 				}
 			}()
