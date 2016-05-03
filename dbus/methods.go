@@ -263,6 +263,42 @@ func (c *Conn) ListUnits() ([]UnitStatus, error) {
 	return status, nil
 }
 
+type UnitStates struct {
+	Name        string // The primary unit name as string
+	LoadState   string // The load state (i.e. whether the unit file has been loaded successfully)
+	ActiveState string // The active state (i.e. whether the unit is currently started or not)
+	SubState    string // The sub state (a more fine-grained version of the active state that is specific to the unit type, which the active state is not)
+}
+
+// GetUnitsStates returns an array with the states of specified units.
+// This method works even with the non-existing units. In this case
+// ("not-found","inactive","dead") data will be returned.
+func (c *Conn) GetUnitsStates(units []string) ([]UnitStates, error) {
+	result := make([][]interface{}, 0)
+	err := c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnitsStates", 0, units).Store(&result)
+	if err != nil {
+		return nil, err
+	}
+
+	resultInterface := make([]interface{}, len(result))
+	for i := range result {
+		resultInterface[i] = result[i]
+	}
+
+	status := make([]UnitStates, len(result))
+	statusInterface := make([]interface{}, len(status))
+	for i := range status {
+		statusInterface[i] = &status[i]
+	}
+
+	err = dbus.Store(resultInterface, statusInterface...)
+	if err != nil {
+		return nil, err
+	}
+
+	return status, nil
+}
+
 type UnitFile struct {
 	Path string
 	Type string
