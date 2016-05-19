@@ -230,6 +230,28 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 	}
 }
 
+// TestGetServiceProperty reads the `systemd-udevd.service` which should exist
+// on all systemd systems and ensures that one of its property is valid.
+func TestGetServiceProperty(t *testing.T) {
+	conn := setupConn(t)
+
+	service := "systemd-udevd.service"
+
+	prop, err := conn.GetServiceProperty(service, "Type")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if prop.Name != "Type" {
+		t.Fatal("unexpected property name")
+	}
+
+	value := prop.Value.Value().(string)
+	if value != "notify" {
+		t.Fatal("unexpected property value")
+	}
+}
+
 // TestSetUnitProperties changes a cgroup setting on the `tmp.mount`
 // which should exist on all systemd systems and ensures that the
 // property was set.
