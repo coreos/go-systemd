@@ -164,6 +164,15 @@ package sdjournal
 // }
 //
 // int
+// my_sd_journal_seek_head(void *f, sd_journal *j)
+// {
+//   int (*sd_journal_seek_head)(sd_journal *);
+//
+//   sd_journal_seek_head = f;
+//   return sd_journal_seek_head(j);
+// }
+//
+// int
 // my_sd_journal_seek_tail(void *f, sd_journal *j)
 // {
 //   int (*sd_journal_seek_tail)(sd_journal *);
@@ -585,6 +594,25 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	}
 
 	return uint64(usec), nil
+}
+
+// SeekHead seeks to the beginning of the journal, i.e. the oldest available
+// entry.
+func (j *Journal) SeekHead() error {
+	sd_journal_seek_head, err := j.getFunction("sd_journal_seek_head")
+	if err != nil {
+		return err
+	}
+
+	j.mu.Lock()
+	r := C.my_sd_journal_seek_head(sd_journal_seek_head, j.cjournal)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to seek to head of journal: %d", syscall.Errno(-r))
+	}
+
+	return nil
 }
 
 // SeekTail may be used to seek to the end of the journal, i.e. the most recent
