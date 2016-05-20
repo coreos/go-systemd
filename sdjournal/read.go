@@ -125,8 +125,14 @@ func (r *JournalReader) Read(b []byte) (int, error) {
 	return len(msg), nil
 }
 
+// Close closes the JournalReader's handle to the journal.
 func (r *JournalReader) Close() error {
 	return r.journal.Close()
+}
+
+// Rewind attempts to rewind the JournalReader to the first entry.
+func (r *JournalReader) Rewind() error {
+	return r.journal.SeekHead()
 }
 
 // Follow synchronously follows the JournalReader, writing each new journal entry to writer. The
