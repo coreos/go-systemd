@@ -25,6 +25,7 @@
 package sdjournal
 
 // #include <systemd/sd-journal.h>
+// #include <systemd/sd-id128.h>
 // #include <stdlib.h>
 // #include <syslog.h>
 //
@@ -182,6 +183,15 @@ package sdjournal
 // }
 //
 // int
+// my_sd_journal_get_monotonic_usec(void *f, sd_journal *j, uint64_t *usec, sd_id128_t *boot_id)
+// {
+//   int (*sd_journal_get_monotonic_usec)(sd_journal *, uint64_t *, sd_id128_t *);
+//
+//   sd_journal_get_monotonic_usec = f;
+//   return sd_journal_get_monotonic_usec(j, usec, boot_id);
+// }
+//
+// int
 // my_sd_journal_seek_head(void *f, sd_journal *j)
 // {
 //   int (*sd_journal_seek_head)(sd_journal *);
@@ -225,6 +235,24 @@ package sdjournal
 //
 //   sd_journal_wait = f;
 //   return sd_journal_wait(j, timeout_usec);
+// }
+//
+// void
+// my_sd_journal_restart_data(void *f, sd_journal *j)
+// {
+//   void (*sd_journal_restart_data)(sd_journal *);
+//
+//   sd_journal_restart_data = f;
+//   sd_journal_restart_data(j);
+// }
+//
+// int
+// my_sd_journal_enumerate_data(void *f, sd_journal *j, const void **data, size_t *length)
+// {
+//   int (*sd_journal_enumerate_data)(sd_journal *, const void **, size_t *);
+//
+//   sd_journal_enumerate_data = f;
+//   return sd_journal_enumerate_data(j, data, length);
 // }
 //
 import "C"
@@ -286,6 +314,14 @@ type Journal struct {
 	cjournal *C.sd_journal
 	mu       sync.Mutex
 	lib      *dlopen.LibHandle
+}
+
+// JournalEntry represents all fields of a journal entry plus address fields.
+type JournalEntry struct {
+	Fields             map[string]string
+	Cursor             string
+	RealtimeTimestamp  uint64
+	MonotonicTimestamp uint64
 }
 
 // Match is a convenience wrapper to describe filters supplied to AddMatch.
@@ -583,6 +619,93 @@ func (j *Journal) GetDataValue(field string) (string, error) {
 	return strings.SplitN(val, "=", 2)[1], nil
 }
 
+// GetEntry returns a full representation of a journal entry with
+// all key-value pairs of data as well as address fields (cursor, realtime
+// timestamp and monotonic timestamp)
+func (j *Journal) GetEntry() (*JournalEntry, error) {
+	sd_journal_get_realtime_usec, err := j.getFunction("sd_journal_get_realtime_usec")
+	if err != nil {
+		return nil, err
+	}
+
+	sd_journal_get_monotonic_usec, err := j.getFunction("sd_journal_get_monotonic_usec")
+	if err != nil {
+		return nil, err
+	}
+
+	sd_journal_get_cursor, err := j.getFunction("sd_journal_get_cursor")
+	if err != nil {
+		return nil, err
+	}
+
+	sd_journal_restart_data, err := j.getFunction("sd_journal_restart_data")
+	if err != nil {
+		return nil, err
+	}
+
+	sd_journal_enumerate_data, err := j.getFunction("sd_journal_enumerate_data")
+	if err != nil {
+		return nil, err
+	}
+
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	var r C.int
+	entry := &JournalEntry{Fields: make(map[string]string)}
+
+	var realtimeUsec C.uint64_t
+	r = C.my_sd_journal_get_realtime_usec(sd_journal_get_realtime_usec, j.cjournal, &realtimeUsec)
+	if r < 0 {
+		return nil, fmt.Errorf("failed to get realtime timestamp: %d", syscall.Errno(-r))
+	}
+
+	entry.RealtimeTimestamp = uint64(realtimeUsec)
+
+	var monotonicUsec C.uint64_t
+	var boot_id C.sd_id128_t
+
+	r = C.my_sd_journal_get_monotonic_usec(sd_journal_get_monotonic_usec, j.cjournal, &monotonicUsec, &boot_id)
+	if r < 0 {
+		return nil, fmt.Errorf("failed to get monotonic timestamp: %d", syscall.Errno(-r))
+	}
+
+	entry.MonotonicTimestamp = uint64(monotonicUsec)
+
+	var c *C.char
+	r = C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &c)
+	if r < 0 {
+		return nil, fmt.Errorf("failed to get cursor: %d", syscall.Errno(-r))
+	}
+
+	entry.Cursor = C.GoString(c)
+
+	// Implements the JOURNAL_FOREACH_DATA_RETVAL macro from journal-internal.h
+	var d unsafe.Pointer
+	var l C.size_t
+	C.my_sd_journal_restart_data(sd_journal_restart_data, j.cjournal)
+	for {
+		r = C.my_sd_journal_enumerate_data(sd_journal_enumerate_data, j.cjournal, &d, &l)
+		if r == 0 {
+			break
+		}
+
+		if r < 0 {
+			return nil, fmt.Errorf("failed to read message field: %d", syscall.Errno(-r))
+		}
+
+		msg := C.GoStringN((*C.char)(d), C.int(l))
+		kv := strings.SplitN(msg, "=", 2)
+		if len(kv) < 2 {
+			return nil, fmt.Errorf("failed to parse field")
+		}
+
+		entry.Fields[kv[0]] = kv[1]
+	}
+
+	return entry, nil
+}
+
 // SetDataThresold sets the data field size threshold for data returned by
 // GetData. To retrieve the complete data fields this threshold should be
 // turned off by setting it to 0, so that the library always returns the
@@ -619,7 +742,28 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return 0, fmt.Errorf("error getting timestamp for entry: %d", syscall.Errno(-r))
+		return 0, fmt.Errorf("failed to get realtime timestamp: %d", syscall.Errno(-r))
+	}
+
+	return uint64(usec), nil
+}
+
+// GetMonotonicUsec gets the monotonic timestamp of the current journal entry.
+func (j *Journal) GetMonotonicUsec() (uint64, error) {
+	var usec C.uint64_t
+	var boot_id C.sd_id128_t
+
+	sd_journal_get_monotonic_usec, err := j.getFunction("sd_journal_get_monotonic_usec")
+	if err != nil {
+		return 0, err
+	}
+
+	j.mu.Lock()
+	r := C.my_sd_journal_get_monotonic_usec(sd_journal_get_monotonic_usec, j.cjournal, &usec, &boot_id)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return 0, fmt.Errorf("failed to get monotonic timestamp: %d", syscall.Errno(-r))
 	}
 
 	return uint64(usec), nil
