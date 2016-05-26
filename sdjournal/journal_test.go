@@ -16,6 +16,9 @@
 package sdjournal
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -86,5 +89,64 @@ func TestJournalGetUsage(t *testing.T) {
 
 	if err != nil {
 		t.Fatalf("Error getting journal size: %s", err)
+	}
+}
+
+func TestJournalCursorGetSeekAndTest(t *testing.T) {
+	j, err := NewJournal()
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+
+	if j == nil {
+		t.Fatal("Got a nil journal")
+	}
+
+	defer j.Close()
+
+	waitAndNext := func(j *Journal) error {
+		r := j.Wait(time.Duration(1) * time.Second)
+		if r < 0 {
+			return errors.New("Error waiting to journal")
+		}
+
+		n, err := j.Next()
+		if err != nil {
+			return fmt.Errorf("Error reading to journal: %s", err)
+		}
+
+		if n == 0 {
+			return fmt.Errorf("Error reading to journal: %s", io.EOF)
+		}
+
+		return nil
+	}
+
+	err = journal.Print(journal.PriInfo, "test message for cursor %s", time.Now())
+	if err != nil {
+		t.Fatalf("Error writing to journal: %s", err)
+	}
+
+	if err = waitAndNext(j); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	c, err := j.GetCursor()
+	if err != nil {
+		t.Fatalf("Error getting cursor from journal: %s", err)
+	}
+
+	err = j.SeekCursor(c)
+	if err != nil {
+		t.Fatalf("Error seeking cursor to journal: %s", err)
+	}
+
+	if err = waitAndNext(j); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	err = j.TestCursor(c)
+	if err != nil {
+		t.Fatalf("Error testing cursor to journal: %s", err)
 	}
 }

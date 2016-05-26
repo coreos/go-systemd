@@ -33,6 +33,7 @@ type JournalReaderConfig struct {
 	// where the reading begins within the journal.
 	Since       time.Duration // start relative to a Duration from now
 	NumFromTail uint64        // start relative to the tail
+	Cursor      string        // start relative to the cursor
 
 	// Show only journal entries whose fields match the supplied values. If
 	// the array is empty, entries will not be filtered.
@@ -87,6 +88,11 @@ func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
 		// the option so that the initial cursor advancement positions us at the
 		// correct starting point.
 		if _, err := r.journal.PreviousSkip(config.NumFromTail + 1); err != nil {
+			return nil, err
+		}
+	} else if config.Cursor != "" {
+		// Start based on a custom cursor
+		if err := r.journal.SeekCursor(config.Cursor); err != nil {
 			return nil, err
 		}
 	}

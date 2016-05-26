@@ -155,6 +155,24 @@ package sdjournal
 // }
 //
 // int
+// my_sd_journal_get_cursor(void *f, sd_journal *j, char **cursor)
+// {
+//   int (*sd_journal_get_cursor)(sd_journal *, char **);
+//
+//   sd_journal_get_cursor = f;
+//   return sd_journal_get_cursor(j, cursor);
+// }
+//
+// int
+// my_sd_journal_test_cursor(void *f, sd_journal *j, const char *cursor)
+// {
+//   int (*sd_journal_test_cursor)(sd_journal *, const char *);
+//
+//   sd_journal_test_cursor = f;
+//   return sd_journal_test_cursor(j, cursor);
+// }
+//
+// int
 // my_sd_journal_get_realtime_usec(void *f, sd_journal *j, uint64_t *usec)
 // {
 //   int (*sd_journal_get_realtime_usec)(sd_journal *, uint64_t *);
@@ -179,6 +197,16 @@ package sdjournal
 //
 //   sd_journal_seek_tail = f;
 //   return sd_journal_seek_tail(j);
+// }
+//
+//
+// int
+// my_sd_journal_seek_cursor(void *f, sd_journal *j, const char *cursor)
+// {
+//   int (*sd_journal_seek_cursor)(sd_journal *, const char *);
+//
+//   sd_journal_seek_cursor = f;
+//   return sd_journal_seek_cursor(j, cursor);
 // }
 //
 // int
@@ -597,6 +625,50 @@ func (j *Journal) GetRealtimeUsec() (uint64, error) {
 	return uint64(usec), nil
 }
 
+// GetCursor gets the cursor of the current journal entry.
+func (j *Journal) GetCursor() (string, error) {
+	var d *C.char
+
+	sd_journal_get_cursor, err := j.getFunction("sd_journal_get_cursor")
+	if err != nil {
+		return "", err
+	}
+
+	j.mu.Lock()
+	r := C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &d)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return "", fmt.Errorf("failed to get cursor: %d", syscall.Errno(-r))
+	}
+
+	cursor := C.GoString(d)
+
+	return cursor, nil
+}
+
+// TestCursor checks whether the current position in the journal matches the
+// specified cursor
+func (j *Journal) TestCursor(cursor string) error {
+	sd_journal_test_cursor, err := j.getFunction("sd_journal_test_cursor")
+	if err != nil {
+		return err
+	}
+
+	c := C.CString(cursor)
+	defer C.free(unsafe.Pointer(c))
+
+	j.mu.Lock()
+	r := C.my_sd_journal_test_cursor(sd_journal_test_cursor, j.cjournal, c)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to test to cursor %q: %d", cursor, syscall.Errno(-r))
+	}
+
+	return nil
+}
+
 // SeekHead seeks to the beginning of the journal, i.e. the oldest available
 // entry.
 func (j *Journal) SeekHead() error {
@@ -649,6 +721,27 @@ func (j *Journal) SeekRealtimeUsec(usec uint64) error {
 
 	if r < 0 {
 		return fmt.Errorf("failed to seek to %d: %d", usec, syscall.Errno(-r))
+	}
+
+	return nil
+}
+
+// SeekCursor seeks to a concrete journal cursor.
+func (j *Journal) SeekCursor(cursor string) error {
+	sd_journal_seek_cursor, err := j.getFunction("sd_journal_seek_cursor")
+	if err != nil {
+		return err
+	}
+
+	c := C.CString(cursor)
+	defer C.free(unsafe.Pointer(c))
+
+	j.mu.Lock()
+	r := C.my_sd_journal_seek_cursor(sd_journal_seek_cursor, j.cjournal, c)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to seek to cursor %q: %d", cursor, syscall.Errno(-r))
 	}
 
 	return nil
