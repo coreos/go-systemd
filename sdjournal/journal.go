@@ -217,14 +217,15 @@ var libsystemdFunctions = map[string]unsafe.Pointer{}
 // Journal entry field strings which correspond to:
 // http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
 const (
-	SD_JOURNAL_FIELD_SYSTEMD_UNIT = "_SYSTEMD_UNIT"
-	SD_JOURNAL_FIELD_MESSAGE      = "MESSAGE"
-	SD_JOURNAL_FIELD_PID          = "_PID"
-	SD_JOURNAL_FIELD_UID          = "_UID"
-	SD_JOURNAL_FIELD_GID          = "_GID"
-	SD_JOURNAL_FIELD_HOSTNAME     = "_HOSTNAME"
-	SD_JOURNAL_FIELD_MACHINE_ID   = "_MACHINE_ID"
-	SD_JOURNAL_FIELD_TRANSPORT    = "_TRANSPORT"
+	SD_JOURNAL_FIELD_SYSTEMD_UNIT      = "_SYSTEMD_UNIT"
+	SD_JOURNAL_FIELD_SYSLOG_IDENTIFIER = "SYSLOG_IDENTIFIER"
+	SD_JOURNAL_FIELD_MESSAGE           = "MESSAGE"
+	SD_JOURNAL_FIELD_PID               = "_PID"
+	SD_JOURNAL_FIELD_UID               = "_UID"
+	SD_JOURNAL_FIELD_GID               = "_GID"
+	SD_JOURNAL_FIELD_HOSTNAME          = "_HOSTNAME"
+	SD_JOURNAL_FIELD_MACHINE_ID        = "_MACHINE_ID"
+	SD_JOURNAL_FIELD_TRANSPORT         = "_TRANSPORT"
 )
 
 // Journal event constants
