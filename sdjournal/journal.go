@@ -323,12 +323,13 @@ func NewJournal() (j *Journal, err error) {
 		return nil, err
 	}
 	defer func() {
-		if err == nil {
-			return
-		}
 		err2 := h.Close()
 		if err2 != nil {
-			err = fmt.Errorf(`%q and "error closing handle: %v"`, err, err2)
+			if err != nil {
+				err = fmt.Errorf(`%q and "error closing handle: %v"`, err, err2)
+			} else {
+				err = fmt.Errorf(`error closing handle: %v`, err2)
+			}
 		}
 	}()
 
@@ -357,12 +358,13 @@ func NewJournalFromDir(path string) (j *Journal, err error) {
 		return nil, err
 	}
 	defer func() {
-		if err == nil {
-			return
-		}
 		err2 := h.Close()
 		if err2 != nil {
-			err = fmt.Errorf(`%q and "error closing handle: %v"`, err, err2)
+			if err != nil {
+				err = fmt.Errorf(`%q and "error closing handle: %v"`, err, err2)
+			} else {
+				err = fmt.Errorf(`error closing handle: %v`, err2)
+			}
 		}
 	}()
 
