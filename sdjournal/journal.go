@@ -240,8 +240,6 @@ import (
 	"github.com/coreos/pkg/dlopen"
 )
 
-var libsystemdFunctions = map[string]unsafe.Pointer{}
-
 // Journal entry field strings which correspond to:
 // http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html
 const (
@@ -283,9 +281,10 @@ var libsystemdNames = []string{
 
 // Journal is a Go wrapper of an sd_journal structure.
 type Journal struct {
-	cjournal *C.sd_journal
-	mu       sync.Mutex
-	lib      *dlopen.LibHandle
+	cjournal            *C.sd_journal
+	mu                  sync.Mutex
+	lib                 *dlopen.LibHandle
+	libsystemdFunctions map[string]unsafe.Pointer
 }
 
 // Match is a convenience wrapper to describe filters supplied to AddMatch.
@@ -302,7 +301,7 @@ func (m *Match) String() string {
 func (j *Journal) getFunction(name string) (unsafe.Pointer, error) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	f, ok := libsystemdFunctions[name]
+	f, ok := j.libsystemdFunctions[name]
 	if !ok {
 		var err error
 		f, err = j.lib.GetSymbolPointer(name)
@@ -310,7 +309,7 @@ func (j *Journal) getFunction(name string) (unsafe.Pointer, error) {
 			return nil, err
 		}
 
-		libsystemdFunctions[name] = f
+		j.libsystemdFunctions[name] = f
 	}
 
 	return f, nil
@@ -332,7 +331,7 @@ func NewJournal() (j *Journal, err error) {
 		}
 	}()
 
-	j = &Journal{lib: h}
+	j = &Journal{lib: h, libsystemdFunctions: make(map[string]unsafe.Pointer)}
 
 	sd_journal_open, err := j.getFunction("sd_journal_open")
 	if err != nil {
@@ -371,7 +370,7 @@ func NewJournalFromDir(path string) (j *Journal, err error) {
 		return nil, err
 	}
 
-	j = &Journal{lib: h}
+	j = &Journal{lib: h, libsystemdFunctions: make(map[string]unsafe.Pointer)}
 
 	sd_journal_open_directory, err := j.getFunction("sd_journal_open_directory")
 	if err != nil {
