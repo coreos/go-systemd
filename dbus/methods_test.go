@@ -71,6 +71,24 @@ func linkUnit(target string, conn *Conn, t *testing.T) {
 	}
 }
 
+func getUnitStatus(units []UnitStatus, name string) *UnitStatus {
+	for _, u := range units {
+		if u.Name == name {
+			return &u
+		}
+	}
+	return nil
+}
+
+func getUnitFile(units []UnitFile, name string) *UnitFile {
+	for _, u := range units {
+		if path.Base(u.Path) == name {
+			return &u
+		}
+	}
+	return nil
+}
+
 // Ensure that basic unit starting and stopping works.
 func TestStartStopUnit(t *testing.T) {
 	target := "start-stop.service"
@@ -93,19 +111,11 @@ func TestStartStopUnit(t *testing.T) {
 
 	units, err := conn.ListUnits()
 
-	var unit *UnitStatus
-	for _, u := range units {
-		if u.Name == target {
-			unit = &u
-			break
-		}
-	}
+	unit := getUnitStatus(units, target)
 
 	if unit == nil {
 		t.Fatalf("Test unit not found in list")
-	}
-
-	if unit.ActiveState != "active" {
+	} else if unit.ActiveState != "active" {
 		t.Fatalf("Test unit not active")
 	}
 
@@ -120,13 +130,7 @@ func TestStartStopUnit(t *testing.T) {
 
 	units, err = conn.ListUnits()
 
-	unit = nil
-	for _, u := range units {
-		if u.Name == target {
-			unit = &u
-			break
-		}
-	}
+	unit = getUnitStatus(units, target)
 
 	if unit != nil {
 		t.Fatalf("Test unit found in list, should be stopped")
@@ -143,38 +147,22 @@ func TestListUnitsByNames(t *testing.T) {
 	units, err := conn.ListUnitsByNames([]string{target1, target2})
 
 	if err != nil {
-		t.Fatal(err)
+		t.Skip(err)
 	}
 
-	var unit *UnitStatus
-	for _, u := range units {
-		if u.Name == target1 {
-			unit = &u
-			break
-		}
-	}
+	unit := getUnitStatus(units, target1)
 
 	if unit == nil {
 		t.Fatalf("%s unit not found in list", target1)
-	}
-
-	if unit.ActiveState != "active" {
+	} else if unit.ActiveState != "active" {
 		t.Fatalf("%s unit should be active but it is %s", target1, unit.ActiveState)
 	}
 
-	unit = nil
-	for _, u := range units {
-		if u.Name == target2 {
-			unit = &u
-			break
-		}
-	}
+	unit = getUnitStatus(units, target2)
 
 	if unit == nil {
 		t.Fatalf("Unexisting test unit not found in list")
-	}
-
-	if unit.ActiveState != "inactive" {
+	} else if unit.ActiveState != "inactive" {
 		t.Fatalf("Test unit should be inactive")
 	}
 }
@@ -189,32 +177,18 @@ func TestListUnitsByPatterns(t *testing.T) {
 	units, err := conn.ListUnitsByPatterns([]string{}, []string{"systemd-journald*", target2})
 
 	if err != nil {
-		t.Fatal(err)
+		t.Skip(err)
 	}
 
-	var unit *UnitStatus
-	for _, u := range units {
-		if u.Name == target1 {
-			unit = &u
-			break
-		}
-	}
+	unit := getUnitStatus(units, target1)
 
 	if unit == nil {
 		t.Fatalf("%s unit not found in list", target1)
-	}
-
-	if unit.ActiveState != "active" {
+	} else if unit.ActiveState != "active" {
 		t.Fatalf("Test unit should be active")
 	}
 
-	unit = nil
-	for _, u := range units {
-		if u.Name == target2 {
-			unit = &u
-			break
-		}
-	}
+	unit = getUnitStatus(units, target2)
 
 	if unit != nil {
 		t.Fatalf("Unexisting test unit found in list")
@@ -233,19 +207,11 @@ func TestListUnitsFiltered(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var unit *UnitStatus
-	for _, u := range units {
-		if u.Name == target {
-			unit = &u
-			break
-		}
-	}
+	unit := getUnitStatus(units, target)
 
 	if unit == nil {
 		t.Fatalf("%s unit not found in list", target)
-	}
-
-	if unit.ActiveState != "active" {
+	} else if unit.ActiveState != "active" {
 		t.Fatalf("Test unit should be active")
 	}
 
@@ -255,13 +221,7 @@ func TestListUnitsFiltered(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unit = nil
-	for _, u := range units {
-		if u.Name == target {
-			unit = &u
-			break
-		}
-	}
+	unit = getUnitStatus(units, target)
 
 	if unit != nil {
 		t.Fatalf("Inactive unit should not be found in list")
@@ -278,22 +238,14 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	units, err := conn.ListUnitFilesByPatterns([]string{"static"}, []string{"systemd-journald*", target2})
 
 	if err != nil {
-		t.Fatal(err)
+		t.Skip(err)
 	}
 
-	var unit *UnitFile
-	for _, u := range units {
-		if path.Base(u.Path) == target1 {
-			unit = &u
-			break
-		}
-	}
+	unit := getUnitFile(units, target1)
 
 	if unit == nil {
 		t.Fatalf("%s unit not found in list", target1)
-	}
-
-	if unit.Type != "static" {
+	} else if unit.Type != "static" {
 		t.Fatalf("Test unit file should be static")
 	}
 
@@ -303,19 +255,11 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	unit = nil
-	for _, u := range units {
-		if path.Base(u.Path) == target2 {
-			unit = &u
-			break
-		}
-	}
+	unit = getUnitFile(units, target2)
 
 	if unit == nil {
 		t.Fatalf("%s unit not found in list", target2)
-	}
-
-	if unit.Type != "disabled" {
+	} else if unit.Type != "disabled" {
 		t.Fatalf("%s unit file should be disabled", target2)
 	}
 }
@@ -332,35 +276,19 @@ func TestListUnitFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var unit *UnitFile
-	for _, u := range units {
-		if path.Base(u.Path) == target1 {
-			unit = &u
-			break
-		}
-	}
+	unit := getUnitFile(units, target1)
 
 	if unit == nil {
 		t.Fatalf("%s unit not found in list", target1)
-	}
-
-	if unit.Type != "static" {
+	} else if unit.Type != "static" {
 		t.Fatalf("Test unit file should be static")
 	}
 
-	unit = nil
-	for _, u := range units {
-		if path.Base(u.Path) == target2 {
-			unit = &u
-			break
-		}
-	}
+	unit = getUnitFile(units, target2)
 
 	if unit == nil {
 		t.Fatalf("%s unit not found in list", target2)
-	}
-
-	if unit.Type != "disabled" {
+	} else if unit.Type != "disabled" {
 		t.Fatalf("%s unit file should be disabled", target2)
 	}
 }
@@ -533,19 +461,11 @@ func TestStartStopTransientUnit(t *testing.T) {
 
 	units, err := conn.ListUnits()
 
-	var unit *UnitStatus
-	for _, u := range units {
-		if u.Name == target {
-			unit = &u
-			break
-		}
-	}
+	unit := getUnitStatus(units, target)
 
 	if unit == nil {
 		t.Fatalf("Test unit not found in list")
-	}
-
-	if unit.ActiveState != "active" {
+	} else if unit.ActiveState != "active" {
 		t.Fatalf("Test unit not active")
 	}
 
@@ -560,13 +480,7 @@ func TestStartStopTransientUnit(t *testing.T) {
 
 	units, err = conn.ListUnits()
 
-	unit = nil
-	for _, u := range units {
-		if u.Name == target {
-			unit = &u
-			break
-		}
-	}
+	unit = getUnitStatus(units, target)
 
 	if unit != nil {
 		t.Fatalf("Test unit found in list, should be stopped")
