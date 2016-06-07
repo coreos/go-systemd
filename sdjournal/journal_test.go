@@ -175,3 +175,56 @@ func TestNewJournalFromDir(t *testing.T) {
 	}
 	j.Close()
 }
+
+func TestJournalGetEntry(t *testing.T) {
+	j, err := NewJournal()
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+
+	if j == nil {
+		t.Fatal("Got a nil journal")
+	}
+
+	defer j.Close()
+
+	j.FlushMatches()
+
+	matchField := "TESTJOURNALGETENTRY"
+	matchValue := fmt.Sprintf("%d", time.Now().UnixNano())
+	m := Match{Field: matchField, Value: matchValue}
+	err = j.AddMatch(m.String())
+	if err != nil {
+		t.Fatalf("Error adding matches to journal: %s", err)
+	}
+
+	want := fmt.Sprintf("test journal get entry message %s", time.Now())
+	err = journal.Send(want, journal.PriInfo, map[string]string{matchField: matchValue})
+	if err != nil {
+		t.Fatalf("Error writing to journal: %s", err)
+	}
+
+	r := j.Wait(time.Duration(1) * time.Second)
+	if r < 0 {
+		t.Fatalf("Error waiting to journal")
+	}
+
+	n, err := j.Next()
+	if err != nil {
+		t.Fatalf("Error reading to journal: %s", err)
+	}
+
+	if n == 0 {
+		t.Fatalf("Error reading to journal: %s", io.EOF)
+	}
+
+	entry, err := j.GetEntry()
+	if err != nil {
+		t.Fatalf("Error getting the entry to journal: %s", err)
+	}
+
+	got := entry.Fields["MESSAGE"]
+	if got != want {
+		t.Fatalf("Bad result for entry.Fields[\"MESSAGE\"]: got %s, want %s", got, want)
+	}
+}
