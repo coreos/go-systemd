@@ -466,7 +466,9 @@ func (j *Journal) Close() error {
 	C.my_sd_journal_close(sd_journal_close, j.cjournal)
 	j.mu.Unlock()
 
-	return j.lib.Close()
+	// we don't close the handle to reuse the symbol cache between Journal
+	// instances. It will go away when the process exits.
+	return nil
 }
 
 // AddMatch adds a match by which to filter the entries of the journal.
