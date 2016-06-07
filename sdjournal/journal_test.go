@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -149,4 +150,28 @@ func TestJournalCursorGetSeekAndTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error testing cursor to journal: %s", err)
 	}
+}
+
+func TestNewJournalFromDir(t *testing.T) {
+	// test for error handling
+	dir := "/ClearlyNonExistingPath/"
+	j, err := NewJournalFromDir(dir)
+	if err == nil {
+		defer j.Close()
+		t.Fatalf("Error expected when opening dummy path (%s)", dir)
+	}
+	// test for main code path
+	dir, err = ioutil.TempDir("", "go-systemd-test")
+	if err != nil {
+		t.Fatalf("Error creating tempdir: %s", err)
+	}
+	defer os.RemoveAll(dir)
+	j, err = NewJournalFromDir(dir)
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+	if j == nil {
+		t.Fatal("Got a nil journal")
+	}
+	j.Close()
 }
