@@ -161,7 +161,7 @@ process:
 			return ErrExpired
 		default:
 			if c > 0 {
-				if err = writer.Write(msg[:c]); err != nil {
+				if _, err = writer.Write(msg[:c]); err != nil {
 					break process
 				}
 				continue process
