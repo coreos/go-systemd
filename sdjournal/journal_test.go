@@ -178,53 +178,116 @@ func TestNewJournalFromDir(t *testing.T) {
 	j.Close()
 }
 
-func TestJournalGetEntry(t *testing.T) {
+func setupJournalRoundtrip() (*Journal, map[string]string, error) {
 	j, err := NewJournal()
 	if err != nil {
-		t.Fatalf("Error opening journal: %s", err)
+		return nil, nil, fmt.Errorf("Error opening journal: %s", err)
 	}
 
 	if j == nil {
-		t.Fatal("Got a nil journal")
+		return nil, nil, fmt.Errorf("Got a nil journal")
 	}
-
-	defer j.Close()
 
 	j.FlushMatches()
 
-	matchField := "TESTJOURNALGETENTRY"
+	matchField := "TESTJOURNALENTRY"
 	matchValue := fmt.Sprintf("%d", time.Now().UnixNano())
 	m := Match{Field: matchField, Value: matchValue}
 	err = j.AddMatch(m.String())
 	if err != nil {
-		t.Fatalf("Error adding matches to journal: %s", err)
+		return nil, nil, fmt.Errorf("Error adding matches to journal: %s", err)
 	}
 
-	want := fmt.Sprintf("test journal get entry message %s", time.Now())
-	err = journal.Send(want, journal.PriInfo, map[string]string{matchField: matchValue})
+	msg := fmt.Sprintf("test journal get entry message %s", time.Now())
+	data := map[string]string{matchField: matchValue}
+	err = journal.Send(msg, journal.PriInfo, data)
 	if err != nil {
-		t.Fatalf("Error writing to journal: %s", err)
+		return nil, nil, fmt.Errorf("Error writing to journal: %s", err)
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
 
 	n, err := j.Next()
 	if err != nil {
-		t.Fatalf("Error reading to journal: %s", err)
+		return nil, nil, fmt.Errorf("Error reading from journal: %s", err)
 	}
 
 	if n == 0 {
-		t.Fatalf("Error reading to journal: %s", io.EOF)
+		return nil, nil, fmt.Errorf("Error reading from journal: %s", io.EOF)
 	}
+
+	data["MESSAGE"] = msg
+
+	return j, data, nil
+}
+
+func TestJournalGetData(t *testing.T) {
+	j, wantEntry, err := setupJournalRoundtrip()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	defer j.Close()
+
+	for k, v := range wantEntry {
+		data := fmt.Sprintf("%s=%s", k, v)
+
+		dataStr, err := j.GetData(k)
+		if err != nil {
+			t.Fatalf("GetData() error: %v", err)
+		}
+
+		if dataStr != data {
+			t.Fatalf("Invalid data for \"%s\": got %s, want %s", k, dataStr, data)
+		}
+
+		dataBytes, err := j.GetDataBytes(k)
+		if err != nil {
+			t.Fatalf("GetDataBytes() error: %v", err)
+		}
+
+		if string(dataBytes) != data {
+			t.Fatalf("Invalid data bytes for \"%s\": got %s, want %s", k, string(dataBytes), data)
+		}
+
+		valStr, err := j.GetDataValue(k)
+		if err != nil {
+			t.Fatalf("GetDataValue() error: %v", err)
+		}
+
+		if valStr != v {
+			t.Fatalf("Invalid data value for \"%s\": got %s, want %s", k, valStr, v)
+		}
+
+		valBytes, err := j.GetDataValueBytes(k)
+		if err != nil {
+			t.Fatalf("GetDataValueBytes() error: %v", err)
+		}
+
+		if string(valBytes) != v {
+			t.Fatalf("Invalid data value bytes for \"%s\": got %s, want %s", k, string(valBytes), v)
+		}
+	}
+}
+
+func TestJournalGetEntry(t *testing.T) {
+	j, wantEntry, err := setupJournalRoundtrip()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	defer j.Close()
 
 	entry, err := j.GetEntry()
 	if err != nil {
 		t.Fatalf("Error getting the entry to journal: %s", err)
 	}
 
-	got := entry.Fields["MESSAGE"]
-	if got != want {
-		t.Fatalf("Bad result for entry.Fields[\"MESSAGE\"]: got %s, want %s", got, want)
+	for k, wantV := range wantEntry {
+		gotV := entry.Fields[k]
+		if gotV != wantV {
+			t.Fatalf("Bad result for entry.Fields[\"%s\"]: got %s, want %s", k, gotV, wantV)
+		}
 	}
 }
 
