@@ -16,11 +16,13 @@
 package sdjournal
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -226,5 +228,58 @@ func TestJournalGetEntry(t *testing.T) {
 	got := entry.Fields["MESSAGE"]
 	if got != want {
 		t.Fatalf("Bad result for entry.Fields[\"MESSAGE\"]: got %s, want %s", got, want)
+	}
+}
+
+// Check for incorrect read into small buffers,
+// see https://github.com/coreos/go-systemd/issues/172
+func TestJournalReaderSmallReadBuffer(t *testing.T) {
+	// Write a long entry ...
+	delim := "%%%%%%"
+	longEntry := strings.Repeat("a", 256)
+	matchField := "TESTJOURNALREADERSMALLBUF"
+	matchValue := fmt.Sprintf("%d", time.Now().UnixNano())
+	r, err := NewJournalReader(JournalReaderConfig{
+		Since: time.Duration(-15) * time.Second,
+		Matches: []Match{
+			{
+				Field: matchField,
+				Value: matchValue,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+	if r == nil {
+		t.Fatal("Got a nil reader")
+	}
+	defer r.Close()
+
+	want := fmt.Sprintf("%slongentry %s%s", delim, longEntry, delim)
+	err = journal.Send(want, journal.PriInfo, map[string]string{matchField: matchValue})
+	if err != nil {
+		t.Fatal("Error writing to journal", err)
+	}
+	time.Sleep(time.Second)
+
+	// ... and try to read it back piece by piece via a small buffer
+	finalBuff := new(bytes.Buffer)
+	var e error
+	for c := -1; c != 0 && e == nil; {
+		smallBuf := make([]byte, 5)
+		c, e = r.Read(smallBuf)
+		if c > len(smallBuf) {
+			t.Fatalf("Got unexpected read length: %d vs %d", c, len(smallBuf))
+		}
+		_, _ = finalBuff.Write(smallBuf)
+	}
+	b := finalBuff.String()
+	got := strings.Split(b, delim)
+	if len(got) != 3 {
+		t.Fatalf("Got unexpected entry %s", b)
+	}
+	if got[1] != strings.Trim(want, delim) {
+		t.Fatalf("Got unexpected message %s", got[1])
 	}
 }
