@@ -24,6 +24,7 @@ if [ -z "$GOPATH" ]; then
 	fi
 	export GOPATH=${PWD}/gopath
 	go get -u github.com/godbus/dbus
+	go get -u github.com/coreos/pkg/dlopen
 fi
 
 TESTABLE="activation journal login1 machine1 unit"
