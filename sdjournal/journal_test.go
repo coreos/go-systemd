@@ -206,10 +206,7 @@ func TestJournalGetEntry(t *testing.T) {
 		t.Fatalf("Error writing to journal: %s", err)
 	}
 
-	r := j.Wait(time.Duration(1) * time.Second)
-	if r < 0 {
-		t.Fatalf("Error waiting to journal")
-	}
+	time.Sleep(time.Duration(1) * time.Second)
 
 	n, err := j.Next()
 	if err != nil {
