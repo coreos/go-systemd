@@ -27,7 +27,7 @@ if [ -z "$GOPATH" ]; then
 	go get -u github.com/coreos/pkg/dlopen
 fi
 
-TESTABLE="activation journal login1 machine1 unit"
+TESTABLE="activation daemon journal login1 machine1 unit"
 FORMATTABLE="$TESTABLE sdjournal dbus"
 if [ -e "/run/systemd/system/" ]; then
 	TESTABLE="${TESTABLE} sdjournal"
