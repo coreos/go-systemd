@@ -507,3 +507,56 @@ func TestConnJobListener(t *testing.T) {
 		t.Fatal("JobListener jobs leaked")
 	}
 }
+
+// Enables a unit and then masks/unmasks it
+func TestMaskUnmask(t *testing.T) {
+	target := "mask-unmask.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
+	abs := findFixture(target, t)
+	runPath := filepath.Join("/run/systemd/system/", target)
+
+	// 1. Enable the unit
+	install, changes, err := conn.EnableUnitFiles([]string{abs}, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if install != false {
+		t.Log("Install was true")
+	}
+
+	if len(changes) < 1 {
+		t.Fatalf("Expected one change, got %v", changes)
+	}
+
+	if changes[0].Filename != runPath {
+		t.Fatal("Unexpected target filename")
+	}
+
+	// 2. Mask the unit
+	mChanges, err := conn.MaskUnitFiles([]string{target}, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mChanges[0].Filename != runPath {
+		t.Fatalf("Change should include correct filename, %+v", mChanges[0])
+	}
+	if mChanges[0].Destination != "" {
+		t.Fatalf("Change destination should be empty, %+v", mChanges[0])
+	}
+
+	// 3. Unmask the unit
+	uChanges, err := conn.UnmaskUnitFiles([]string{target}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if uChanges[0].Filename != runPath {
+		t.Fatalf("Change should include correct filename, %+v", uChanges[0])
+	}
+	if uChanges[0].Destination != "" {
+		t.Fatalf("Change destination should be empty, %+v", uChanges[0])
+	}
+
+}
