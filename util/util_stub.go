@@ -16,10 +16,6 @@
 
 package util
 
-import (
-	"fmt"
-)
-
 func getRunningSlice() (string, error) { return "", ErrNoCGO }
 
 func runningFromSystemService() (bool, error) { return false, ErrNoCGO }
