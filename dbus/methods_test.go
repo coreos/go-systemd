@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -476,6 +477,50 @@ func TestStartStopTransientUnit(t *testing.T) {
 	if unit != nil {
 		t.Fatalf("Test unit found in list, should be stopped")
 	}
+}
+
+// Ensure that putting running programs into scopes works
+func TestStartStopTransientScope(t *testing.T) {
+	conn := setupConn(t)
+
+	cmd := exec.Command("/bin/sleep", "400")
+	err := cmd.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+
+	props := []Property{
+		PropPids(uint32(cmd.Process.Pid)),
+	}
+	target := fmt.Sprintf("testing-transient-%d.scope", cmd.Process.Pid)
+
+	// Start the unit
+	reschan := make(chan string)
+	_, err = conn.StartTransientUnit(target, "replace", props, reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Job is not done:", job)
+	}
+
+	units, err := conn.ListUnits()
+
+	unit := getUnitStatus(units, target)
+
+	if unit == nil {
+		t.Fatalf("Test unit not found in list")
+	} else if unit.ActiveState != "active" {
+		t.Fatalf("Test unit not active")
+	}
+
+	// maybe check if pid is really a member of the just created scope
+	//   systemd uses the following api which does not use dbus, but directly
+	//   accesses procfs for cgroup information.
+	//     int sd_pid_get_unit(pid_t pid, char **session)
 }
 
 func TestConnJobListener(t *testing.T) {
