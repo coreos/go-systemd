@@ -736,6 +736,8 @@ func (j *Journal) GetEntry() (*JournalEntry, error) {
 	entry.MonotonicTimestamp = uint64(monotonicUsec)
 
 	var c *C.char
+	defer C.free(unsafe.Pointer(c))
+
 	r = C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &c)
 	if r < 0 {
 		return nil, fmt.Errorf("failed to get cursor: %d", syscall.Errno(-r))
@@ -834,12 +836,13 @@ func (j *Journal) GetMonotonicUsec() (uint64, error) {
 
 // GetCursor gets the cursor of the current journal entry.
 func (j *Journal) GetCursor() (string, error) {
-	var d *C.char
-
 	sd_journal_get_cursor, err := j.getFunction("sd_journal_get_cursor")
 	if err != nil {
 		return "", err
 	}
+
+	var d *C.char
+	defer C.free(unsafe.Pointer(d))
 
 	j.mu.Lock()
 	r := C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &d)
