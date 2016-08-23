@@ -736,14 +736,13 @@ func (j *Journal) GetEntry() (*JournalEntry, error) {
 	entry.MonotonicTimestamp = uint64(monotonicUsec)
 
 	var c *C.char
-	defer C.free(unsafe.Pointer(c))
-
 	r = C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &c)
 	if r < 0 {
 		return nil, fmt.Errorf("failed to get cursor: %d", syscall.Errno(-r))
 	}
 
 	entry.Cursor = C.GoString(c)
+	C.free(unsafe.Pointer(c))
 
 	// Implements the JOURNAL_FOREACH_DATA_RETVAL macro from journal-internal.h
 	var d unsafe.Pointer
@@ -842,7 +841,6 @@ func (j *Journal) GetCursor() (string, error) {
 	}
 
 	var d *C.char
-	defer C.free(unsafe.Pointer(d))
 
 	j.mu.Lock()
 	r := C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &d)
@@ -853,6 +851,7 @@ func (j *Journal) GetCursor() (string, error) {
 	}
 
 	cursor := C.GoString(d)
+	C.free(unsafe.Pointer(d))
 
 	return cursor, nil
 }
