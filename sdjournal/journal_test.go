@@ -59,7 +59,7 @@ func TestJournalFollow(t *testing.T) {
 			case <-done:
 				return
 			default:
-				if err = journal.Print(journal.PriInfo, "test message %s", time.Now()); err != nil {
+				if err := journal.Print(journal.PriInfo, "test message %s", time.Now()); err != nil {
 					t.Fatalf("Error writing to journal: %s", err)
 				}
 
