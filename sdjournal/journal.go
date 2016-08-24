@@ -736,9 +736,10 @@ func (j *Journal) GetEntry() (*JournalEntry, error) {
 	entry.MonotonicTimestamp = uint64(monotonicUsec)
 
 	var c *C.char
-	defer C.free(unsafe.Pointer(c))
-
+	// since the pointer is mutated by sd_journal_get_cursor, need to wait
+	// until after the call to free the memory
 	r = C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &c)
+	defer C.free(unsafe.Pointer(c))
 	if r < 0 {
 		return nil, fmt.Errorf("failed to get cursor: %d", syscall.Errno(-r))
 	}
@@ -842,11 +843,13 @@ func (j *Journal) GetCursor() (string, error) {
 	}
 
 	var d *C.char
-	defer C.free(unsafe.Pointer(d))
+	// since the pointer is mutated by sd_journal_get_cursor, need to wait
+	// until after the call to free the memory
 
 	j.mu.Lock()
 	r := C.my_sd_journal_get_cursor(sd_journal_get_cursor, j.cjournal, &d)
 	j.mu.Unlock()
+	defer C.free(unsafe.Pointer(d))
 
 	if r < 0 {
 		return "", fmt.Errorf("failed to get cursor: %d", syscall.Errno(-r))
