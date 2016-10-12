@@ -255,6 +255,33 @@ package sdjournal
 //   return sd_journal_enumerate_data(j, data, length);
 // }
 //
+// int
+// my_sd_journal_query_unique(void *f, sd_journal *j, const char *field)
+// {
+//   int(*sd_journal_query_unique)(sd_journal *, const char *);
+//
+//   sd_journal_query_unique = f;
+//   return sd_journal_query_unique(j, field);
+// }
+//
+// int
+// my_sd_journal_enumerate_unique(void *f, sd_journal *j, const void **data, size_t *length)
+// {
+//   int(*sd_journal_enumerate_unique)(sd_journal *, const void **, size_t *);
+//
+//   sd_journal_enumerate_unique = f;
+//   return sd_journal_enumerate_unique(j, data, length);
+// }
+//
+// void
+// my_sd_journal_restart_unique(void *f, sd_journal *j)
+// {
+//   void(*sd_journal_restart_unique)(sd_journal *);
+//
+//   sd_journal_restart_unique = f;
+//   sd_journal_restart_unique(j);
+// }
+//
 import "C"
 import (
 	"bytes"
@@ -937,4 +964,61 @@ func (j *Journal) GetUsage() (uint64, error) {
 	}
 
 	return uint64(out), nil
+}
+
+// GetUniqueValues returns all unique values for a given field.
+func (j *Journal) GetUniqueValues(field string) ([]string, error) {
+	var result []string
+
+	sd_journal_query_unique, err := getFunction("sd_journal_query_unique")
+	if err != nil {
+		return nil, err
+	}
+
+	sd_journal_enumerate_unique, err := getFunction("sd_journal_enumerate_unique")
+	if err != nil {
+		return nil, err
+	}
+
+	sd_journal_restart_unique, err := getFunction("sd_journal_restart_unique")
+	if err != nil {
+		return nil, err
+	}
+
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	f := C.CString(field)
+	defer C.free(unsafe.Pointer(f))
+
+	r := C.my_sd_journal_query_unique(sd_journal_query_unique, j.cjournal, f)
+
+	if r < 0 {
+		return nil, fmt.Errorf("failed to query journal: %d", syscall.Errno(-r))
+	}
+
+	// Implements the SD_JOURNAL_FOREACH_UNIQUE macro from sd-journal.h
+	var d unsafe.Pointer
+	var l C.size_t
+	C.my_sd_journal_restart_unique(sd_journal_restart_unique, j.cjournal)
+	for {
+		r = C.my_sd_journal_enumerate_unique(sd_journal_enumerate_unique, j.cjournal, &d, &l)
+		if r == 0 {
+			break
+		}
+
+		if r < 0 {
+			return nil, fmt.Errorf("failed to read message field: %d", syscall.Errno(-r))
+		}
+
+		msg := C.GoStringN((*C.char)(d), C.int(l))
+		kv := strings.SplitN(msg, "=", 2)
+		if len(kv) < 2 {
+			return nil, fmt.Errorf("failed to parse field")
+		}
+
+		result = append(result, kv[1])
+	}
+
+	return result, nil
 }

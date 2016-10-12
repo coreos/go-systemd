@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -342,4 +343,57 @@ func TestJournalReaderSmallReadBuffer(t *testing.T) {
 	if got[1] != strings.Trim(want, delim) {
 		t.Fatalf("Got unexpected message %s", got[1])
 	}
+}
+
+func TestJournalGetUniqueValues(t *testing.T) {
+	j, err := NewJournal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer j.Close()
+
+	uniqueString := generateRandomField(20)
+	testEntries := []string{"A", "B", "C", "D"}
+	for _, v := range testEntries {
+		err := journal.Send("TEST: "+uniqueString, journal.PriInfo, map[string]string{uniqueString: v})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// TODO: add proper `waitOnMatch` function which should wait for journal entry with filter to commit.
+	time.Sleep(time.Millisecond * 500)
+
+	values, err := j.GetUniqueValues(uniqueString)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(values) != len(testEntries) {
+		t.Fatalf("Expect %d entries. Got %d", len(testEntries), len(values))
+	}
+
+	if !contains(values, "A") || !contains(values, "B") || !contains(values, "C") || !contains(values, "D") {
+		t.Fatalf("Expect 4 values for %s field: A,B,C,D. Got %s", uniqueString, values)
+	}
+}
+
+func contains(s []string, v string) bool {
+	for _, entry := range s {
+		if entry == v {
+			return true
+		}
+	}
+	return false
+}
+
+func generateRandomField(n int) string {
+	letters := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	s := make([]rune, n)
+	rand.Seed(time.Now().UnixNano())
+	for i := range s {
+		s[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(s)
 }
