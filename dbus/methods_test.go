@@ -111,6 +111,9 @@ func TestStartStopUnit(t *testing.T) {
 	}
 
 	units, err := conn.ListUnits()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	unit := getUnitStatus(units, target)
 
@@ -130,6 +133,9 @@ func TestStartStopUnit(t *testing.T) {
 	<-reschan
 
 	units, err = conn.ListUnits()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	unit = getUnitStatus(units, target)
 
@@ -452,6 +458,9 @@ func TestStartStopTransientUnit(t *testing.T) {
 	}
 
 	units, err := conn.ListUnits()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	unit := getUnitStatus(units, target)
 
@@ -471,6 +480,9 @@ func TestStartStopTransientUnit(t *testing.T) {
 	<-reschan
 
 	units, err = conn.ListUnits()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	unit = getUnitStatus(units, target)
 
@@ -508,6 +520,9 @@ func TestStartStopTransientScope(t *testing.T) {
 	}
 
 	units, err := conn.ListUnits()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	unit := getUnitStatus(units, target)
 
