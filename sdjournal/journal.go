@@ -474,10 +474,10 @@ func (j *Journal) FlushMatches() {
 }
 
 // Next advances the read pointer into the journal by one entry.
-func (j *Journal) Next() (int, error) {
+func (j *Journal) Next() (uint64, error) {
 	sd_journal_next, err := getFunction("sd_journal_next")
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	j.mu.Lock()
@@ -485,10 +485,10 @@ func (j *Journal) Next() (int, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return int(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
+		return 0, fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
-	return int(r), nil
+	return uint64(r), nil
 }
 
 // NextSkip advances the read pointer by multiple entries at once,
@@ -504,7 +504,7 @@ func (j *Journal) NextSkip(skip uint64) (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
+		return 0, fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
 	return uint64(r), nil
@@ -522,7 +522,7 @@ func (j *Journal) Previous() (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
+		return 0, fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
 	return uint64(r), nil
@@ -541,7 +541,7 @@ func (j *Journal) PreviousSkip(skip uint64) (uint64, error) {
 	j.mu.Unlock()
 
 	if r < 0 {
-		return uint64(r), fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
+		return 0, fmt.Errorf("failed to iterate journal: %d", syscall.Errno(-r))
 	}
 
 	return uint64(r), nil
