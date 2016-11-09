@@ -18,105 +18,64 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 )
 
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestSdWatchdogEnabled(t *testing.T) {
-	// (time, nil)
-	err := os.Setenv("WATCHDOG_USEC", "100")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Setenv("WATCHDOG_PID", strconv.Itoa(os.Getpid()))
-	if err != nil {
-		panic(err)
+	mypid := strconv.Itoa(os.Getpid())
+	tests := []struct {
+		usec string // empty => unset
+		pid  string // empty => unset
+
+		werr   bool
+		wdelay time.Duration
+	}{
+		// Success cases
+		{"100", mypid, false, 100 * time.Microsecond},
+		{"50", mypid, false, 50 * time.Microsecond},
+		{"1", mypid, false, 1 * time.Microsecond},
+
+		// No-op cases
+		{"", mypid, false, 0}, // WATCHDOG_USEC not set
+		{"1", "", false, 0},   // WATCHDOG_PID not set
+		{"1", "0", false, 0},  // WATCHDOG_PID doesn't match
+		{"", "", false, 0},    // Both not set
+
+		// Failure cases
+		{"-1", mypid, true, 0},                // Negative USEC
+		{"string", "1", true, 0},              // Non-integer USEC value
+		{"1", "string", true, 0},              // Non-integer PID value
+		{"stringa", "stringb", true, 0},       // E v e r y t h i n g
+		{"-10239", "-eleventythree", true, 0}, // i s   w r o n g
 	}
 
-	delay, err := SdWatchdogEnabled()
-	if delay == 0 || err != nil {
-		t.Errorf("TEST: Watchdog enabled FAILED")
-	}
+	for i, tt := range tests {
+		if tt.usec != "" {
+			must(os.Setenv("WATCHDOG_USEC", tt.usec))
+		} else {
+			must(os.Unsetenv("WATCHDOG_USEC"))
+		}
+		if tt.pid != "" {
+			must(os.Setenv("WATCHDOG_PID", tt.pid))
+		} else {
+			must(os.Unsetenv("WATCHDOG_PID"))
+		}
 
-	// (0, nil) PID doesnt match
-	err = os.Setenv("WATCHDOG_USEC", "100")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Setenv("WATCHDOG_PID", "0")
-	if err != nil {
-		panic(err)
-	}
-	delay, err = SdWatchdogEnabled()
-	if delay != 0 || err != nil {
-		t.Errorf("TEST: PID doesn't match FAILED")
-	}
+		delay, err := SdWatchdogEnabled()
 
-	// (0, nil) WATCHDOG_USEC doen't exist
-	err = os.Unsetenv("WATCHDOG_USEC")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Setenv("WATCHDOG_PID", strconv.Itoa(os.Getpid()))
-	if err != nil {
-		panic(err)
-	}
-	delay, err = SdWatchdogEnabled()
-	if delay != 0 || err != nil {
-		t.Errorf("TEST: WATCHDOG_USEC doen't exist FAILED")
-	}
-
-	// (0, nil) WATCHDOG_PID doen't exist
-	err = os.Setenv("WATCHDOG_USEC", "1")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Unsetenv("WATCHDOG_PID")
-	if err != nil {
-		panic(err)
-	}
-	delay, err = SdWatchdogEnabled()
-	if delay != 0 || err != nil {
-		t.Errorf("TEST: WATCHDOG_PID doen't exist FAILED")
-	}
-
-	// (0, err) USEC negative
-	err = os.Setenv("WATCHDOG_USEC", "-1")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Setenv("WATCHDOG_PID", strconv.Itoa(os.Getpid()))
-	if err != nil {
-		panic(err)
-	}
-	_, err = SdWatchdogEnabled()
-	if err == nil {
-		t.Errorf("TEST: USEC negative FAILED")
-	}
-
-	// (0, err) Bad USEC
-	err = os.Setenv("WATCHDOG_USEC", "string")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Setenv("WATCHDOG_PID", strconv.Itoa(os.Getpid()))
-	if err != nil {
-		panic(err)
-	}
-	_, err = SdWatchdogEnabled()
-	if err == nil {
-		t.Errorf("TEST: Bad USEC FAILED")
-	}
-
-	// (0, err) Bad PID
-	err = os.Setenv("WATCHDOG_USEC", "1")
-	if err != nil {
-		panic(err)
-	}
-	err = os.Setenv("WATCHDOG_PID", "string")
-	if err != nil {
-		panic(err)
-	}
-	_, err = SdWatchdogEnabled()
-	if err == nil {
-		t.Errorf("TEST: Bad PID FAILED")
+		if tt.werr && err == nil {
+			t.Errorf("#%d: want non-nil err, got nil", i)
+		} else if !tt.werr && err != nil {
+			t.Errorf("#%d: want nil err, got %v", i, err)
+		}
+		if tt.wdelay != delay {
+			t.Errorf("#%d: want delay=%d, got %d", i, tt.wdelay, delay)
+		}
 	}
 }
