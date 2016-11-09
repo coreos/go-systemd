@@ -39,12 +39,13 @@ func SdWatchdogEnabled() (time.Duration, error) {
 		return 0, fmt.Errorf("error converting WATCHDOG_USEC: %s", err)
 	}
 	if s <= 0 {
-		return 0, fmt.Errorf("error WATCHDOG_USEC must a positive number")
+		return 0, fmt.Errorf("error WATCHDOG_USEC must be a positive number")
 	}
+	interval := time.Duration(s) * time.Microsecond
 
 	wpid := os.Getenv("WATCHDOG_PID")
 	if wpid == "" {
-		return 0, nil
+		return interval, nil
 	}
 	p, err := strconv.Atoi(wpid)
 	if err != nil {
@@ -54,5 +55,5 @@ func SdWatchdogEnabled() (time.Duration, error) {
 		return 0, nil
 	}
 
-	return time.Duration(s) * time.Microsecond, nil
+	return interval, nil
 }

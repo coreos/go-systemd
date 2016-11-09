@@ -40,10 +40,10 @@ func TestSdWatchdogEnabled(t *testing.T) {
 		{"100", mypid, false, 100 * time.Microsecond},
 		{"50", mypid, false, 50 * time.Microsecond},
 		{"1", mypid, false, 1 * time.Microsecond},
+		{"1", "", false, 1 * time.Microsecond},
 
 		// No-op cases
 		{"", mypid, false, 0}, // WATCHDOG_USEC not set
-		{"1", "", false, 0},   // WATCHDOG_PID not set
 		{"1", "0", false, 0},  // WATCHDOG_PID doesn't match
 		{"", "", false, 0},    // Both not set
 
