@@ -30,29 +30,30 @@ func must(err error) {
 func TestSdWatchdogEnabled(t *testing.T) {
 	mypid := strconv.Itoa(os.Getpid())
 	tests := []struct {
-		usec string // empty => unset
-		pid  string // empty => unset
+		usec     string // empty => unset
+		pid      string // empty => unset
+		unsetEnv bool   // arbitrarily set across testcases
 
 		werr   bool
 		wdelay time.Duration
 	}{
 		// Success cases
-		{"100", mypid, false, 100 * time.Microsecond},
-		{"50", mypid, false, 50 * time.Microsecond},
-		{"1", mypid, false, 1 * time.Microsecond},
-		{"1", "", false, 1 * time.Microsecond},
+		{"100", mypid, true, false, 100 * time.Microsecond},
+		{"50", mypid, true, false, 50 * time.Microsecond},
+		{"1", mypid, false, false, 1 * time.Microsecond},
+		{"1", "", true, false, 1 * time.Microsecond},
 
 		// No-op cases
-		{"", mypid, false, 0}, // WATCHDOG_USEC not set
-		{"1", "0", false, 0},  // WATCHDOG_PID doesn't match
-		{"", "", false, 0},    // Both not set
+		{"", mypid, true, false, 0}, // WATCHDOG_USEC not set
+		{"1", "0", false, false, 0}, // WATCHDOG_PID doesn't match
+		{"", "", true, false, 0},    // Both not set
 
 		// Failure cases
-		{"-1", mypid, true, 0},                // Negative USEC
-		{"string", "1", true, 0},              // Non-integer USEC value
-		{"1", "string", true, 0},              // Non-integer PID value
-		{"stringa", "stringb", true, 0},       // E v e r y t h i n g
-		{"-10239", "-eleventythree", true, 0}, // i s   w r o n g
+		{"-1", mypid, true, true, 0},                // Negative USEC
+		{"string", "1", false, true, 0},             // Non-integer USEC value
+		{"1", "string", true, true, 0},              // Non-integer PID value
+		{"stringa", "stringb", false, true, 0},      // E v e r y t h i n g
+		{"-10239", "-eleventythree", true, true, 0}, // i s   w r o n g
 	}
 
 	for i, tt := range tests {
@@ -67,7 +68,7 @@ func TestSdWatchdogEnabled(t *testing.T) {
 			must(os.Unsetenv("WATCHDOG_PID"))
 		}
 
-		delay, err := SdWatchdogEnabled()
+		delay, err := SdWatchdogEnabled(tt.unsetEnv)
 
 		if tt.werr && err == nil {
 			t.Errorf("#%d: want non-nil err, got nil", i)
@@ -76,6 +77,9 @@ func TestSdWatchdogEnabled(t *testing.T) {
 		}
 		if tt.wdelay != delay {
 			t.Errorf("#%d: want delay=%d, got %d", i, tt.wdelay, delay)
+		}
+		if tt.unsetEnv && (os.Getenv("WATCHDOG_PID") != "" || os.Getenv("WATCHDOG_USEC") != "") {
+			t.Errorf("#%d: environment variables not cleaned up", i)
 		}
 	}
 }
