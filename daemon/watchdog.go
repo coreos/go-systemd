@@ -23,14 +23,28 @@ import (
 
 // SdWatchdogEnabled return watchdog information for a service.
 // Process should send daemon.SdNotify("WATCHDOG=1") every time / 2.
+// If `unsetEnvironment` is true, the environment variables `WATCHDOG_USEC`
+// and `WATCHDOG_PID` will be unconditionally unset.
 //
 // It returns one of the following:
 // (0, nil) - watchdog isn't enabled or we aren't the watched PID.
 // (0, err) - an error happened (e.g. error converting time).
 // (time, nil) - watchdog is enabled and we can send ping.
 //   time is delay before inactive service will be killed.
-func SdWatchdogEnabled() (time.Duration, error) {
+func SdWatchdogEnabled(unsetEnvironment bool) (time.Duration, error) {
 	wusec := os.Getenv("WATCHDOG_USEC")
+	wpid := os.Getenv("WATCHDOG_PID")
+	if unsetEnvironment {
+		wusecErr := os.Unsetenv("WATCHDOG_USEC")
+		wpidErr := os.Unsetenv("WATCHDOG_PID")
+		if wusecErr != nil {
+			return 0, wusecErr
+		}
+		if wpidErr != nil {
+			return 0, wpidErr
+		}
+	}
+
 	if wusec == "" {
 		return 0, nil
 	}
@@ -39,12 +53,12 @@ func SdWatchdogEnabled() (time.Duration, error) {
 		return 0, fmt.Errorf("error converting WATCHDOG_USEC: %s", err)
 	}
 	if s <= 0 {
-		return 0, fmt.Errorf("error WATCHDOG_USEC must a positive number")
+		return 0, fmt.Errorf("error WATCHDOG_USEC must be a positive number")
 	}
+	interval := time.Duration(s) * time.Microsecond
 
-	wpid := os.Getenv("WATCHDOG_PID")
 	if wpid == "" {
-		return 0, nil
+		return interval, nil
 	}
 	p, err := strconv.Atoi(wpid)
 	if err != nil {
@@ -54,5 +68,5 @@ func SdWatchdogEnabled() (time.Duration, error) {
 		return 0, nil
 	}
 
-	return time.Duration(s) * time.Microsecond, nil
+	return interval, nil
 }
