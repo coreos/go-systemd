@@ -96,6 +96,7 @@ func getUnitFile(units []UnitFile, name string) *UnitFile {
 func TestStartStopUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -150,6 +151,7 @@ func TestStartStopUnit(t *testing.T) {
 func TestRestartUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -235,6 +237,7 @@ func TestRestartUnit(t *testing.T) {
 func TestReloadUnit(t *testing.T) {
 	target := "reload.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	err := conn.Subscribe()
 	if err != nil {
@@ -319,6 +322,7 @@ waitevent:
 func TestReloadOrRestartUnit(t *testing.T) {
 	target := "reload.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -398,6 +402,7 @@ func TestListUnitsByNames(t *testing.T) {
 	target2 := "unexisting.service"
 
 	conn := setupConn(t)
+	defer conn.Close()
 
 	units, err := conn.ListUnitsByNames([]string{target1, target2})
 
@@ -428,6 +433,7 @@ func TestListUnitsByPatterns(t *testing.T) {
 	target2 := "unexisting.service"
 
 	conn := setupConn(t)
+	defer conn.Close()
 
 	units, err := conn.ListUnitsByPatterns([]string{}, []string{"systemd-journald*", target2})
 
@@ -455,6 +461,7 @@ func TestListUnitsFiltered(t *testing.T) {
 	target := "systemd-journald.service"
 
 	conn := setupConn(t)
+	defer conn.Close()
 
 	units, err := conn.ListUnitsFiltered([]string{"active"})
 
@@ -489,6 +496,7 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	target2 := "exit.target"
 
 	conn := setupConn(t)
+	defer conn.Close()
 
 	units, err := conn.ListUnitFilesByPatterns([]string{"static"}, []string{"systemd-journald*", target2})
 
@@ -524,6 +532,7 @@ func TestListUnitFiles(t *testing.T) {
 	target2 := "exit.target"
 
 	conn := setupConn(t)
+	defer conn.Close()
 
 	units, err := conn.ListUnitFiles()
 
@@ -552,6 +561,7 @@ func TestListUnitFiles(t *testing.T) {
 func TestEnableDisableUnit(t *testing.T) {
 	target := "enable-disable.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	abs := findFixture(target, t)
@@ -596,6 +606,7 @@ func TestEnableDisableUnit(t *testing.T) {
 // systems and ensures that one of its properties is valid.
 func TestGetUnitProperties(t *testing.T) {
 	conn := setupConn(t)
+	defer conn.Close()
 
 	unit := "-.mount"
 
@@ -626,6 +637,7 @@ func TestGetUnitProperties(t *testing.T) {
 // as a fail will manifest as GetUnitProperties hanging indefinitely.
 func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 	conn := setupConn(t)
+	defer conn.Close()
 
 	unit := "//invalid#$^/"
 
@@ -644,6 +656,7 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 // on all systemd systems and ensures that one of its property is valid.
 func TestGetServiceProperty(t *testing.T) {
 	conn := setupConn(t)
+	defer conn.Close()
 
 	service := "systemd-udevd.service"
 
@@ -666,6 +679,7 @@ func TestGetServiceProperty(t *testing.T) {
 // property was set.
 func TestSetUnitProperties(t *testing.T) {
 	conn := setupConn(t)
+	defer conn.Close()
 
 	unit := "-.mount"
 
@@ -687,6 +701,7 @@ func TestSetUnitProperties(t *testing.T) {
 // Ensure that basic transient unit starting and stopping works.
 func TestStartStopTransientUnit(t *testing.T) {
 	conn := setupConn(t)
+	defer conn.Close()
 
 	props := []Property{
 		PropExecStart([]string{"/bin/sleep", "400"}, false),
@@ -742,6 +757,7 @@ func TestStartStopTransientUnit(t *testing.T) {
 // Ensure that putting running programs into scopes works
 func TestStartStopTransientScope(t *testing.T) {
 	conn := setupConn(t)
+	defer conn.Close()
 
 	cmd := exec.Command("/bin/sleep", "400")
 	err := cmd.Start()
@@ -790,6 +806,7 @@ func TestStartStopTransientScope(t *testing.T) {
 func TestKillUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	err := conn.Subscribe()
 	if err != nil {
@@ -852,6 +869,7 @@ waitevent:
 func TestResetFailedUnit(t *testing.T) {
 	target := "start-failed.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -905,6 +923,7 @@ func TestResetFailedUnit(t *testing.T) {
 func TestConnJobListener(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -936,6 +955,7 @@ func TestConnJobListener(t *testing.T) {
 func TestMaskUnmask(t *testing.T) {
 	target := "mask-unmask.service"
 	conn := setupConn(t)
+	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	abs := findFixture(target, t)
@@ -988,6 +1008,7 @@ func TestMaskUnmask(t *testing.T) {
 // Test a global Reload
 func TestReload(t *testing.T) {
 	conn := setupConn(t)
+	defer conn.Close()
 
 	err := conn.Reload()
 	if err != nil {
