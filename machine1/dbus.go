@@ -18,6 +18,7 @@ limitations under the License.
 package machine1
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -73,6 +74,20 @@ func (c *Conn) initConnection() error {
 	c.object = c.conn.Object("org.freedesktop.machine1", dbus.ObjectPath(dbusPath))
 
 	return nil
+}
+
+func (c *Conn) getPath(method string, args ...string) (dbus.ObjectPath, error) {
+	result := c.object.Call(fmt.Sprintf("%s%s", dbusInterface, method), 0, name)
+	if result.Err != nil {
+		return "", result.Err
+	}
+
+	path, typeErr := result.Body[0].(dbus.ObjectPath)
+	if !typeErr {
+		return "", fmt.Errorf("unable to convert dbus response '%v' to dbus.ObjectPath", result.Body[0])
+	}
+
+	return path, nil
 }
 
 // RegisterMachine registers the container with the systemd-machined
