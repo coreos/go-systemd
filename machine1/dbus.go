@@ -76,8 +76,8 @@ func (c *Conn) initConnection() error {
 	return nil
 }
 
-func (c *Conn) getPath(method string, args ...string) (dbus.ObjectPath, error) {
-	result := c.object.Call(fmt.Sprintf("%s%s", dbusInterface, method), 0, name)
+func (c *Conn) getPath(method string, args ...interface{}) (dbus.ObjectPath, error) {
+	result := c.object.Call(fmt.Sprintf("%s%s", dbusInterface, method), 0, args...)
 	if result.Err != nil {
 		return "", result.Err
 	}
@@ -88,6 +88,21 @@ func (c *Conn) getPath(method string, args ...string) (dbus.ObjectPath, error) {
 	}
 
 	return path, nil
+}
+
+// GetMachine gets a specific container with systemd-machined
+func (c *Conn) GetMachine(name string) (dbus.ObjectPath, error) {
+	return c.getPath(".GetMachine", name)
+}
+
+// GetImage gets a specific image with systemd-machined
+func (c *Conn) GetImage(name string) (dbus.ObjectPath, error) {
+	return c.getPath(".GetImage", name)
+}
+
+// GetMachineByPID gets a machine specified by a PID from systemd-machined
+func (c *Conn) GetMachineByPID(pid string) (dbus.ObjectPath, error) {
+	return c.getPath(".GetMachineByPID", pid)
 }
 
 // RegisterMachine registers the container with the systemd-machined
