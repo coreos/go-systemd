@@ -18,46 +18,66 @@ package machine1
 
 import (
 	"fmt"
-	"os"
+	"os/exec"
 	"testing"
 )
 
+var (
+	conn        *Conn
+	machineName = "testMachine"
+)
+
+func createTestProcess() (pid int, err error) {
+	systemdRun, lookErr := exec.LookPath("systemd-run")
+	if lookErr != nil {
+		return -1, lookErr
+	}
+	sleep, lookErr := exec.LookPath("sleep")
+	if lookErr != nil {
+		return -1, lookErr
+	}
+	cmd := exec.Command(systemdRun, sleep, "5000")
+	err = cmd.Run()
+	if err != nil {
+		return -1, err
+	}
+	return cmd.Process.Pid + 1, nil
+}
+
 // TestNew ensures that New() works without errors.
 func TestNew(t *testing.T) {
-	_, err := New()
-
+	c, err := New()
+	conn = c
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-// TestGetMachine ensures that GetMachine works without errors
-func TestMachine(t *testing.T) {
-	conn, connErr := New()
-	if connErr != nil {
-		t.Error(connErr)
+func TestRegister(t *testing.T) {
+	leader, lErr := createTestProcess()
+	if lErr != nil {
+		t.Error(lErr)
 	}
-	machineName := "testMachine"
-	t.Run("Register", func(t *testing.T) {
-		regErr := conn.RegisterMachine(machineName, []byte{}, "go-systemd", "container", os.Getpid(), "")
-		if regErr != nil {
-			t.Error(regErr)
-		}
-	})
-	t.Run("Get", func(t *testing.T) {
-		machine, machineErr := conn.GetMachine(machineName)
-		if machineErr != nil {
-			t.Error(machineErr)
-		}
-		if len(machine) == 0 {
-			t.Error(fmt.Errorf("did not find machine named %s", machineName))
-		}
-		t.Log(machine)
-	})
-	t.Run("Terminate", func(t *testing.T) {
-		tErr := conn.TerminateMachine(machineName)
-		if tErr != nil {
-			t.Error(tErr)
-		}
-	})
+	t.Log(leader)
+	regErr := conn.RegisterMachine(machineName, nil, "go-systemd", "container", leader, "")
+	if regErr != nil {
+		t.Error(regErr)
+	}
+}
+
+func TestGet(t *testing.T) {
+	machine, machineErr := conn.GetMachine(machineName)
+	if machineErr != nil {
+		t.Error(machineErr)
+	}
+	if len(machine) == 0 {
+		t.Error(fmt.Errorf("did not find machine named %s", machineName))
+	}
+}
+
+func TestTerminate(t *testing.T) {
+	tErr := conn.TerminateMachine(machineName)
+	if tErr != nil {
+		t.Error(tErr)
+	}
 }
