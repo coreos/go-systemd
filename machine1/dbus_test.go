@@ -18,14 +18,15 @@ package machine1
 
 import (
 	"fmt"
-	"os"
 	"testing"
 )
 
+var conn *Conn
+
 // TestNew ensures that New() works without errors.
 func TestNew(t *testing.T) {
-	_, err := New()
-
+	c, err := New()
+	conn = c
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,21 +35,13 @@ func TestNew(t *testing.T) {
 var machineName = "testMachine"
 
 func TestRegister(t *testing.T) {
-	conn, connErr := New()
-	if connErr != nil {
-		t.Error(connErr)
-	}
-	regErr := conn.RegisterMachine(machineName, []byte{}, "go-systemd", "container", os.Getpid(), "")
+	regErr := conn.RegisterMachine(machineName, nil, "go-systemd", "container", 0, "")
 	if regErr != nil {
 		t.Error(regErr)
 	}
 }
 
 func TestGet(t *testing.T) {
-	conn, connErr := New()
-	if connErr != nil {
-		t.Error(connErr)
-	}
 	machine, machineErr := conn.GetMachine(machineName)
 	if machineErr != nil {
 		t.Error(machineErr)
@@ -59,10 +52,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestTerminate(t *testing.T) {
-	conn, connErr := New()
-	if connErr != nil {
-		t.Error(connErr)
-	}
 	tErr := conn.TerminateMachine(machineName)
 	if tErr != nil {
 		t.Error(tErr)
