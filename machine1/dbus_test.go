@@ -28,7 +28,15 @@ var (
 )
 
 func createTestProcess() (pid int, err error) {
-	cmd := exec.Command("/usr/bin/systemd-run", "/usr/bin/sleep", "5000")
+	systemdRun, lookErr := exec.LookPath("systemd-run")
+	if lookErr != nil {
+		return -1, lookErr
+	}
+	sleep, lookErr := exec.LookPath("sleep")
+	if lookErr != nil {
+		return -1, lookErr
+	}
+	cmd := exec.Command(systemdRun, sleep, "5000")
 	err = cmd.Run()
 	if err != nil {
 		return -1, err
