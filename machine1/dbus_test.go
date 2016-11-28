@@ -18,10 +18,23 @@ package machine1
 
 import (
 	"fmt"
+	"os/exec"
 	"testing"
 )
 
-var conn *Conn
+var (
+	conn        *Conn
+	machineName = "testMachine"
+)
+
+func createTestProcess() (pid int, err error) {
+	cmd := exec.Command("/usr/bin/systemd-run", "/usr/bin/sleep", "5000")
+	err = cmd.Run()
+	if err != nil {
+		return -1, err
+	}
+	return cmd.Process.Pid + 1, nil
+}
 
 // TestNew ensures that New() works without errors.
 func TestNew(t *testing.T) {
@@ -32,10 +45,13 @@ func TestNew(t *testing.T) {
 	}
 }
 
-var machineName = "testMachine"
-
 func TestRegister(t *testing.T) {
-	regErr := conn.RegisterMachine(machineName, nil, "go-systemd", "container", 0, "")
+	leader, lErr := createTestProcess()
+	if lErr != nil {
+		t.Error(lErr)
+	}
+	t.Log(leader)
+	regErr := conn.RegisterMachine(machineName, nil, "go-systemd", "container", leader, "")
 	if regErr != nil {
 		t.Error(regErr)
 	}
