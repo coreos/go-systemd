@@ -17,67 +17,62 @@ limitations under the License.
 package machine1
 
 import (
-	"fmt"
 	"os/exec"
 	"testing"
 )
 
 var (
-	conn        *Conn
 	machineName = "testMachine"
 )
 
-func createTestProcess() (pid int, err error) {
-	systemdRun, lookErr := exec.LookPath("systemd-run")
-	if lookErr != nil {
-		return -1, lookErr
+func mustCreateTestProcess() (pid int) {
+	systemdRun, err := exec.LookPath("systemd-run")
+	if err != nil {
+		panic(err.Error())
 	}
-	sleep, lookErr := exec.LookPath("sleep")
-	if lookErr != nil {
-		return -1, lookErr
+	sleep, err := exec.LookPath("sleep")
+	if err != nil {
+		panic(err.Error())
 	}
 	cmd := exec.Command(systemdRun, sleep, "5000")
 	err = cmd.Run()
 	if err != nil {
-		return -1, err
+		panic(err.Error())
 	}
-	return cmd.Process.Pid + 1, nil
+	return cmd.Process.Pid + 1
 }
 
-// TestNew ensures that New() works without errors.
-func TestNew(t *testing.T) {
-	c, err := New()
-	conn = c
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestRegister(t *testing.T) {
-	leader, lErr := createTestProcess()
-	if lErr != nil {
-		t.Error(lErr)
-	}
+func TestMachine(t *testing.T) {
+	leader := mustCreateTestProcess()
 	t.Log(leader)
+
+	conn, newErr := New()
+	if newErr != nil {
+		t.Fatal(newErr)
+	}
+
 	regErr := conn.RegisterMachine(machineName, nil, "go-systemd", "container", leader, "")
 	if regErr != nil {
-		t.Error(regErr)
+		t.Fatal(regErr)
 	}
-}
 
-func TestGet(t *testing.T) {
-	machine, machineErr := conn.GetMachine(machineName)
-	if machineErr != nil {
-		t.Error(machineErr)
+	machine, getErr := conn.GetMachine(machineName)
+	if getErr != nil {
+		t.Fatal(getErr)
 	}
 	if len(machine) == 0 {
-		t.Error(fmt.Errorf("did not find machine named %s", machineName))
+		t.Fatalf("did not find machine named %s", machineName)
 	}
-}
 
-func TestTerminate(t *testing.T) {
 	tErr := conn.TerminateMachine(machineName)
 	if tErr != nil {
-		t.Error(tErr)
+		t.Fatal(tErr)
+	}
+
+	machine, getErr = conn.GetMachine(machineName)
+	if len(machine) != 0 {
+		t.Fatalf("unexpectedly found machine named %s", machineName)
+	} else if getErr == nil {
+		t.Fatal("expected error but got nil")
 	}
 }
