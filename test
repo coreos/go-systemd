@@ -28,14 +28,14 @@ if [ -z "$GOPATH" ]; then
 fi
 
 TESTABLE="activation daemon journal login1 unit"
-FORMATTABLE="$TESTABLE sdjournal dbus"
+FORMATTABLE="$TESTABLE sdjournal dbus machine1"
 if [ -e "/run/systemd/system/" ]; then
+	# if we're on a systemd-system, we can test sdjournal
 	TESTABLE="${TESTABLE} sdjournal"
 	if [ "$EUID" == "0" ]; then
-		# testing actual systemd behaviour requires root
-		TESTABLE="${TESTABLE} dbus"
-	    TESTABLE="${TESTABLE} machine1"
-    fi
+		# testing actual systemd/machined behaviour requires root
+		TESTABLE="${TESTABLE} dbus machine1"
+	fi
 fi
 
 
