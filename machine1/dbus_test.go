@@ -19,10 +19,13 @@ package machine1
 import (
 	"os/exec"
 	"testing"
+
+	"github.com/coreos/go-systemd/dbus"
 )
 
-var (
-	machineName = "testMachine"
+const (
+	testServiceName = "machined-test.service"
+	machineName     = "testMachine"
 )
 
 func mustCreateTestProcess() (pid int) {
@@ -34,17 +37,26 @@ func mustCreateTestProcess() (pid int) {
 	if err != nil {
 		panic(err.Error())
 	}
-	cmd := exec.Command(systemdRun, sleep, "5000")
+	cmd := exec.Command(systemdRun, "--unit="+testServiceName, sleep, "5000")
 	err = cmd.Run()
 	if err != nil {
 		panic(err.Error())
 	}
-	return cmd.Process.Pid + 1
+	dbusConn, err := dbus.New()
+	if err != nil {
+		panic(err.Error())
+	}
+	defer dbusConn.Close()
+	mainPIDProperty, err := dbusConn.GetServiceProperty(testServiceName, "MainPID")
+	if err != nil {
+		panic(err.Error())
+	}
+	mainPID := mainPIDProperty.Value.Value().(uint32)
+	return int(mainPID)
 }
 
 func TestMachine(t *testing.T) {
 	leader := mustCreateTestProcess()
-	t.Log(leader)
 
 	conn, newErr := New()
 	if newErr != nil {

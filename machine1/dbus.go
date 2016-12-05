@@ -78,7 +78,7 @@ func (c *Conn) initConnection() error {
 }
 
 func (c *Conn) getPath(method string, args ...interface{}) (dbus.ObjectPath, error) {
-	result := c.object.Call(fmt.Sprintf("%s%s", dbusInterface, method), 0, args...)
+	result := c.object.Call(fmt.Sprintf("%s.%s", dbusInterface, method), 0, args...)
 	if result.Err != nil {
 		return "", result.Err
 	}
@@ -93,17 +93,17 @@ func (c *Conn) getPath(method string, args ...interface{}) (dbus.ObjectPath, err
 
 // GetMachine gets a specific container with systemd-machined
 func (c *Conn) GetMachine(name string) (dbus.ObjectPath, error) {
-	return c.getPath(".GetMachine", name)
+	return c.getPath("GetMachine", name)
 }
 
 // GetImage gets a specific image with systemd-machined
 func (c *Conn) GetImage(name string) (dbus.ObjectPath, error) {
-	return c.getPath(".GetImage", name)
+	return c.getPath("GetImage", name)
 }
 
 // GetMachineByPID gets a machine specified by a PID from systemd-machined
-func (c *Conn) GetMachineByPID(pid string) (dbus.ObjectPath, error) {
-	return c.getPath(".GetMachineByPID", pid)
+func (c *Conn) GetMachineByPID(pid uint) (dbus.ObjectPath, error) {
+	return c.getPath("GetMachineByPID", pid)
 }
 
 // DescribeMachine gets the properties of a machine
@@ -126,8 +126,8 @@ func (c *Conn) DescribeMachine(name string) (machineProps map[string]interface{}
 }
 
 // KillMachine sends a signal to a machine
-func (c *Conn) KillMachine(name string, sig syscall.Signal) error {
-	return c.object.Call(dbusInterface+".KillMachine", 0, name, "leader", sig).Err
+func (c *Conn) KillMachine(name, who string, sig syscall.Signal) error {
+	return c.object.Call(dbusInterface+".KillMachine", 0, name, who, sig).Err
 }
 
 // TerminateMachine causes systemd-machined to terminate a machine, killing its processes
