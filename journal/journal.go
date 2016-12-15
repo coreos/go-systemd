@@ -53,11 +53,18 @@ const (
 var conn net.Conn
 
 func init() {
+	Reconnect()
+}
+
+// Estabish a new connection to the journald socket and returns a boolean
+// indicating if it has succeeded or failed.
+func Reconnect() bool {
 	var err error
 	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
 	if err != nil {
 		conn = nil
 	}
+	return conn != nil
 }
 
 // Enabled returns true if the local systemd journal is available for logging
@@ -73,6 +80,9 @@ func Enabled() bool {
 // (http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
 // for more details.  vars may be nil.
 func Send(message string, priority Priority, vars map[string]string) error {
+	if conn == nil {
+		Reconnect()
+	}
 	if conn == nil {
 		return journalError("could not connect to journald socket")
 	}
@@ -105,6 +115,11 @@ func Send(message string, priority Priority, vars map[string]string) error {
 		}
 		unixConn.WriteMsgUnix([]byte{}, rights, nil)
 	} else if err != nil {
+		if netErr, ok := err.(net.Error); !(ok && netErr.Temporary()) {
+			/* close the connection to try to reconnect on a next message */
+			conn.Close()
+			conn = nil
+		}
 		return journalError(err.Error())
 	}
 	return nil
