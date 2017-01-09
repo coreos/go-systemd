@@ -108,24 +108,6 @@ func TestJournalCursorGetSeekAndTest(t *testing.T) {
 
 	defer j.Close()
 
-	waitAndNext := func(j *Journal) error {
-		r := j.Wait(time.Duration(1) * time.Second)
-		if r < 0 {
-			return errors.New("Error waiting to journal")
-		}
-
-		n, err := j.Next()
-		if err != nil {
-			return fmt.Errorf("Error reading to journal: %s", err)
-		}
-
-		if n == 0 {
-			return fmt.Errorf("Error reading to journal: %s", io.EOF)
-		}
-
-		return nil
-	}
-
 	err = journal.Print(journal.PriInfo, "test message for cursor %s", time.Now())
 	if err != nil {
 		t.Fatalf("Error writing to journal: %s", err)
@@ -379,6 +361,50 @@ func TestJournalGetUniqueValues(t *testing.T) {
 	}
 }
 
+func TestJournalGetCatalog(t *testing.T) {
+	want := []string{
+		"Subject: ",
+		"Defined-By: systemd",
+		"Support: ",
+	}
+	j, err := NewJournal()
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+
+	if j == nil {
+		t.Fatal("Got a nil journal")
+	}
+
+	defer j.Close()
+
+	if err = j.SeekHead(); err != nil {
+		t.Fatalf("Seek to head failed: %s", err)
+	}
+
+	matchField := SD_JOURNAL_FIELD_SYSTEMD_UNIT
+	m := Match{Field: matchField, Value: "systemd-journald.service"}
+	if err = j.AddMatch(m.String()); err != nil {
+		t.Fatalf("Error adding matches to journal: %s", err)
+	}
+
+	if err = waitAndNext(j); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	catalog, err := j.GetCatalog()
+
+	if err != nil {
+		t.Fatalf("Failed to retrieve catalog entry: %s", err)
+	}
+
+	for _, w := range want {
+		if !strings.Contains(catalog, w) {
+			t.Fatalf("Failed to find \"%s\" in \n%s", w, catalog)
+		}
+	}
+}
+
 func contains(s []string, v string) bool {
 	for _, entry := range s {
 		if entry == v {
@@ -396,4 +422,22 @@ func generateRandomField(n int) string {
 		s[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(s)
+}
+
+func waitAndNext(j *Journal) error {
+	r := j.Wait(time.Duration(1) * time.Second)
+	if r < 0 {
+		return errors.New("Error waiting to journal")
+	}
+
+	n, err := j.Next()
+	if err != nil {
+		return fmt.Errorf("Error reading to journal: %s", err)
+	}
+
+	if n == 0 {
+		return fmt.Errorf("Error reading to journal: %s", io.EOF)
+	}
+
+	return nil
 }
