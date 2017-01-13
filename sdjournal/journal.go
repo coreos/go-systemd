@@ -282,6 +282,15 @@ package sdjournal
 //   sd_journal_restart_unique(j);
 // }
 //
+// int
+// my_sd_journal_get_catalog(void *f, sd_journal *j, char **ret)
+// {
+//   int(*sd_journal_get_catalog)(sd_journal *, char **);
+//
+//   sd_journal_get_catalog = f;
+//   return sd_journal_get_catalog(j, ret);
+// }
+//
 import "C"
 import (
 	"bytes"
@@ -1021,4 +1030,27 @@ func (j *Journal) GetUniqueValues(field string) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+// GetCatalog retrieves a message catalog entry for the current journal entry.
+func (j *Journal) GetCatalog() (string, error) {
+	sd_journal_get_catalog, err := getFunction("sd_journal_get_catalog")
+	if err != nil {
+		return "", err
+	}
+
+	var c *C.char
+
+	j.mu.Lock()
+	r := C.my_sd_journal_get_catalog(sd_journal_get_catalog, j.cjournal, &c)
+	j.mu.Unlock()
+	defer C.free(unsafe.Pointer(c))
+
+	if r < 0 {
+		return "", fmt.Errorf("failed to retrieve catalog entry for current journal entry: %d", syscall.Errno(-r))
+	}
+
+	catalog := C.GoString(c)
+
+	return catalog, nil
 }
