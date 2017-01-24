@@ -50,21 +50,14 @@ const (
 	PriDebug
 )
 
-var conn net.Conn
+var conn net.PacketConn
 
 func init() {
-	Reconnect()
-}
-
-// Estabish a new connection to the journald socket and returns a boolean
-// indicating if it has succeeded or failed.
-func Reconnect() bool {
 	var err error
-	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
+	conn, err = net.ListenPacket("unixgram", "")
 	if err != nil {
 		conn = nil
 	}
-	return conn != nil
 }
 
 // Enabled returns true if the local systemd journal is available for logging
@@ -81,12 +74,13 @@ func Enabled() bool {
 // for more details.  vars may be nil.
 func Send(message string, priority Priority, vars map[string]string) error {
 	if conn == nil {
-		Reconnect()
-	}
-	if conn == nil {
 		return journalError("could not connect to journald socket")
 	}
 
+	socketAddr, err := net.ResolveUnixAddr("unixgram", "/run/systemd/journal/socket")
+	if err != nil {
+		return journalError(err.Error())
+	}
 	data := new(bytes.Buffer)
 	appendVariable(data, "PRIORITY", strconv.Itoa(int(priority)))
 	appendVariable(data, "MESSAGE", message)
@@ -94,32 +88,13 @@ func Send(message string, priority Priority, vars map[string]string) error {
 		appendVariable(data, k, v)
 	}
 
-	_, err := io.Copy(conn, data)
-	if err != nil && isSocketSpaceError(err) {
-		file, err := tempFd()
-		if err != nil {
-			return journalError(err.Error())
-		}
-		defer file.Close()
-		_, err = io.Copy(file, data)
-		if err != nil {
-			return journalError(err.Error())
-		}
-
-		rights := syscall.UnixRights(int(file.Fd()))
-
-		/* this connection should always be a UnixConn, but better safe than sorry */
-		unixConn, ok := conn.(*net.UnixConn)
-		if !ok {
-			return journalError("can't send file through non-Unix connection")
-		}
-		unixConn.WriteMsgUnix([]byte{}, rights, nil)
-	} else if err != nil {
-		if netErr, ok := err.(net.Error); !(ok && netErr.Temporary()) {
-			/* close the connection to try to reconnect on a next message */
-			conn.Close()
-			conn = nil
-		}
+	/* this connection should always be a UnixConn, but better safe than sorry */
+	unixConn, ok := conn.(*net.UnixConn)
+	if !ok {
+		return journalError("can't send file through non-Unix connection")
+	}
+	_, _, err = unixConn.WriteMsgUnix(data.Bytes(), nil, socketAddr)
+	if err != nil {
 		return journalError(err.Error())
 	}
 	return nil
