@@ -50,11 +50,13 @@ const (
 	PriDebug
 )
 
-var conn net.PacketConn
+var conn *net.UnixConn
 
 func init() {
 	var err error
-	conn, err = net.ListenPacket("unixgram", "")
+	var autobind *net.UnixAddr
+	autobind, err = net.ResolveUnixAddr("unixgram", "")
+	conn, err = net.ListenUnixgram("unixgram", autobind)
 	if err != nil {
 		conn = nil
 	}
@@ -88,12 +90,7 @@ func Send(message string, priority Priority, vars map[string]string) error {
 		appendVariable(data, k, v)
 	}
 
-	/* this connection should always be a UnixConn, but better safe than sorry */
-	unixConn, ok := conn.(*net.UnixConn)
-	if !ok {
-		return journalError("can't send file through non-Unix connection")
-	}
-	_, _, err = unixConn.WriteMsgUnix(data.Bytes(), nil, socketAddr)
+	_, _, err = conn.WriteMsgUnix(data.Bytes(), nil, socketAddr)
 	if err != nil && isSocketSpaceError(err) {
 		file, err := tempFd()
 		if err != nil {
@@ -107,7 +104,7 @@ func Send(message string, priority Priority, vars map[string]string) error {
 
 		rights := syscall.UnixRights(int(file.Fd()))
 
-		unixConn.WriteMsgUnix([]byte{}, rights, socketAddr)
+		conn.WriteMsgUnix([]byte{}, rights, socketAddr)
 	} else if err != nil {
 		return journalError(err.Error())
 	}
