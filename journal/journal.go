@@ -94,7 +94,21 @@ func Send(message string, priority Priority, vars map[string]string) error {
 		return journalError("can't send file through non-Unix connection")
 	}
 	_, _, err = unixConn.WriteMsgUnix(data.Bytes(), nil, socketAddr)
-	if err != nil {
+	if err != nil && isSocketSpaceError(err) {
+		file, err := tempFd()
+		if err != nil {
+			return journalError(err.Error())
+		}
+		defer file.Close()
+		_, err = io.Copy(file, data)
+		if err != nil {
+			return journalError(err.Error())
+		}
+
+		rights := syscall.UnixRights(int(file.Fd()))
+
+		unixConn.WriteMsgUnix([]byte{}, rights, socketAddr)
+	} else if err != nil {
 		return journalError(err.Error())
 	}
 	return nil
@@ -142,12 +156,12 @@ func isSocketSpaceError(err error) bool {
 		return false
 	}
 
-	sysErr, ok := opErr.Err.(syscall.Errno)
+	sysErr, ok := opErr.Err.(*os.SyscallError)
 	if !ok {
 		return false
 	}
 
-	return sysErr == syscall.EMSGSIZE || sysErr == syscall.ENOBUFS
+	return sysErr.Err == syscall.EMSGSIZE || sysErr.Err == syscall.ENOBUFS
 }
 
 func tempFd() (*os.File, error) {
