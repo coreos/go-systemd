@@ -95,6 +95,16 @@ func New() (*Conn, error) {
 	return conn, err
 }
 
+// UserNew establishes a connection to any available user bus and authenticates.
+// Callers should call Close() when done with the connection.
+func UserNew() (*Conn, error) {
+	conn, err := NewUserConnection()
+	if err != nil {
+		return NewSystemdUserConnection()
+	}
+	return conn, err
+}
+
 // NewSystemConnection establishes a connection to the system bus and authenticates.
 // Callers should call Close() when done with the connection
 func NewSystemConnection() (*Conn, error) {
