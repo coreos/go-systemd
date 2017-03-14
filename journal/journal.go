@@ -152,7 +152,13 @@ func isSocketSpaceError(err error) bool {
 		return false
 	}
 
-	sysErr, ok := opErr.Err.(syscall.Errno)
+	// The syscall.Errno can be nested inside an os.SyscallError, or not.
+	maybeErrnoError := opErr.Err
+	if osSyscallErr, ok := opErr.Err.(*os.SyscallError); ok {
+		maybeErrnoError = osSyscallErr.Err
+	}
+
+	sysErr, ok := maybeErrnoError.(syscall.Errno)
 	if !ok {
 		return false
 	}
