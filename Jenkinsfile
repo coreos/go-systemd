@@ -33,6 +33,6 @@ matrixJob('Periodic go-systemd builder from dsl') {
     }
 
     steps {
-        shell('./scripts/jenkins/go-systemd-master.sh')
+        shell('./scripts/jenkins/periodic-go-systemd-builder.sh')
     }
 }
