@@ -1,6 +1,6 @@
-matrixJob('Periodic go-systemd builder from dsl') {
+matrixJob('Periodic go-systemd builder') {
     label('master')
-    displayName('Periodic go-systemd builder (master branch) from dsl')
+    displayName('Periodic go-systemd builder (master branch)')
 
     scm {
         git {
