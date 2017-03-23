@@ -946,7 +946,7 @@ func (j *Journal) Wait(timeout time.Duration) int {
 		// equivalent hex value.
 		to = 0xffffffffffffffff
 	} else {
-		to = uint64(time.Now().Add(timeout).Unix() / 1000)
+		to = uint64(timeout / time.Microsecond)
 	}
 	j.mu.Lock()
 	r := C.my_sd_journal_wait(sd_journal_wait, j.cjournal, C.uint64_t(to))

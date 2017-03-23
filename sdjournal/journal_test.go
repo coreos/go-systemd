@@ -76,6 +76,49 @@ func TestJournalFollow(t *testing.T) {
 	}
 }
 
+func TestJournalWait(t *testing.T) {
+	id := time.Now().String()
+	j, err := NewJournal()
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+	if err := j.AddMatch("TEST=TestJournalWait " + id); err != nil {
+		t.Fatalf("Error adding match: %s", err)
+	}
+	if err := j.SeekTail(); err != nil {
+		t.Fatalf("Error seeking to tail: %s", err)
+	}
+	if _, err := j.Next(); err != nil {
+		t.Fatalf("Error retrieving next entry: %s", err)
+	}
+
+	var t1, t2 time.Time
+	for ret := -1; ret != SD_JOURNAL_NOP; {
+		// Wait() might return for reasons other than timeout.
+		// For example the first call initializes stuff and returns immediately.
+		t1 = time.Now()
+		ret = j.Wait(time.Millisecond * 300)
+		t2 = time.Now()
+	}
+	duration := t2.Sub(t1)
+
+	if duration > time.Millisecond*325 || duration < time.Millisecond*300 {
+		t.Errorf("Wait did not wait 300ms. Actually waited %s", duration.String())
+	}
+
+	journal.Send("test message", journal.PriInfo, map[string]string{"TEST": "TestJournalWait " + id})
+	for ret := -1; ret != SD_JOURNAL_APPEND; {
+		t1 = time.Now()
+		ret = j.Wait(time.Millisecond * 300)
+		t2 = time.Now()
+	}
+	duration = t2.Sub(t1)
+
+	if duration >= time.Millisecond*300 {
+		t.Errorf("Wait took longer than 300ms. Actual duration %s", duration.String())
+	}
+}
+
 func TestJournalGetUsage(t *testing.T) {
 	j, err := NewJournal()
 
