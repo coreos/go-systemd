@@ -617,6 +617,31 @@ func (j *Journal) GetData(field string) (string, error) {
 	return C.GoStringN((*C.char)(d), l), nil
 }
 
+// EnumerateData may be used to iterate through all data fields used in the opened journal files
+// the order of the returned field names is not defined.
+func (j *Journal) EnumerateData() (string, error) {
+	var d unsafe.Pointer
+	var l C.size_t
+
+	j.mu.Lock()
+	r := C.sd_journal_enumerate_data(j.cjournal, &d, &l)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return "", fmt.Errorf("failed to read message: %d", r)
+	}
+
+	msg := C.GoStringN((*C.char)(d), C.int(l))
+	return msg, nil
+}
+
+//RestartData resets the field name enumeration index to the beginning of the list.
+func (j *Journal) RestartData() {
+	j.mu.Lock()
+	C.sd_journal_restart_data(j.cjournal)
+	j.mu.Unlock()
+}
+
 // GetDataValue gets the data object associated with a specific field from the
 // current journal entry, returning only the value of the object.
 func (j *Journal) GetDataValue(field string) (string, error) {

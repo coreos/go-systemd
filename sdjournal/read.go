@@ -16,6 +16,7 @@
 package sdjournal
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -235,6 +236,83 @@ process:
 		}
 	}
 
+	return
+}
+
+func (r *JournalReader) FollowWithFields(until <-chan time.Time, fields map[string]struct{}, writer io.Writer) (err error) {
+	enc := json.NewEncoder(writer)
+journal:
+	for {
+		kvMap := make(map[string]string)
+		select {
+		case <-until:
+			return ErrExpired
+		default:
+			var err error
+			var c int
+
+			// Advance the journal cursor
+			c, err = r.journal.Next()
+
+			// An unexpected error
+			if err != nil {
+				return err
+			}
+
+			// We have a new journal entry go over the fields
+			// get the data for what we care about and return
+			r.journal.RestartData()
+			if c > 0 {
+			fields:
+				for {
+					s, err := r.journal.EnumerateData()
+					if err != nil || len(s) == 0 {
+						break fields
+					}
+					s = s[:len(s)]
+					arr := strings.SplitN(s, "=", 2)
+					if _, ok := fields[arr[0]]; ok {
+						kvMap[arr[0]] = arr[1]
+					}
+
+				}
+				if err := enc.Encode(kvMap); err != nil {
+					return err
+				}
+			}
+		}
+
+		// we're at the tail, so wait for new events or time out.
+		// holds journal events to process. tightly bounded for now unless there's a
+		// reason to unblock the journal watch routine more quickly
+		events := make(chan int, 1)
+		pollDone := make(chan bool, 1)
+		go func() {
+			for {
+				select {
+				case <-pollDone:
+					return
+				default:
+					events <- r.journal.Wait(time.Duration(1) * time.Second)
+				}
+			}
+		}()
+
+		select {
+		case <-until:
+			pollDone <- true
+			return ErrExpired
+		case e := <-events:
+			pollDone <- true
+			switch e {
+			case SD_JOURNAL_NOP, SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
+				// TODO: need to account for any of these?
+			default:
+				log.Printf("Received unknown event: %d\n", e)
+			}
+			continue journal
+		}
+	}
 	return
 }
 
