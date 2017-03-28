@@ -16,8 +16,10 @@
 package dbus
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -93,6 +95,16 @@ func New() (*Conn, error) {
 	return conn, err
 }
 
+// UserNew establishes a connection to any available user bus and authenticates.
+// Callers should call Close() when done with the connection.
+func UserNew() (*Conn, error) {
+	conn, err := NewUserConnection()
+	if err != nil {
+		return NewSystemdUserConnection()
+	}
+	return conn, err
+}
+
 // NewSystemConnection establishes a connection to the system bus and authenticates.
 // Callers should call Close() when done with the connection
 func NewSystemConnection() (*Conn, error) {
@@ -118,6 +130,23 @@ func NewSystemdConnection() (*Conn, error) {
 		// We skip Hello when talking directly to systemd.
 		return dbusAuthConnection(func() (*dbus.Conn, error) {
 			return dbus.Dial("unix:path=/run/systemd/private")
+		})
+	})
+}
+
+// NewSystemdUserConnection establishes a private, direct user connection to
+// systemd. This can be used for communicating with systemd without a dbus
+// daemon. Callers should call Close() when done with the connection.
+func NewSystemdUserConnection() (*Conn, error) {
+	// user svcs are in $XDG_RUNTIME_DIR/systemd/ eg: /run/user/1000/systemd/
+	dir := os.Getenv("XDG_RUNTIME_DIR")
+	if dir == "" {
+		return nil, errors.New("the XDG_RUNTIME_DIR env var is missing or empty")
+	}
+	return NewConnection(func() (*dbus.Conn, error) {
+		// We skip Hello when talking directly to systemd.
+		return dbusAuthConnection(func() (*dbus.Conn, error) {
+			return dbus.Dial(fmt.Sprintf("unix:path=%s", path.Join(dir, "/systemd/private")))
 		})
 	})
 }
