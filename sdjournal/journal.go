@@ -47,6 +47,15 @@ package sdjournal
 //   return sd_journal_open_directory(ret, path, flags);
 // }
 //
+// int
+// my_sd_journal_open_files(void *f, sd_journal **ret, const char **paths, int flags)
+// {
+//   int (*sd_journal_open_files)(sd_journal **, const char **, int);
+//
+//   sd_journal_open_files = f;
+//   return sd_journal_open_files(ret, paths, flags);
+// }
+//
 // void
 // my_sd_journal_close(void *f, sd_journal *j)
 // {
@@ -405,8 +414,7 @@ func NewJournal() (j *Journal, err error) {
 }
 
 // NewJournalFromDir returns a new Journal instance pointing to a journal residing
-// in a given directory. The supplied path may be relative or absolute; if
-// relative, it will be converted to an absolute path before being opened.
+// in a given directory.
 func NewJournalFromDir(path string) (j *Journal, err error) {
 	j = &Journal{}
 
@@ -421,6 +429,32 @@ func NewJournalFromDir(path string) (j *Journal, err error) {
 	r := C.my_sd_journal_open_directory(sd_journal_open_directory, &j.cjournal, p, 0)
 	if r < 0 {
 		return nil, fmt.Errorf("failed to open journal in directory %q: %d", path, syscall.Errno(-r))
+	}
+
+	return j, nil
+}
+
+// NewJournalFromFiles returns a new Journal instance pointing to a journals residing
+// in a given files.
+func NewJournalFromFiles(paths ...string) (j *Journal, err error) {
+	j = &Journal{}
+
+	sd_journal_open_files, err := getFunction("sd_journal_open_files")
+	if err != nil {
+		return nil, err
+	}
+
+	// by making the slice 1 elem too long, we guarantee it'll be null-terminated
+	cPaths := make([]*C.char, len(paths)+1)
+	for idx, path := range paths {
+		p := C.CString(path)
+		cPaths[idx] = p
+		defer C.free(unsafe.Pointer(p))
+	}
+
+	r := C.my_sd_journal_open_files(sd_journal_open_files, &j.cjournal, &cPaths[0], 0)
+	if r < 0 {
+		return nil, fmt.Errorf("failed to open journals in paths %q: %d", paths, syscall.Errno(-r))
 	}
 
 	return j, nil
