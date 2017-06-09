@@ -414,8 +414,7 @@ func NewJournal() (j *Journal, err error) {
 }
 
 // NewJournalFromDir returns a new Journal instance pointing to a journal residing
-// in a given directory. The supplied path may be relative or absolute; if
-// relative, it will be converted to an absolute path before being opened.
+// in a given directory.
 func NewJournalFromDir(path string) (j *Journal, err error) {
 	j = &Journal{}
 
@@ -436,8 +435,7 @@ func NewJournalFromDir(path string) (j *Journal, err error) {
 }
 
 // NewJournalFromFiles returns a new Journal instance pointing to a journals residing
-// in a given files. The supplied path may be relative or absolute; if
-// relative, it will be converted to an absolute path before being opened.
+// in a given files.
 func NewJournalFromFiles(paths ...string) (j *Journal, err error) {
 	j = &Journal{}
 
