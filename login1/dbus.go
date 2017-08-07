@@ -74,6 +74,56 @@ func (c *Conn) initConnection() error {
 	return nil
 }
 
+type Session struct {
+	Id   string
+	Uid  uint32
+	User string
+	Seat string
+	Path dbus.ObjectPath
+}
+
+func (s Session) toInterface() []interface{} {
+	return []interface{}{s.Id, s.Uid, s.User, s.Seat, s.Path}
+}
+
+func sessionFromInterfaces(session []interface{}) (*Session, error) {
+	id := session[0].(string)
+	uid := session[1].(uint32)
+	user := session[2].(string)
+	seat := session[3].(string)
+	path := session[4].(dbus.ObjectPath)
+
+	ret := Session{Id: id, Uid: uid, User: user, Seat: seat, Path: path}
+	return &ret, nil
+
+}
+
+func (c *Conn) ListSessions() ([]Session, error) {
+	out := [][]interface{}{}
+	if err := c.object.Call(dbusInterface+".ListSessions", 0).Store(&out); err != nil {
+		return nil, err
+	}
+
+	ret := []Session{}
+
+	for _, el := range out {
+		session, err := sessionFromInterfaces(el)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, *session)
+	}
+	return ret, nil
+}
+
+func (c *Conn) LockSession(id string) {
+	c.object.Call(dbusInterface+".LockSession", 0, id)
+}
+
+func (c *Conn) LockSessions() {
+	c.object.Call(dbusInterface+".LockSessions", 0)
+}
+
 // Reboot asks logind for a reboot optionally asking for auth.
 func (c *Conn) Reboot(askForAuth bool) {
 	c.object.Call(dbusInterface+".Reboot", 0, askForAuth)
