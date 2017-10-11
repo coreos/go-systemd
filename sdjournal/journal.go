@@ -303,6 +303,7 @@ package sdjournal
 import "C"
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -368,6 +369,12 @@ const (
 	// events. It is implemented as the maximum value for a time.Duration:
 	// https://github.com/golang/go/blob/e4dcf5c8c22d98ac9eac7b9b226596229624cb1d/src/time/time.go#L434
 	IndefiniteWait time.Duration = 1<<63 - 1
+)
+
+var (
+	// Error show when using TestCursor function and cursor parameter is not the same
+	// as the current cursor position
+	ErrNoTestCursor = errors.New("Cursor parameter is not the same as current position")
 )
 
 // Journal is a Go wrapper of an sd_journal structure.
@@ -879,6 +886,8 @@ func (j *Journal) TestCursor(cursor string) error {
 
 	if r < 0 {
 		return fmt.Errorf("failed to test to cursor %q: %d", cursor, syscall.Errno(-r))
+	} else if r == 0 {
+		return ErrNoTestCursor
 	}
 
 	return nil
