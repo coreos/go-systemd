@@ -178,6 +178,20 @@ func TestJournalCursorGetSeekAndTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error testing cursor to journal: %s", err)
 	}
+
+	err = journal.Print(journal.PriInfo, "second message %s", time.Now())
+	if err != nil {
+		t.Fatalf("Error writing to journal: %s", err)
+	}
+
+	if err = waitAndNext(j); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	err = j.TestCursor(c)
+	if err != ErrNoTestCursor {
+		t.Fatalf("Error, TestCursor should fail because current cursor has moved from the previous obtained cursor")
+	}
 }
 
 func TestNewJournalFromDir(t *testing.T) {
