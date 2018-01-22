@@ -175,15 +175,15 @@ func (c *Conn) SetSubStateSubscriber(updateCh chan<- *SubStateUpdate, errCh chan
 	c.subscriber.errCh = errCh
 }
 
-func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
+func (c *Conn) sendSubStateUpdate(unitPath dbus.ObjectPath) {
 	c.subscriber.Lock()
 	defer c.subscriber.Unlock()
 
-	if c.shouldIgnore(path) {
+	if c.shouldIgnore(unitPath) {
 		return
 	}
 
-	info, err := c.GetUnitProperties(string(path))
+	info, err := c.GetUnitPathProperties(unitPath)
 	if err != nil {
 		select {
 		case c.subscriber.errCh <- err:
@@ -204,7 +204,7 @@ func (c *Conn) sendSubStateUpdate(path dbus.ObjectPath) {
 		}
 	}
 
-	c.updateIgnore(path, info)
+	c.updateIgnore(unitPath, info)
 }
 
 // The ignore functions work around a wart in the systemd dbus interface.
