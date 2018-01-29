@@ -103,3 +103,51 @@ func TestSubscribeUnit(t *testing.T) {
 success:
 	return
 }
+
+// TestSubStateSubscription exercises the basics of sub-state event subscriptions
+func TestSubStateSubscription(t *testing.T) {
+	target := "subscribe-events.service"
+
+	conn, err := New()
+	defer conn.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	updateCh := make(chan *SubStateUpdate)
+	errCh := make(chan error)
+	conn.SetSubStateSubscriber(updateCh, errCh)
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err = conn.StartUnit(target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Couldn't start", target)
+	}
+
+	timeout := make(chan bool, 1)
+	go func() {
+		time.Sleep(3 * time.Second)
+		close(timeout)
+	}()
+
+	for {
+		select {
+		case update := <-updateCh:
+			if update.UnitName == target && update.SubState == "running" {
+				return // success
+			}
+		case err := <-errCh:
+			t.Fatal(err)
+		case <-timeout:
+			t.Fatal("Reached timeout")
+		}
+	}
+}
