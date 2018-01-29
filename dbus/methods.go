@@ -16,6 +16,7 @@ package dbus
 
 import (
 	"errors"
+	"fmt"
 	"path"
 	"strconv"
 
@@ -148,14 +149,13 @@ func (c *Conn) ResetFailedUnit(name string) error {
 	return c.sysobj.Call("org.freedesktop.systemd1.Manager.ResetFailedUnit", 0, name).Store()
 }
 
-// getProperties takes the unit name and returns all of its dbus object properties, for the given dbus interface
-func (c *Conn) getProperties(unit string, dbusInterface string) (map[string]interface{}, error) {
+// getProperties takes the unit path and returns all of its dbus object properties, for the given dbus interface
+func (c *Conn) getProperties(path dbus.ObjectPath, dbusInterface string) (map[string]interface{}, error) {
 	var err error
 	var props map[string]dbus.Variant
 
-	path := unitPath(unit)
 	if !path.IsValid() {
-		return nil, errors.New("invalid unit name: " + unit)
+		return nil, fmt.Errorf("invalid unit name: %v", path)
 	}
 
 	obj := c.sysconn.Object("org.freedesktop.systemd1", path)
@@ -172,9 +172,15 @@ func (c *Conn) getProperties(unit string, dbusInterface string) (map[string]inte
 	return out, nil
 }
 
-// GetUnitProperties takes the unit name and returns all of its dbus object properties.
+// GetUnitProperties takes the (unescaped) unit name and returns all of its dbus object properties.
 func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
-	return c.getProperties(unit, "org.freedesktop.systemd1.Unit")
+	path := unitPath(unit)
+	return c.getProperties(path, "org.freedesktop.systemd1.Unit")
+}
+
+// GetUnitProperties takes the (escaped) unit path and returns all of its dbus object properties.
+func (c *Conn) GetUnitPathProperties(path dbus.ObjectPath) (map[string]interface{}, error) {
+	return c.getProperties(path, "org.freedesktop.systemd1.Unit")
 }
 
 func (c *Conn) getProperty(unit string, dbusInterface string, propertyName string) (*Property, error) {
@@ -208,7 +214,8 @@ func (c *Conn) GetServiceProperty(service string, propertyName string) (*Propert
 // Valid values for unitType: Service, Socket, Target, Device, Mount, Automount, Snapshot, Timer, Swap, Path, Slice, Scope
 // return "dbus.Error: Unknown interface" if the unitType is not the correct type of the unit
 func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]interface{}, error) {
-	return c.getProperties(unit, "org.freedesktop.systemd1."+unitType)
+	path := unitPath(unit)
+	return c.getProperties(path, "org.freedesktop.systemd1."+unitType)
 }
 
 // SetUnitProperties() may be used to modify certain unit properties at runtime.
