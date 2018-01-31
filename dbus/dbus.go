@@ -16,6 +16,7 @@
 package dbus
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strconv"
@@ -53,6 +54,27 @@ func PathBusEscape(path string) string {
 		if needsEscape(i, c) {
 			e := fmt.Sprintf("_%x", c)
 			n = append(n, []byte(e)...)
+		} else {
+			n = append(n, c)
+		}
+	}
+	return string(n)
+}
+
+// pathBusUnescape is the inverse of PathBusEscape.
+func pathBusUnescape(path string) string {
+	if path == "_" {
+		return ""
+	}
+	n := []byte{}
+	for i := 0; i < len(path); i++ {
+		c := path[i]
+		if c == '_' && i+2 < len(path) {
+			res, err := hex.DecodeString(path[i+1 : i+3])
+			if err == nil {
+				n = append(n, res...)
+			}
+			i += 2
 		} else {
 			n = append(n, c)
 		}
