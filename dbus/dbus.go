@@ -96,12 +96,17 @@ type Conn struct {
 		jobs map[dbus.ObjectPath]chan<- string
 		sync.Mutex
 	}
-	subscriber struct {
+	subStateSubscriber struct {
 		updateCh chan<- *SubStateUpdate
 		errCh    chan<- error
 		sync.Mutex
 		ignore      map[dbus.ObjectPath]int64
 		cleanIgnore int64
+	}
+	propertiesSubscriber struct {
+		updateCh chan<- *PropertiesUpdate
+		errCh    chan<- error
+		sync.Mutex
 	}
 }
 
@@ -174,7 +179,7 @@ func NewConnection(dialBus func() (*dbus.Conn, error)) (*Conn, error) {
 		sigobj:  systemdObject(sigconn),
 	}
 
-	c.subscriber.ignore = make(map[dbus.ObjectPath]int64)
+	c.subStateSubscriber.ignore = make(map[dbus.ObjectPath]int64)
 	c.jobListener.jobs = make(map[dbus.ObjectPath]chan<- string)
 
 	// Setup the listeners on jobs so that we can get completions
