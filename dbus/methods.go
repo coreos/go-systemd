@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015, 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -147,6 +147,20 @@ func (c *Conn) KillUnit(name string, signal int32) {
 // ResetFailedUnit resets the "failed" state of a specific unit.
 func (c *Conn) ResetFailedUnit(name string) error {
 	return c.sysobj.Call("org.freedesktop.systemd1.Manager.ResetFailedUnit", 0, name).Store()
+}
+
+// SystemState returns the systemd state. Equivalent to `systemctl is-system-running`.
+func (c *Conn) SystemState() (*Property, error) {
+	var err error
+	var prop dbus.Variant
+
+	obj := c.sysconn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
+	err = obj.Call("org.freedesktop.DBus.Properties.Get", 0, "org.freedesktop.systemd1.Manager", "SystemState").Store(&prop)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Property{Name: "SystemState", Value: prop}, nil
 }
 
 // getProperties takes the unit path and returns all of its dbus object properties, for the given dbus interface
