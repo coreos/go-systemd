@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015, 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -639,6 +639,40 @@ func TestEnableDisableUnit(t *testing.T) {
 	}
 	if dChanges[0].Destination != "" {
 		t.Fatalf("Change destination should be empty, %+v", dChanges[0])
+	}
+}
+
+// TestSystemState tests if system state is one of the valid states
+func TestSystemState(t *testing.T) {
+	conn := setupConn(t)
+	defer conn.Close()
+
+	prop, err := conn.SystemState()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if prop.Name != "SystemState" {
+		t.Fatalf("unexpected property name: %v", prop.Name)
+	}
+
+	val := prop.Value.Value().(string)
+
+	switch val {
+	case "initializing":
+	case "starting":
+	case "running":
+	case "degraded":
+	case "maintenance":
+	case "stopping":
+	case "offline":
+	case "unknown":
+		// valid systemd state - do nothing
+		break
+
+	default:
+		t.Fatalf("unexpected property value: %v", val)
+		break
 	}
 }
 
