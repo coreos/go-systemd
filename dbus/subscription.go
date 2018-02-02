@@ -16,6 +16,7 @@ package dbus
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"github.com/godbus/dbus"
@@ -176,6 +177,16 @@ type SubStateUpdate struct {
 // is full, it attempts to write an error to errCh; if errCh is full, the error
 // passes silently.
 func (c *Conn) SetSubStateSubscriber(updateCh chan<- *SubStateUpdate, errCh chan<- error) {
+	if c == nil {
+		msg := "nil receiver"
+		select {
+		case errCh <- errors.New(msg):
+		default:
+			log.Printf("full error channel while reporting: %s\n", msg)
+		}
+		return
+	}
+
 	c.subStateSubscriber.Lock()
 	defer c.subStateSubscriber.Unlock()
 	c.subStateSubscriber.updateCh = updateCh
@@ -190,7 +201,9 @@ func (c *Conn) sendSubStateUpdate(unitPath dbus.ObjectPath) {
 		return
 	}
 
-	if c.shouldIgnore(unitPath) {
+	isIgnored := c.shouldIgnore(unitPath)
+	defer c.cleanIgnore()
+	if isIgnored {
 		return
 	}
 
@@ -199,23 +212,45 @@ func (c *Conn) sendSubStateUpdate(unitPath dbus.ObjectPath) {
 		select {
 		case c.subStateSubscriber.errCh <- err:
 		default:
+			log.Printf("full error channel while reporting: %s\n", err)
 		}
+		return
 	}
+	defer c.updateIgnore(unitPath, info)
 
-	name := info["Id"].(string)
-	substate := info["SubState"].(string)
+	name, ok := info["Id"].(string)
+	if !ok {
+		msg := "failed to cast info.Id"
+		select {
+		case c.subStateSubscriber.errCh <- errors.New(msg):
+		default:
+			log.Printf("full error channel while reporting: %s\n", err)
+		}
+		return
+	}
+	substate, ok := info["SubState"].(string)
+	if !ok {
+		msg := "failed to cast info.SubState"
+		select {
+		case c.subStateSubscriber.errCh <- errors.New(msg):
+		default:
+			log.Printf("full error channel while reporting: %s\n", msg)
+		}
+		return
+	}
 
 	update := &SubStateUpdate{name, substate}
 	select {
 	case c.subStateSubscriber.updateCh <- update:
 	default:
+		msg := "update channel is full"
 		select {
-		case c.subStateSubscriber.errCh <- errors.New("update channel full!"):
+		case c.subStateSubscriber.errCh <- errors.New(msg):
 		default:
+			log.Printf("full error channel while reporting: %s\n", msg)
 		}
+		return
 	}
-
-	c.updateIgnore(unitPath, info)
 }
 
 // The ignore functions work around a wart in the systemd dbus interface.
@@ -238,10 +273,13 @@ func (c *Conn) shouldIgnore(path dbus.ObjectPath) bool {
 }
 
 func (c *Conn) updateIgnore(path dbus.ObjectPath, info map[string]interface{}) {
-	c.cleanIgnore()
+	loadState, ok := info["LoadState"].(string)
+	if !ok {
+		return
+	}
 
 	// unit is unloaded - it will trigger bad systemd dbus behavior
-	if info["LoadState"].(string) == "not-found" {
+	if loadState == "not-found" {
 		c.subStateSubscriber.ignore[path] = time.Now().UnixNano() + ignoreInterval
 	}
 }
@@ -294,9 +332,11 @@ func (c *Conn) sendPropertiesUpdate(unitPath dbus.ObjectPath, changedProps map[s
 	select {
 	case c.propertiesSubscriber.updateCh <- update:
 	default:
+		msg := "update channel is full"
 		select {
-		case c.propertiesSubscriber.errCh <- errors.New("update channel is full"):
+		case c.propertiesSubscriber.errCh <- errors.New(msg):
 		default:
+			log.Printf("full error channel while reporting: %s\n", msg)
 		}
 		return
 	}
