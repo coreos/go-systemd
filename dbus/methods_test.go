@@ -1524,3 +1524,20 @@ func TestReload(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUnitName(t *testing.T) {
+	for _, unit := range []string{
+		"",
+		"foo.service",
+		"foobar",
+		"woof@woof.service",
+		"0123456",
+		"account_db.service",
+		"got-dashes",
+	} {
+		got := unitName(unitPath(unit))
+		if got != unit {
+			t.Errorf("bad result for unitName(%s): got %q, want %q", unit, got, unit)
+		}
+	}
+}

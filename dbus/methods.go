@@ -584,3 +584,8 @@ func (c *Conn) Reload() error {
 func unitPath(name string) dbus.ObjectPath {
 	return dbus.ObjectPath("/org/freedesktop/systemd1/unit/" + PathBusEscape(name))
 }
+
+// unitName returns the unescaped base element of the supplied escaped path
+func unitName(dpath dbus.ObjectPath) string {
+	return pathBusUnescape(path.Base(string(dpath)))
+}
