@@ -32,6 +32,9 @@ func Listeners(unsetEnv bool) ([]net.Listener, error) {
 	for i, f := range files {
 		if pc, err := net.FileListener(f); err == nil {
 			listeners[i] = pc
+			if unsetEnv {
+				f.Close()
+			}
 		}
 	}
 	return listeners, nil

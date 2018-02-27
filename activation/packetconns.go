@@ -31,6 +31,9 @@ func PacketConns(unsetEnv bool) ([]net.PacketConn, error) {
 	for i, f := range files {
 		if pc, err := net.FilePacketConn(f); err == nil {
 			conns[i] = pc
+			if unsetEnv {
+				f.Close()
+			}
 		}
 	}
 	return conns, nil
