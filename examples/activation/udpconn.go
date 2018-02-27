@@ -43,7 +43,7 @@ func main() {
 		panic("No packetConns")
 	}
 
-	if os.Getenv("LISTEN_PID") == "" || os.Getenv("LISTEN_FDS") == "" {
+	if os.Getenv("LISTEN_PID") == "" || os.Getenv("LISTEN_FDS") == "" || os.Getenv("LISTEN_FDNAMES") == "" {
 		panic("Should not unset envs")
 	}
 
@@ -52,7 +52,7 @@ func main() {
 		panic(err)
 	}
 
-	if os.Getenv("LISTEN_PID") != "" || os.Getenv("LISTEN_FDS") != "" {
+	if os.Getenv("LISTEN_PID") != "" || os.Getenv("LISTEN_FDS") != "" || os.Getenv("LISTEN_FDNAMES") != "" {
 		panic("Can not unset envs")
 	}
 
