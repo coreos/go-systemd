@@ -74,12 +74,6 @@ func TestSubscribeUnit(t *testing.T) {
 		t.Fatal("Couldn't start", target)
 	}
 
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(3 * time.Second)
-		close(timeout)
-	}()
-
 	for {
 		select {
 		case changes := <-evChan:
@@ -95,7 +89,7 @@ func TestSubscribeUnit(t *testing.T) {
 			}
 		case err = <-errChan:
 			t.Fatal(err)
-		case <-timeout:
+		case <-time.After(10 * time.Second):
 			t.Fatal("Reached timeout")
 		}
 	}
@@ -114,8 +108,8 @@ func TestSubStateSubscription(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updateCh := make(chan *SubStateUpdate)
-	errCh := make(chan error)
+	updateCh := make(chan *SubStateUpdate, 256)
+	errCh := make(chan error, 256)
 	conn.SetSubStateSubscriber(updateCh, errCh)
 
 	setupUnit(target, conn, t)
@@ -132,12 +126,6 @@ func TestSubStateSubscription(t *testing.T) {
 		t.Fatal("Couldn't start", target)
 	}
 
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(3 * time.Second)
-		close(timeout)
-	}()
-
 	for {
 		select {
 		case update := <-updateCh:
@@ -146,7 +134,7 @@ func TestSubStateSubscription(t *testing.T) {
 			}
 		case err := <-errCh:
 			t.Fatal(err)
-		case <-timeout:
+		case <-time.After(10 * time.Second):
 			t.Fatal("Reached timeout")
 		}
 	}
@@ -167,8 +155,8 @@ func TestPropertiesSubscription(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updateCh := make(chan *PropertiesUpdate)
-	errCh := make(chan error)
+	updateCh := make(chan *PropertiesUpdate, 256)
+	errCh := make(chan error, 256)
 	conn.SetPropertiesSubscriber(updateCh, errCh)
 
 	setupUnit(target, conn, t)
@@ -185,12 +173,6 @@ func TestPropertiesSubscription(t *testing.T) {
 		t.Fatal("Couldn't start", target)
 	}
 
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(3 * time.Second)
-		close(timeout)
-	}()
-
 	for {
 		select {
 		case update := <-updateCh:
@@ -202,7 +184,7 @@ func TestPropertiesSubscription(t *testing.T) {
 			}
 		case err := <-errCh:
 			t.Fatal(err)
-		case <-timeout:
+		case <-time.After(10 * time.Second):
 			t.Fatal("Reached timeout")
 		}
 	}
