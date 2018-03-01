@@ -33,6 +33,7 @@ func Listeners(unsetEnv bool) ([]net.Listener, error) {
 		if pc, err := net.FileListener(f); err == nil {
 			listeners[i] = pc
 		}
+		f.Close()
 	}
 	return listeners, nil
 }
