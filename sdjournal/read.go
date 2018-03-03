@@ -44,6 +44,11 @@ type JournalReaderConfig struct {
 	// If not empty, the journal instance will point to a journal residing
 	// in this directory. The supplied path may be relative or absolute.
 	Path string
+
+	// If not nil, Formatter will be used to translate the resulting entries
+	// into strings. If not set, the default format (timestamp and message field)
+	// will be used. If Formatter returns an error, Read will stop and return the error.
+	Formatter func(entry *JournalEntry) (string, error)
 }
 
 // JournalReader is an io.ReadCloser which provides a simple interface for iterating through the
@@ -51,12 +56,20 @@ type JournalReaderConfig struct {
 type JournalReader struct {
 	journal   *Journal
 	msgReader *strings.Reader
+	formatter func(entry *JournalEntry) (string, error)
 }
 
 // NewJournalReader creates a new JournalReader with configuration options that are similar to the
 // systemd journalctl tool's iteration and filtering features.
 func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
-	r := &JournalReader{}
+	// use simpelMessageFormatter as default formatter.
+	if config.Formatter == nil {
+		config.Formatter = simpelMessageFormatter
+	}
+
+	r := &JournalReader{
+		formatter: config.Formatter,
+	}
 
 	// Open the journal
 	var err error
@@ -137,9 +150,14 @@ func (r *JournalReader) Read(b []byte) (int, error) {
 			return 0, io.EOF
 		}
 
+		entry, err := r.journal.GetEntry()
+		if err != nil {
+			return 0, err
+		}
+
 		// Build a message
 		var msg string
-		msg, err = r.buildMessage()
+		msg, err = r.formatter(entry)
 
 		if err != nil {
 			return 0, err
@@ -238,20 +256,16 @@ process:
 	return
 }
 
-// buildMessage returns a string representing the current journal entry in a simple format which
+// simpelMessageFormatter is the default formatter.
+// It returns a string representing the current journal entry in a simple format which
 // includes the entry timestamp and MESSAGE field.
-func (r *JournalReader) buildMessage() (string, error) {
-	var msg string
-	var usec uint64
-	var err error
+func simpelMessageFormatter(entry *JournalEntry) (string, error) {
+	msg, ok := entry.Fields["MESSAGE"]
 
-	if msg, err = r.journal.GetData("MESSAGE"); err != nil {
-		return "", err
+	if !ok {
+		return "", fmt.Errorf("no MESSAGE field present in journal entry")
 	}
-
-	if usec, err = r.journal.GetRealtimeUsec(); err != nil {
-		return "", err
-	}
+	usec := entry.RealtimeTimestamp
 
 	timestamp := time.Unix(0, int64(usec)*int64(time.Microsecond))
 
