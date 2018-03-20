@@ -33,11 +33,13 @@ const (
 	// but this would introduce an (unfortunate) dependency on cgo
 	SYSTEMD_LINE_MAX = 2048
 
-	// characters that systemd considers indicate a newline
+	// SYSTEMD_NEWLINE defines characters that systemd considers indicators
+	// for a newline.
 	SYSTEMD_NEWLINE = "\r\n"
 )
 
 var (
+	// ErrLineTooLong gets returned when a line is too long for systemd to handle.
 	ErrLineTooLong = fmt.Errorf("line too long (max %d bytes)", SYSTEMD_LINE_MAX)
 )
 
