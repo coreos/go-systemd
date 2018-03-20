@@ -50,11 +50,13 @@ const (
 	PriDebug
 )
 
-var conn net.Conn
+var conn *net.UnixConn
 
 func init() {
 	var err error
-	conn, err = net.Dial("unixgram", "/run/systemd/journal/socket")
+	var autobind *net.UnixAddr
+	autobind, err = net.ResolveUnixAddr("unixgram", "")
+	conn, err = net.ListenUnixgram("unixgram", autobind)
 	if err != nil {
 		conn = nil
 	}
@@ -77,6 +79,10 @@ func Send(message string, priority Priority, vars map[string]string) error {
 		return journalError("could not connect to journald socket")
 	}
 
+	socketAddr, err := net.ResolveUnixAddr("unixgram", "/run/systemd/journal/socket")
+	if err != nil {
+		return journalError(err.Error())
+	}
 	data := new(bytes.Buffer)
 	appendVariable(data, "PRIORITY", strconv.Itoa(int(priority)))
 	appendVariable(data, "MESSAGE", message)
@@ -84,7 +90,7 @@ func Send(message string, priority Priority, vars map[string]string) error {
 		appendVariable(data, k, v)
 	}
 
-	_, err := io.Copy(conn, data)
+	_, _, err = conn.WriteMsgUnix(data.Bytes(), nil, socketAddr)
 	if err != nil && isSocketSpaceError(err) {
 		file, err := tempFd()
 		if err != nil {
@@ -98,12 +104,7 @@ func Send(message string, priority Priority, vars map[string]string) error {
 
 		rights := syscall.UnixRights(int(file.Fd()))
 
-		/* this connection should always be a UnixConn, but better safe than sorry */
-		unixConn, ok := conn.(*net.UnixConn)
-		if !ok {
-			return journalError("can't send file through non-Unix connection")
-		}
-		unixConn.WriteMsgUnix([]byte{}, rights, nil)
+		conn.WriteMsgUnix([]byte{}, rights, socketAddr)
 	} else if err != nil {
 		return journalError(err.Error())
 	}
@@ -152,12 +153,12 @@ func isSocketSpaceError(err error) bool {
 		return false
 	}
 
-	sysErr, ok := opErr.Err.(syscall.Errno)
+	sysErr, ok := opErr.Err.(*os.SyscallError)
 	if !ok {
 		return false
 	}
 
-	return sysErr == syscall.EMSGSIZE || sysErr == syscall.ENOBUFS
+	return sysErr.Err == syscall.EMSGSIZE || sysErr.Err == syscall.ENOBUFS
 }
 
 func tempFd() (*os.File, error) {
