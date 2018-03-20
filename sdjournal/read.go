@@ -84,7 +84,9 @@ func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
 
 	// Add any supplied matches
 	for _, m := range config.Matches {
-		r.journal.AddMatch(m.String())
+		if err = r.journal.AddMatch(m.String()); err != nil {
+			return nil, err
+		}
 	}
 
 	// Set the start position based on options
