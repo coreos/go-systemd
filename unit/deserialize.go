@@ -72,7 +72,6 @@ type lexer struct {
 }
 
 func (l *lexer) lex() {
-	var err error
 	defer func() {
 		close(l.optchan)
 		close(l.errchan)
@@ -95,6 +94,7 @@ func (l *lexer) lex() {
 			}
 		}
 
+		var err error
 		next, err = next()
 		if err != nil {
 			l.errchan <- err
