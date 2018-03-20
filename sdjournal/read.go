@@ -62,9 +62,9 @@ type JournalReader struct {
 // NewJournalReader creates a new JournalReader with configuration options that are similar to the
 // systemd journalctl tool's iteration and filtering features.
 func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
-	// use simpelMessageFormatter as default formatter.
+	// use simpleMessageFormatter as default formatter.
 	if config.Formatter == nil {
-		config.Formatter = simpelMessageFormatter
+		config.Formatter = simpleMessageFormatter
 	}
 
 	r := &JournalReader{
@@ -256,17 +256,16 @@ process:
 	return
 }
 
-// simpelMessageFormatter is the default formatter.
+// simpleMessageFormatter is the default formatter.
 // It returns a string representing the current journal entry in a simple format which
 // includes the entry timestamp and MESSAGE field.
-func simpelMessageFormatter(entry *JournalEntry) (string, error) {
+func simpleMessageFormatter(entry *JournalEntry) (string, error) {
 	msg, ok := entry.Fields["MESSAGE"]
-
 	if !ok {
 		return "", fmt.Errorf("no MESSAGE field present in journal entry")
 	}
-	usec := entry.RealtimeTimestamp
 
+	usec := entry.RealtimeTimestamp
 	timestamp := time.Unix(0, int64(usec)*int64(time.Microsecond))
 
 	return fmt.Sprintf("%s %s\n", timestamp, msg), nil
