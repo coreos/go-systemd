@@ -65,7 +65,7 @@ func TestActivationNoFix(t *testing.T) {
 	cmd.Env = append(cmd.Env, "LISTEN_FDS=2")
 
 	out, _ := cmd.CombinedOutput()
-	if bytes.Contains(out, []byte("No files")) == false {
+	if !bytes.Contains(out, []byte("No files")) {
 		t.Fatalf("Child didn't error out as expected")
 	}
 }
@@ -76,7 +76,7 @@ func TestActivationNoFiles(t *testing.T) {
 	cmd.Env = append(cmd.Env, "LISTEN_FDS=0", "FIX_LISTEN_PID=1")
 
 	out, _ := cmd.CombinedOutput()
-	if bytes.Contains(out, []byte("No files")) == false {
+	if !bytes.Contains(out, []byte("No files")) {
 		t.Fatalf("Child didn't error out as expected")
 	}
 }
