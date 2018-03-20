@@ -25,6 +25,8 @@ import (
 )
 
 var (
+	// ErrExpired gets returned when the Follow function runs into the
+	// specified timeout.
 	ErrExpired = errors.New("Timeout expired")
 )
 

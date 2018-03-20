@@ -372,8 +372,8 @@ const (
 )
 
 var (
-	// Error show when using TestCursor function and cursor parameter is not the same
-	// as the current cursor position
+	// ErrNoTestCursor gets returned when using TestCursor function and cursor
+	// parameter is not the same as the current cursor position.
 	ErrNoTestCursor = errors.New("Cursor parameter is not the same as current position")
 )
 
