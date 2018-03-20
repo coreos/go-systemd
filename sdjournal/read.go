@@ -131,14 +131,10 @@ func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
 // don't fit in the read buffer. Callers should keep calling until 0 and/or an
 // error is returned.
 func (r *JournalReader) Read(b []byte) (int, error) {
-	var err error
-
 	if r.msgReader == nil {
-		var c uint64
-
 		// Advance the journal cursor. It has to be called at least one time
 		// before reading
-		c, err = r.journal.Next()
+		c, err := r.journal.Next()
 
 		// An unexpected error
 		if err != nil {
@@ -156,9 +152,7 @@ func (r *JournalReader) Read(b []byte) (int, error) {
 		}
 
 		// Build a message
-		var msg string
-		msg, err = r.formatter(entry)
-
+		msg, err := r.formatter(entry)
 		if err != nil {
 			return 0, err
 		}
@@ -166,8 +160,7 @@ func (r *JournalReader) Read(b []byte) (int, error) {
 	}
 
 	// Copy and return the message
-	var sz int
-	sz, err = r.msgReader.Read(b)
+	sz, err := r.msgReader.Read(b)
 	if err == io.EOF {
 		// The current entry has been fully read. Don't propagate this
 		// EOF, so the next entry can be read at the next Read()
