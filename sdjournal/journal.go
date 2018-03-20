@@ -788,7 +788,7 @@ func (j *Journal) GetEntry() (*JournalEntry, error) {
 	return entry, nil
 }
 
-// SetDataThresold sets the data field size threshold for data returned by
+// SetDataThreshold sets the data field size threshold for data returned by
 // GetData. To retrieve the complete data fields this threshold should be
 // turned off by setting it to 0, so that the library always returns the
 // complete data objects.
