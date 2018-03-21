@@ -613,7 +613,7 @@ func TestEnableDisableUnit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if install != false {
+	if install {
 		t.Log("Install was true")
 	}
 
@@ -668,11 +668,9 @@ func TestSystemState(t *testing.T) {
 	case "offline":
 	case "unknown":
 		// valid systemd state - do nothing
-		break
 
 	default:
 		t.Fatalf("unexpected property value: %v", val)
-		break
 	}
 }
 
@@ -1092,7 +1090,7 @@ func checkTransientUnitRequisite(t *testing.T, trTarget TrUnitProp, trDep TrUnit
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
 	if err == nil {
-		return fmt.Errorf("Unit %s is expected to fail, but succeeded.", trTarget.name)
+		return fmt.Errorf("Unit %s is expected to fail, but succeeded", trTarget.name)
 	}
 
 	unit := getUnitStatusSingle(conn, trTarget.name)
@@ -1112,7 +1110,7 @@ func checkTransientUnitRequisiteOv(t *testing.T, trTarget TrUnitProp, trDep TrUn
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
 	if err == nil {
-		return fmt.Errorf("Unit %s is expected to fail, but succeeded.", trTarget.name)
+		return fmt.Errorf("Unit %s is expected to fail, but succeeded", trTarget.name)
 	}
 
 	unit := getUnitStatusSingle(conn, trTarget.name)
@@ -1476,7 +1474,7 @@ func TestMaskUnmask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if install != false {
+	if install {
 		t.Log("Install was true")
 	}
 
