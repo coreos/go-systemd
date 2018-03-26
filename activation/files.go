@@ -48,7 +48,7 @@ func Files(unsetEnv bool) []*os.File {
 
 	files := make([]*os.File, 0, nfds)
 	for fd := listenFdsStart; fd < listenFdsStart+nfds; fd++ {
-		syscall.CloseOnExec(fd)
+		syscall.CloseOnExec(syscall.Handle(fd))
 		name := "LISTEN_FD_" + strconv.Itoa(fd)
 		offset := fd - listenFdsStart
 		if offset < len(names) && len(names[offset]) > 0 {
