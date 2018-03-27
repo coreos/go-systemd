@@ -21,6 +21,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -195,20 +196,20 @@ func (r *JournalReader) Rewind() error {
 
 // Follow synchronously follows the JournalReader, writing each new journal entry to writer. The
 // follow will continue until a single time.Time is received on the until channel.
-func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) (err error) {
+func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) error {
 
 	// Process journal entries and events. Entries are flushed until the tail or
 	// timeout is reached, and then we wait for new events or the timeout.
 	var msg = make([]byte, 64*1<<(10))
-	var waitCh = make(chan int)
-	var waitStop = make(chan bool)
-	defer close(waitStop)
+	var waitCh = make(chan int, 1)
+	var waitGroup sync.WaitGroup
+	defer waitGroup.Wait()
 
 process:
 	for {
 		c, err := r.Read(msg)
 		if err != nil && err != io.EOF {
-			break process
+			return err
 		}
 
 		select {
@@ -218,7 +219,7 @@ process:
 		}
 		if c > 0 {
 			if _, err = writer.Write(msg[:c]); err != nil {
-				break process
+				return err
 			}
 			continue process
 		}
@@ -227,11 +228,11 @@ process:
 		// Holds journal events to process. Tightly bounded for now unless there's a
 		// reason to unblock the journal watch routine more quickly.
 		for {
+			waitGroup.Add(1)
 			go func() {
-				select {
-				case <-waitStop:
-				case waitCh <- r.journal.Wait(1 * time.Second):
-				}
+				status := r.journal.Wait(100 * time.Millisecond)
+				waitCh <- status
+				waitGroup.Done()
 			}()
 
 			select {
@@ -244,13 +245,15 @@ process:
 				case SD_JOURNAL_APPEND, SD_JOURNAL_INVALIDATE:
 					continue process
 				default:
-					log.Printf("Received unknown event: %d\n", e)
+					if e < 0 {
+						return fmt.Errorf("received error event: %d", e)
+					}
+
+					log.Printf("received unknown event: %d\n", e)
 				}
 			}
 		}
 	}
-
-	return
 }
 
 // simpleMessageFormatter is the default formatter.
