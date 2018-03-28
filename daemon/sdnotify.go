@@ -26,6 +26,25 @@ import (
 	"os"
 )
 
+const (
+	// SdNotifyReady tells the service manager that service startup is finished
+	// or the service finished loading its configuration.
+	SdNotifyReady = "READY=1"
+
+	// SdNotifyStopping tells the service manager that the service is beginning
+	// its shutdown.
+	SdNotifyStopping = "STOPPING=1"
+
+	// SdNotifyReloading tells the service manager that this service is
+	// reloading its configuration. Note that you must call SdNotifyReady when
+	// it completed reloading.
+	SdNotifyReloading = "RELOADING=1"
+
+	// SdNotifyWatchdog tells the service manager to update the watchdog
+	// timestamp for the service.
+	SdNotifyWatchdog = "WATCHDOG=1"
+)
+
 // SdNotify sends a message to the init daemon. It is common to ignore the error.
 // If `unsetEnvironment` is true, the environment variable `NOTIFY_SOCKET`
 // will be unconditionally unset.
