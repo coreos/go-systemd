@@ -53,6 +53,7 @@ func TestJournalFollow(t *testing.T) {
 
 	// start writing some test entries
 	done := make(chan struct{}, 1)
+	errCh := make(chan error, 1)
 	defer close(done)
 	go func() {
 		for {
@@ -60,8 +61,9 @@ func TestJournalFollow(t *testing.T) {
 			case <-done:
 				return
 			default:
-				if err := journal.Print(journal.PriInfo, "test message %s", time.Now()); err != nil {
-					t.Fatalf("Error writing to journal: %s", err)
+				if perr := journal.Print(journal.PriInfo, "test message %s", time.Now()); err != nil {
+					errCh <- perr
+					return
 				}
 
 				time.Sleep(time.Second)
@@ -73,6 +75,12 @@ func TestJournalFollow(t *testing.T) {
 	timeout := time.Duration(5) * time.Second
 	if err = r.Follow(time.After(timeout), os.Stdout); err != ErrExpired {
 		t.Fatalf("Error during follow: %s", err)
+	}
+
+	select {
+	case err := <-errCh:
+		t.Fatalf("Error writing to journal: %s", err)
+	default:
 	}
 }
 
@@ -395,7 +403,7 @@ func TestJournalGetUniqueValues(t *testing.T) {
 	uniqueString := generateRandomField(20)
 	testEntries := []string{"A", "B", "C", "D"}
 	for _, v := range testEntries {
-		err := journal.Send("TEST: "+uniqueString, journal.PriInfo, map[string]string{uniqueString: v})
+		err = journal.Send("TEST: "+uniqueString, journal.PriInfo, map[string]string{uniqueString: v})
 		if err != nil {
 			t.Fatal(err)
 		}
