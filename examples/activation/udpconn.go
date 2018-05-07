@@ -37,17 +37,7 @@ func fixListenPid() {
 func main() {
 	fixListenPid()
 
-	pc, _ := activation.PacketConns(false)
-
-	if len(pc) == 0 {
-		panic("No packetConns")
-	}
-
-	if os.Getenv("LISTEN_PID") == "" || os.Getenv("LISTEN_FDS") == "" || os.Getenv("LISTEN_FDNAMES") == "" {
-		panic("Should not unset envs")
-	}
-
-	pc, err := activation.PacketConns(true)
+	pc, err := activation.PacketConns()
 	if err != nil {
 		panic(err)
 	}
