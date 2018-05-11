@@ -22,11 +22,17 @@ import (
 	"syscall"
 )
 
-// based on: https://gist.github.com/alberts/4640792
 const (
+	// listenFdsStart corresponds to `SD_LISTEN_FDS_START`.
 	listenFdsStart = 3
 )
 
+// Files returns a slice containing a `os.File` object for each
+// file descriptor passed to this process via systemd fd-passing protocol.
+//
+// The order of the file descriptors is preserved in the returned slice.
+// `unsetEnv` is typically set to `true` in order to avoid clashes in
+// fd usage and to avoid leaking environment flags to child processes.
 func Files(unsetEnv bool) []*os.File {
 	if unsetEnv {
 		defer os.Unsetenv("LISTEN_PID")

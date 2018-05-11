@@ -36,17 +36,7 @@ func fixListenPid() {
 func main() {
 	fixListenPid()
 
-	listeners, _ := activation.Listeners(false)
-
-	if len(listeners) == 0 {
-		panic("No listeners")
-	}
-
-	if os.Getenv("LISTEN_PID") == "" || os.Getenv("LISTEN_FDS") == "" || os.Getenv("LISTEN_FDNAMES") == "" {
-		panic("Should not unset envs")
-	}
-
-	listenersWithNames, err := activation.ListenersWithNames(true)
+	listenersWithNames, err := activation.ListenersWithNames()
 	if err != nil {
 		panic(err)
 	}
