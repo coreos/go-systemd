@@ -14,7 +14,6 @@ env:
   global:
     - IMPORTPATH=github.com/coreos/go-systemd
     - GOPATH=/opt
-    - GO15VENDOREXPERIMENT=1
     - DEP_BINDIR=/tmp
     - BUILD_DIR=/opt/src/github.com/coreos/go-systemd
   matrix:
