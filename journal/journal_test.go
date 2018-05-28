@@ -17,10 +17,19 @@ package journal
 import (
 	"fmt"
 	"io/ioutil"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestJournalEnabled(t *testing.T) {
+	enabled := Enabled()
+
+	if !enabled {
+		t.Fatalf("journald socket not detected")
+	}
+}
 
 func TestValidVarName(t *testing.T) {
 	validTestCases := []string{
@@ -61,8 +70,6 @@ func TestJournalSend(t *testing.T) {
 			largeValue = v + 1
 		}
 	}
-	// See https://github.com/coreos/go-systemd/pull/221#issuecomment-276727718
-	_ = largeValue
 
 	// small messages should go over normal data,
 	// larger ones over temporary file with fd in ancillary data
@@ -78,7 +85,6 @@ func TestJournalSend(t *testing.T) {
 			"small message",
 			5,
 		},
-		/* See https://github.com/coreos/go-systemd/pull/221#issuecomment-276727718
 		{
 			"large message",
 			largeValue,
@@ -87,18 +93,25 @@ func TestJournalSend(t *testing.T) {
 			"huge message",
 			hugeValue,
 		},
-		*/
 	}
 
+	// This is memory intensive, so we manually trigger GC before and after each test.
 	for i, tt := range testValues {
 		t.Logf("journal send test #%v - %s (len=%d)", i, tt.label, tt.len)
-		largeVars := map[string]string{
-			"KEY": string(make([]byte, tt.len)),
-		}
-
-		err := Send(fmt.Sprintf("go-systemd test #%v - %s", i, tt.label), PriCrit, largeVars)
+		runtime.GC()
+		err := SendAlloc(i, tt.label, tt.len)
 		if err != nil {
 			t.Fatalf("#%v: failed sending %s: %s", i, tt.label, err)
 		}
+		runtime.GC()
 	}
+}
+
+func SendAlloc(run int, label string, len int) error {
+	largeVars := map[string]string{
+		"KEY": string(make([]byte, len)),
+	}
+
+	msg := fmt.Sprintf("go-systemd test #%v - %s", run, label)
+	return Send(msg, PriCrit, largeVars)
 }
