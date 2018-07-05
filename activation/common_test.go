@@ -25,7 +25,7 @@ func exampleCmd(binaryName string) (string, []string) {
 	sourceCmdLine := []string{"go", "run", sourcePath}
 	binaryPath := fmt.Sprintf("../test_bins/%s.example", binaryName)
 	if _, err := os.Stat(binaryPath); err != nil && os.IsNotExist(err) {
-		return sourceCmdLine[0], sourceCmdLine
+		return sourceCmdLine[0], sourceCmdLine[1:]
 	}
 	return binaryPath, []string{binaryPath}
 }
