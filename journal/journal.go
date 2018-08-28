@@ -144,7 +144,7 @@ func validVarName(name string) bool {
 
 	valid := name[0] != '_'
 	for _, c := range name {
-		valid = valid && ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_'
+		valid = valid && (('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_')
 	}
 	return valid
 }

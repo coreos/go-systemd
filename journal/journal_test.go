@@ -35,6 +35,10 @@ func TestValidaVarName(t *testing.T) {
 			"test",
 			false,
 		},
+		{
+			"_TEST",
+			false,
+		},
 	}
 
 	for _, tt := range testCases {
