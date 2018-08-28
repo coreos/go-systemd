@@ -22,27 +22,30 @@ import (
 	"testing"
 )
 
-func TestValidaVarName(t *testing.T) {
-	testCases := []struct {
-		testcase string
-		valid    bool
-	}{
-		{
-			"TEST",
-			true,
-		},
-		{
-			"test",
-			false,
-		},
+func TestValidVarName(t *testing.T) {
+	validTestCases := []string{
+		"TEST",
+		"TE_ST",
+		"TEST_",
+		"0TEST0",
+	}
+	invalidTestCases := []string{
+		"test",
+		"_TEST",
+		"",
 	}
 
-	for _, tt := range testCases {
-		valid := validVarName(tt.testcase)
-		if valid != tt.valid {
-			t.Fatalf("expected %t, got %t", tt.valid, valid)
+	for _, tt := range validTestCases {
+		if err := validVarName(tt); err != nil {
+			t.Fatalf("\"%s\" should be a valid variable", tt)
 		}
 	}
+	for _, tt := range invalidTestCases {
+		if err := validVarName(tt); err == nil {
+			t.Fatalf("\"%s\" should be an invalid variable", tt)
+		}
+	}
+
 }
 
 func TestJournalSend(t *testing.T) {
