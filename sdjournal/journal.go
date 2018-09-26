@@ -300,6 +300,15 @@ package sdjournal
 //   return sd_journal_get_catalog(j, ret);
 // }
 //
+// int
+// my_sd_journal_process(void *f, sd_journal *j)
+// {
+//   int(*sd_journal_process)(sd_journal *);
+//
+//   sd_journal_process = f;
+//   return sd_journal_process(j);
+// }
+//
 import "C"
 import (
 	"bytes"
@@ -1117,4 +1126,22 @@ func (j *Journal) GetCatalog() (string, error) {
 	catalog := C.GoString(c)
 
 	return catalog, nil
+}
+
+// Process will process events for the journal.
+func (j *Journal) Process() error {
+	sd_journal_process, err := getFunction("sd_journal_process")
+	if err != nil {
+		return err
+	}
+
+	j.mu.Lock()
+	r := C.my_sd_journal_process(sd_journal_process, j.cjournal)
+	j.mu.Unlock()
+
+	if r < 0 {
+		return fmt.Errorf("failed to process journal: %d", syscall.Errno(-r))
+	}
+
+	return nil
 }
