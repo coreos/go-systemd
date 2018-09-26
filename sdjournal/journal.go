@@ -1145,3 +1145,18 @@ func (j *Journal) Process() error {
 
 	return nil
 }
+
+// RestartData resets the data enumeration index to the beginning of the entry.
+func (j *Journal) RestartData() error {
+
+	sd_journal_restart_data, err := getFunction("sd_journal_restart_data")
+	if err != nil {
+		return err
+	}
+
+	j.mu.Lock()
+	C.my_sd_journal_restart_data(sd_journal_restart_data, j.cjournal)
+	j.mu.Unlock()
+
+	return nil
+}
