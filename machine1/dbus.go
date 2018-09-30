@@ -125,6 +125,11 @@ func (c *Conn) GetMachineByPID(pid uint) (dbus.ObjectPath, error) {
 	return c.getPath("GetMachineByPID", pid)
 }
 
+// GetMachineAddresses gets a list of IP addresses
+func (c *Conn) GetMachineAddresses(name string) (dbus.ObjectPath, error) {
+	return c.getPath("GetMachineAddresses", name)
+}
+
 // DescribeMachine gets the properties of a machine
 func (c *Conn) DescribeMachine(name string) (machineProps map[string]interface{}, err error) {
 	var dbusProps map[string]dbus.Variant
