@@ -80,6 +80,16 @@ func TestMachine(t *testing.T) {
 		t.Fatalf("did not find machine named %s", machineName)
 	}
 
+	listMachines, getErr := conn.ListMachines()
+	if getErr != nil {
+		t.Fatal(getErr)
+	}
+
+	// listMachines includes also `.host`, so by default the length should be greater than 1
+	if len(listMachines) <= 1 {
+		t.Fatalf("did not find any machine")
+	}
+
 	tErr := conn.TerminateMachine(machineName)
 	if tErr != nil {
 		t.Fatal(tErr)

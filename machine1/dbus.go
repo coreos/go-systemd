@@ -37,6 +37,14 @@ type Conn struct {
 	object dbus.BusObject
 }
 
+// MachineStatus is a set of necessary info for each machine
+type MachineStatus struct {
+	Name    string          // The primary machine name as string
+	Class   string          // The machine class as string
+	Service string          // The machine service as string
+	JobPath dbus.ObjectPath // The job object path
+}
+
 // New() establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
 	c := new(Conn)
@@ -138,4 +146,48 @@ func (c *Conn) TerminateMachine(name string) error {
 // RegisterMachine registers the container with the systemd-machined
 func (c *Conn) RegisterMachine(name string, id []byte, service string, class string, pid int, root_directory string) error {
 	return c.object.Call(dbusInterface+".RegisterMachine", 0, name, id, service, class, uint32(pid), root_directory).Err
+}
+
+func machineFromInterfaces(machine []interface{}) (*MachineStatus, error) {
+	if len(machine) < 4 {
+		return nil, fmt.Errorf("invalid number of machine fields: %d", len(machine))
+	}
+	name, ok := machine[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("failed to typecast machine field 0 to string")
+	}
+	class, ok := machine[1].(string)
+	if !ok {
+		return nil, fmt.Errorf("failed to typecast class field 1 to string")
+	}
+	service, ok := machine[2].(string)
+	if !ok {
+		return nil, fmt.Errorf("failed to typecast service field 2 to string")
+	}
+	jobpath, ok := machine[3].(dbus.ObjectPath)
+	if !ok {
+		return nil, fmt.Errorf("failed to typecast jobpath field 3 to ObjectPath")
+	}
+
+	ret := MachineStatus{Name: name, Class: class, Service: service, JobPath: jobpath}
+	return &ret, nil
+}
+
+// ListMachines returns an array of all currently running machines.
+func (c *Conn) ListMachines() ([]MachineStatus, error) {
+	result := make([][]interface{}, 0)
+	if err := c.object.Call(dbusInterface+".ListMachines", 0).Store(&result); err != nil {
+		return nil, err
+	}
+
+	machs := []MachineStatus{}
+	for _, i := range result {
+		machine, err := machineFromInterfaces(i)
+		if err != nil {
+			return nil, err
+		}
+		machs = append(machs, *machine)
+	}
+
+	return machs, nil
 }
