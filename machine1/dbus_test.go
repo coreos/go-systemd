@@ -19,7 +19,9 @@ package machine1
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -111,4 +113,32 @@ func generateRandomLabel(n int) string {
 		s[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(s)
+}
+
+func TestImages(t *testing.T) {
+	imageName := machinePrefix + generateRandomLabel(8)
+	imagePath := filepath.Join("/var/lib/machines", imageName)
+
+	if _, err := os.Create(imagePath); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(imagePath)
+
+	if err := os.Truncate(imagePath, 500*1024*1024); err != nil {
+		t.Fatal(err)
+	}
+
+	conn, newErr := New()
+	if newErr != nil {
+		t.Fatal(newErr)
+	}
+
+	listImages, listErr := conn.ListImages()
+	if listErr != nil {
+		t.Fatal(listErr)
+	}
+
+	if len(listImages) < 1 {
+		t.Fatalf("did not find any image")
+	}
 }
