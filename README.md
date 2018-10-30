@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/coreos/go-systemd.png?branch=master)](https://travis-ci.org/coreos/go-systemd)
 [![godoc](https://godoc.org/github.com/coreos/go-systemd?status.svg)](http://godoc.org/github.com/coreos/go-systemd)
-![minimum golang 1.5](https://img.shields.io/badge/golang-1.5%2B-orange.svg)
+![minimum golang 1.7](https://img.shields.io/badge/golang-1.7%2B-orange.svg)
 
 
 Go bindings to systemd. The project has several packages:
