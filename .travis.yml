@@ -5,15 +5,15 @@ services:
 
 language: go
 go:
-  - "1.5.x"
+  - "1.7.x"
   - "1.10.x"
+  - "1.11.x"
 go_import_path: github.com/coreos/go-systemd
 
 env:
   global:
     - IMPORTPATH=github.com/coreos/go-systemd
     - GOPATH=/opt
-    - GO15VENDOREXPERIMENT=1
     - DEP_BINDIR=/tmp
     - BUILD_DIR=/opt/src/github.com/coreos/go-systemd
   matrix:
