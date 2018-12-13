@@ -1,0 +1,5 @@
+[Unit]
+Description=get unit pid
+
+[Service]
+ExecStart=get-unit-pid.sh
