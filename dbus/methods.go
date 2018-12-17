@@ -288,7 +288,8 @@ func (c *Conn) listUnitsInternal(f storeFunc) ([]UnitStatus, error) {
 	return status, nil
 }
 
-// GetUnitByPID returns an array with all currently loaded units. Note that
+// GetUnitByPID returns the object path of the unit a process ID belongs to.
+// The pid must refer to an existing process on the system.
 func (c *Conn) GetUnitByPID(pid uint32) (dbus.ObjectPath, error) {
 	var op dbus.ObjectPath
 	if err := c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnitByPID", 0, uint(pid)).Store(&op); err != nil {
