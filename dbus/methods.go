@@ -289,7 +289,7 @@ func (c *Conn) listUnitsInternal(f storeFunc) ([]UnitStatus, error) {
 }
 
 // GetUnitByPID returns an array with all currently loaded units. Note that
-func (c *Conn) GetUnitByPID(pid int) (dbus.ObjectPath, error) {
+func (c *Conn) GetUnitByPID(pid uint32) (dbus.ObjectPath, error) {
 	var op dbus.ObjectPath
 	if err := c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnitByPID", 0, uint(pid)).Store(&op); err != nil {
 		return dbus.ObjectPath(""), err

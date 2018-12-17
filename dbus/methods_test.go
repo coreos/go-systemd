@@ -16,14 +16,11 @@ package dbus
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"syscall"
 	"testing"
 	"time"
@@ -133,18 +130,6 @@ func runStopUnit(t *testing.T, conn *Conn, trTarget TrUnitProp) error {
 	<-reschan
 
 	return nil
-}
-
-func assertNoError(t *testing.T, err error) {
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func assertEqualStr(t *testing.T, shouldBe, target string) {
-	if target != shouldBe {
-		t.Fatalf("expected %q to equal %q", target, shouldBe)
-	}
 }
 
 // Ensure that basic unit starting and stopping works.
@@ -1555,6 +1540,18 @@ func TestUnitName(t *testing.T) {
 	}
 }
 
+func assertNoError(t *testing.T, err error) {
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertEqualStr(t *testing.T, shouldBe, target string) {
+	if target != shouldBe {
+		t.Fatalf("expected %q to equal %q", target, shouldBe)
+	}
+}
+
 func TestGetUnitByPID(t *testing.T) {
 	target := "get-unit-pid.service"
 	conn := setupConn(t)
@@ -1568,17 +1565,16 @@ func TestGetUnitByPID(t *testing.T) {
 	assertNoError(t, err)
 
 	job := <-reschan
-	if job != "done" {
-		t.Fatal("Job is not done:", job)
+	assertEqualStr(t, "done", job)
+	prop, err := conn.GetServiceProperty("get-unit-pid.service", "MainPID")
+	assertNoError(t, err)
+
+	pid, ok := prop.Value.Value().(uint32)
+	if !ok {
+		t.Fatalf("expected MainPID to be uint32, got %T", prop.Value)
 	}
 
-	pidStr, err := ioutil.ReadFile("../fixtures/get-unit-pid.pid")
-	assertNoError(t, err)
-	pid, err := strconv.Atoi(string(pidStr))
-	assertNoError(t, err)
 	objectPath, err := conn.GetUnitByPID(pid)
-	if err != nil {
-		log.Fatalf("conn.getunitbypid ntp: %v", err)
-	}
+	assertNoError(t, err)
 	assertEqualStr(t, "foo", string(objectPath))
 }
