@@ -1573,10 +1573,17 @@ func TestGetUnitByPID(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected MainPID to be uint32, got value %v of type %T", prop.Value, prop.Value)
 	}
+	if pid == 0 {
+		t.Fatal("expected MainPID to be greater than 0")
+	}
 
 	objectPath, err := conn.GetUnitByPID(pid)
 	assertNoError(t, err)
-	assertEqualStr(t, "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice", string(objectPath))
+	// assertEqualStr(t, "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice", string(objectPath))
+	expectPath := "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice"
+	if string(objectPath) != expectPath {
+		t.Fatalf("expected %q to equal %q for pid %d", string(objectPath), expectPath, pid)
+	}
 
 	_, err = conn.StopUnit(target, "replace", reschan)
 	assertNoError(t, err)
