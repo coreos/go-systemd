@@ -1541,12 +1541,14 @@ func TestUnitName(t *testing.T) {
 }
 
 func assertNoError(t *testing.T, err error) {
+	t.Helper()
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func assertEqualStr(t *testing.T, shouldBe, target string) {
+	t.Helper()
 	if target != shouldBe {
 		t.Fatalf("expected %q to equal %q", target, shouldBe)
 	}
