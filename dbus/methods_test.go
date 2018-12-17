@@ -21,6 +21,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1579,10 +1580,12 @@ func TestGetUnitByPID(t *testing.T) {
 
 	objectPath, err := conn.GetUnitByPID(pid)
 	assertNoError(t, err)
-	// assertEqualStr(t, "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice", string(objectPath))
-	expectPath := "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice"
-	if string(objectPath) != expectPath {
-		t.Fatalf("expected %q to equal %q for pid %d", string(objectPath), expectPath, pid)
+	if strings.HasSuffix(string(objectPath), "_2eslice") {
+		// in ubuntu:18.04 the top-level root slice container is the unit that gets returned
+		assertEqualStr(t, "/org/freedesktop/systemd1/unit/_2d_2eslice", string(objectPath))
+	} else {
+		// otherwise, the service itself is returned
+		assertEqualStr(t, "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice", string(objectPath))
 	}
 
 	_, err = conn.StopUnit(target, "replace", reschan)
