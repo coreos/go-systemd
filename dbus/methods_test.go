@@ -1577,4 +1577,8 @@ func TestGetUnitByPID(t *testing.T) {
 	objectPath, err := conn.GetUnitByPID(pid)
 	assertNoError(t, err)
 	assertEqualStr(t, "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice", string(objectPath))
+
+	_, err = conn.StopUnit(target, "replace", reschan)
+	assertNoError(t, err)
+	<-reschan
 }
