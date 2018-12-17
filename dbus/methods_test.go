@@ -1571,10 +1571,10 @@ func TestGetUnitByPID(t *testing.T) {
 
 	pid, ok := prop.Value.Value().(uint32)
 	if !ok {
-		t.Fatalf("expected MainPID to be uint32, got %T", prop.Value)
+		t.Fatalf("expected MainPID to be uint32, got value %v of type %T", prop.Value, prop.Value)
 	}
 
 	objectPath, err := conn.GetUnitByPID(pid)
 	assertNoError(t, err)
-	assertEqualStr(t, "foo", string(objectPath))
+	assertEqualStr(t, "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice", string(objectPath))
 }
