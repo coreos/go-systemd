@@ -49,6 +49,10 @@ func TestValidVarName(t *testing.T) {
 }
 
 func TestJournalSend(t *testing.T) {
+	if !Enabled() {
+		t.Skip("systemd journal not available locally")
+	}
+
 	// an always-too-big value (hopefully)
 	hugeValue := 1234567890
 
