@@ -97,7 +97,13 @@ func TestMachine(t *testing.T) {
 		t.Fatal(tErr)
 	}
 
-	machine, getErr = conn.GetMachine(machineName)
+	for i := 1; i <= 10; i++ {
+		machine, getErr = conn.GetMachine(machineName)
+		if len(machine) == 0 && getErr != nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 	if len(machine) != 0 {
 		t.Fatalf("unexpectedly found machine named %s", machineName)
 	} else if getErr == nil {
