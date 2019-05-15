@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-systemd/journal"
+	"github.com/coreos/go-systemd/v21/journal"
 )
 
 func TestJournalFollow(t *testing.T) {

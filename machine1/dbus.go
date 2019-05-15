@@ -23,9 +23,9 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 
-	sd_dbus "github.com/coreos/go-systemd/dbus"
+	sd_dbus "github.com/coreos/go-systemd/v21/dbus"
 )
 
 const (
