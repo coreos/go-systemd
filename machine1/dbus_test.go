@@ -25,7 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-systemd/dbus"
+	sd_dbus "github.com/coreos/go-systemd/dbus"
+	"github.com/godbus/dbus"
 )
 
 const (
@@ -47,7 +48,7 @@ func mustCreateTestProcess(machineName string) (pid int) {
 	if err != nil {
 		panic(fmt.Errorf("systemd-run failed: %q", out))
 	}
-	dbusConn, err := dbus.New()
+	dbusConn, err := sd_dbus.New()
 	if err != nil {
 		panic(err.Error())
 	}
@@ -61,25 +62,56 @@ func mustCreateTestProcess(machineName string) (pid int) {
 }
 
 func TestMachine(t *testing.T) {
-	machineName := machinePrefix + generateRandomLabel(8)
-	leader := mustCreateTestProcess(machineName)
+	machineNames := []string{
+		machinePrefix + "register-" + generateRandomLabel(8),
+		machinePrefix + "register-with-network-" + generateRandomLabel(8),
+		machinePrefix + "create-" + generateRandomLabel(8),
+		machinePrefix + "create-with-network-" + generateRandomLabel(8),
+	}
+	leaders := []int{
+		mustCreateTestProcess(machineNames[0]),
+		mustCreateTestProcess(machineNames[1]),
+		mustCreateTestProcess(machineNames[2]),
+		mustCreateTestProcess(machineNames[3]),
+	}
 
 	conn, newErr := New()
 	if newErr != nil {
 		t.Fatal(newErr)
 	}
 
-	regErr := conn.RegisterMachine(machineName, nil, "go-systemd", "container", leader, "")
+	regErr := conn.RegisterMachine(machineNames[0], nil, "go-systemd", "container", leaders[0], "")
 	if regErr != nil {
 		t.Fatal(regErr)
 	}
 
-	machine, getErr := conn.GetMachine(machineName)
-	if getErr != nil {
-		t.Fatal(getErr)
+	regWithNetworkErr := conn.RegisterMachineWithNetwork(machineNames[1], nil, "go-systemd", "container", leaders[1], "", nil)
+	if regWithNetworkErr != nil {
+		t.Fatal(regWithNetworkErr)
 	}
-	if len(machine) == 0 {
-		t.Fatalf("did not find machine named %s", machineName)
+
+	createErr := conn.CreateMachine(machineNames[2], nil, "go-systemd", "container", leaders[2], "", nil)
+	if createErr != nil {
+		t.Fatal(createErr)
+	}
+
+	createWithNetworkErr := conn.CreateMachineWithNetwork(machineNames[3], nil, "go-systemd", "container", leaders[3], "", nil, nil)
+	if createWithNetworkErr != nil {
+		t.Fatal(createWithNetworkErr)
+	}
+
+	machines := make([]dbus.ObjectPath, 0)
+	for _, v := range machineNames {
+		machine, getErr := conn.GetMachine(v)
+		if getErr != nil {
+			t.Fatal(getErr)
+		}
+		if machine != "" {
+			machines = append(machines, machine)
+		}
+	}
+	if len(machines) != 4 {
+		t.Fatalf("did not find all machine nameds %s", machineNames)
 	}
 
 	listMachines, getErr := conn.ListMachines()
@@ -87,27 +119,29 @@ func TestMachine(t *testing.T) {
 		t.Fatal(getErr)
 	}
 
-	// listMachines includes also `.host`, so by default the length should be greater than 1
-	if len(listMachines) <= 1 {
+	// listMachines includes also `.host`, so by default the length should be greater than 2
+	if len(listMachines) <= 4 {
 		t.Fatalf("did not find any machine")
 	}
 
-	tErr := conn.TerminateMachine(machineName)
-	if tErr != nil {
-		t.Fatal(tErr)
-	}
-
-	for i := 1; i <= 10; i++ {
-		machine, getErr = conn.GetMachine(machineName)
-		if len(machine) == 0 && getErr != nil {
-			break
+	for _, v := range machineNames {
+		tErr := conn.TerminateMachine(v)
+		if tErr != nil {
+			t.Fatal(tErr)
 		}
-		time.Sleep(1 * time.Second)
-	}
-	if len(machine) != 0 {
-		t.Fatalf("unexpectedly found machine named %s", machineName)
-	} else if getErr == nil {
-		t.Fatal("expected error but got nil")
+		var machine dbus.ObjectPath
+		for i := 1; i <= 10; i++ {
+			machine, getErr = conn.GetMachine(v)
+			if len(machine) == 0 && getErr != nil {
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+		if len(machine) != 0 {
+			t.Fatalf("unexpectedly found machine named %s", v)
+		} else if getErr == nil {
+			t.Fatal("expected error but got nil")
+		}
 	}
 }
 
