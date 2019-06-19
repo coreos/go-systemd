@@ -24,6 +24,8 @@ import (
 	"syscall"
 
 	"github.com/godbus/dbus"
+
+	sd_dbus "github.com/coreos/go-systemd/dbus"
 )
 
 const (
@@ -110,6 +112,16 @@ func (c *Conn) getPath(method string, args ...interface{}) (dbus.ObjectPath, err
 	return path, nil
 }
 
+// CreateMachine creates a new virtual machine or container with systemd-machined, generating a scope unit for it
+func (c *Conn) CreateMachine(name string, id []byte, service string, class string, pid int, root_directory string, scope_properties []sd_dbus.Property) error {
+	return c.object.Call(dbusInterface+".CreateMachine", 0, name, id, service, class, uint32(pid), root_directory, scope_properties).Err
+}
+
+// CreateMachineWithNetwork creates the container with its network config with systemd-machined
+func (c *Conn) CreateMachineWithNetwork(name string, id []byte, service string, class string, pid int, root_directory string, ifindices []int, scope_properties []sd_dbus.Property) error {
+	return c.object.Call(dbusInterface+".CreateMachineWithNetwork", 0, name, id, service, class, uint32(pid), root_directory, ifindices, scope_properties).Err
+}
+
 // GetMachine gets a specific container with systemd-machined
 func (c *Conn) GetMachine(name string) (dbus.ObjectPath, error) {
 	return c.getPath("GetMachine", name)
@@ -162,6 +174,11 @@ func (c *Conn) TerminateMachine(name string) error {
 // RegisterMachine registers the container with the systemd-machined
 func (c *Conn) RegisterMachine(name string, id []byte, service string, class string, pid int, root_directory string) error {
 	return c.object.Call(dbusInterface+".RegisterMachine", 0, name, id, service, class, uint32(pid), root_directory).Err
+}
+
+// RegisterMachineWithNetwork registers the container with its network with systemd-machined
+func (c *Conn) RegisterMachineWithNetwork(name string, id []byte, service string, class string, pid int, root_directory string, ifindices []int) error {
+	return c.object.Call(dbusInterface+".RegisterMachineWithNetwork", 0, name, id, service, class, uint32(pid), root_directory, ifindices).Err
 }
 
 func machineFromInterfaces(machine []interface{}) (*MachineStatus, error) {

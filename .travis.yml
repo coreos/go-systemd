@@ -5,7 +5,6 @@ services:
 
 language: go
 go:
-  - "1.7.x"
   - "1.10.x"
   - "1.11.x"
 go_import_path: github.com/coreos/go-systemd
@@ -32,13 +31,13 @@ before_install:
  - rm -f /tmp/cidfile
 
 install:
- - docker run -d --cidfile=/tmp/cidfile --privileged -e GOPATH=${GOPATH} -v ${PWD}:${BUILD_DIR} go-systemd/container-tests /bin/systemd --system
+ - docker run --shm-size=2gb -d --cidfile=/tmp/cidfile --privileged -e GOPATH=${GOPATH} -v ${PWD}:${BUILD_DIR} go-systemd/container-tests /bin/systemd --system
 
 script:
  - ./scripts/travis/pr-test.sh go_fmt
  - ./scripts/travis/pr-test.sh build_source
  - ./scripts/travis/pr-test.sh build_tests
- - docker exec `cat /tmp/cidfile` /bin/bash -c "cd ${BUILD_DIR} && ./scripts/travis/pr-test.sh run_tests"
+ - docker exec --privileged `cat /tmp/cidfile` /bin/bash -c "cd ${BUILD_DIR} && ./scripts/travis/pr-test.sh run_tests"
  - ./scripts/travis/pr-test.sh go_vet
  - ./scripts/travis/pr-test.sh license_check
 
