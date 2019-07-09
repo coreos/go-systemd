@@ -157,7 +157,10 @@ func generateRandomLabel(n int) string {
 
 func TestImages(t *testing.T) {
 	imageName := machinePrefix + generateRandomLabel(8)
-	imagePath := filepath.Join("/var/lib/machines", imageName)
+	imagePath := filepath.Join("/var/lib/machines", imageName+".raw")
+
+	newImageName := machinePrefix + generateRandomLabel(8)
+	newImagePath := filepath.Join("/var/lib/machines", newImageName+".raw")
 
 	if _, err := os.Create(imagePath); err != nil {
 		t.Fatal(err)
@@ -180,5 +183,15 @@ func TestImages(t *testing.T) {
 
 	if len(listImages) < 1 {
 		t.Fatalf("did not find any image")
+	}
+
+	cloneErr := conn.CloneImage(imageName, newImageName, false)
+	if cloneErr != nil {
+		t.Fatal(cloneErr)
+	}
+	defer os.Remove(newImagePath)
+
+	if len(listImages) < 2 {
+		t.Fatalf("image clone failed")
 	}
 }
