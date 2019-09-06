@@ -15,7 +15,7 @@
 package dbus
 
 import (
-	"github.com/godbus/dbus"
+	dbus "github.com/godbus/dbus/v5"
 )
 
 // From the systemd docs:

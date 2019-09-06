@@ -23,7 +23,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/godbus/dbus"
+	dbus "github.com/godbus/dbus/v5"
 )
 
 const (
