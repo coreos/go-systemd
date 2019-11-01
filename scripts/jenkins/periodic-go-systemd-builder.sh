@@ -19,6 +19,5 @@ if [ ! -h gopath/src/github.com/coreos/go-systemd ]; then
 fi
 export GOPATH=${PWD}/gopath
 go get -u github.com/godbus/dbus
-go get github.com/coreos/pkg/dlopen
 
 sudo -E ./test
