@@ -22,7 +22,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/coreos/go-systemd/activation"
+	"github.com/coreos/go-systemd/v21/activation"
 )
 
 func fixListenPid() {
