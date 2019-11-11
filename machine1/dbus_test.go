@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	sd_dbus "github.com/coreos/go-systemd/v21/dbus"
+	sd_dbus "github.com/coreos/go-systemd/v22/dbus"
 	"github.com/godbus/dbus/v5"
 )
 
