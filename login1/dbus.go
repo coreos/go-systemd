@@ -258,3 +258,8 @@ func (c *Conn) Subscribe(members ...string) chan *dbus.Signal {
 func (c *Conn) PowerOff(askForAuth bool) {
 	c.object.Call(dbusInterface+".PowerOff", 0, askForAuth)
 }
+
+// Suspend asks logind for a suspend optionally asking for auth.
+func (c *Conn) Suspend(askForAuth bool) {
+	c.object.Call(dbusInterface+".Suspend", 0, askForAuth)
+}
