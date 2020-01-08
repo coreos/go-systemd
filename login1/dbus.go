@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -158,7 +159,6 @@ func userFromInterfaces(user []interface{}) (*User, error) {
 
 // GetActiveSession may be used to get the session object path for the current active session
 func (c *Conn) GetActiveSession() (dbus.ObjectPath, error) {
-	var activeSessionPath dbus.ObjectPath
 	var seat0Path dbus.ObjectPath
 	if err := c.object.Call(dbusInterface+".GetSeat", 0, "seat0").Store(&seat0Path); err != nil {
 		return "", err
@@ -174,7 +174,7 @@ func (c *Conn) GetActiveSession() (dbus.ObjectPath, error) {
 		return "", fmt.Errorf("failed to typecast active session map")
 	}
 
-	activeSessionPath, ok = activeSessionMap[1].(dbus.ObjectPath)
+	activeSessionPath, ok := activeSessionMap[1].(dbus.ObjectPath)
 	if !ok {
 		return "", fmt.Errorf("failed to typecast dbus active session Path")
 	}
@@ -184,10 +184,9 @@ func (c *Conn) GetActiveSession() (dbus.ObjectPath, error) {
 // GetSessionUser may be used to get the user of specific session
 func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 	if len(sessionPath) == 0 {
-		return nil, fmt.Errorf("Empty sessionPath")
+		return nil, fmt.Errorf("empty sessionPath")
 	}
 
-	var user User
 	activeSessionObj := c.conn.Object(dbusDest, sessionPath)
 	sessionUserName, err := activeSessionObj.GetProperty(dbusDest + ".Session.Name")
 	if err != nil {
@@ -215,7 +214,7 @@ func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 		return nil, fmt.Errorf("failed to typecast user field 1 to ObjectPath")
 	}
 
-	user = User{UID: uid, Name: sessionUserName.String(), Path: path}
+	user := User{UID: uid, Name: strings.Trim(sessionUserName.String(), "\""), Path: path}
 
 	return &user, nil
 }
@@ -223,7 +222,7 @@ func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 // GetSessionDisplay may be used to get the display for specific session
 func (c *Conn) GetSessionDisplay(sessionPath dbus.ObjectPath) (string, error) {
 	if len(sessionPath) == 0 {
-		return "", fmt.Errorf("Empty sessionPath")
+		return "", fmt.Errorf("empty sessionPath")
 	}
 	sessionObj := c.conn.Object(dbusDest, sessionPath)
 	display, err := sessionObj.GetProperty(dbusDest + ".Session.Display")
@@ -231,7 +230,7 @@ func (c *Conn) GetSessionDisplay(sessionPath dbus.ObjectPath) (string, error) {
 		return "", err
 	}
 
-	return display.String(), nil
+	return strings.Trim(display.String(), "\""), nil
 }
 
 // GetSession may be used to get the session object path for the session with the specified ID.
