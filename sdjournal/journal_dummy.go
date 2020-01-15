@@ -55,9 +55,9 @@ const (
 
 // Journal event constants
 const (
-	SD_JOURNAL_NOP        = int(C.SD_JOURNAL_NOP)
-	SD_JOURNAL_APPEND     = int(C.SD_JOURNAL_APPEND)
-	SD_JOURNAL_INVALIDATE = int(C.SD_JOURNAL_INVALIDATE)
+	SD_JOURNAL_NOP = iota
+	SD_JOURNAL_APPEND
+	SD_JOURNAL_INVALIDATE
 )
 
 const (
