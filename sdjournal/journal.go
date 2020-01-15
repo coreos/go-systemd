@@ -1,3 +1,5 @@
+// +build linux
+
 // Copyright 2015 RedHat, Inc.
 // Copyright 2015 CoreOS, Inc.
 //
