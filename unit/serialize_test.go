@@ -168,3 +168,183 @@ o
 		}
 	}
 }
+
+// TestSerializeSections - test just UnitSecton specific serialization.
+func TestSerializeSection(t *testing.T) {
+	tests := []struct {
+		input  []*UnitSection
+		output string
+	}{
+		// no options results in empty file
+		{
+			[]*UnitSection{},
+			``,
+		},
+
+		// options with same section share the header
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Unit",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Description", "Foo"},
+						&UnitEntry{"BindsTo", "bar.service"},
+					},
+				},
+			},
+			`[Unit]
+Description=Foo
+BindsTo=bar.service
+`,
+		},
+
+		// options with same name are not combined
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Unit",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Description", "Foo"},
+						&UnitEntry{"Description", "Bar"},
+					},
+				},
+			},
+			`[Unit]
+Description=Foo
+Description=Bar
+`,
+		},
+
+		// multiple options printed under different section headers
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Unit",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Description", "Foo"},
+					},
+				},
+				&UnitSection{
+					Section: "Service",
+					Entries: []*UnitEntry{
+						&UnitEntry{"ExecStart", "/usr/bin/sleep infinity"},
+					},
+				},
+			},
+			`[Unit]
+Description=Foo
+
+[Service]
+ExecStart=/usr/bin/sleep infinity
+`,
+		},
+
+		// utf8 characters are not a problem
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "©",
+					Entries: []*UnitEntry{
+						&UnitEntry{"µ☃", "ÇôrèÕ$"},
+					},
+				},
+			},
+			`[©]
+µ☃=ÇôrèÕ$
+`,
+		},
+
+		// no verification is done on section names
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Un\nit",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Description", "Foo"},
+					},
+				},
+			},
+			`[Un
+it]
+Description=Foo
+`,
+		},
+
+		// no verification is done on option names
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Unit",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Desc\nription", "Foo"},
+					},
+				},
+			},
+			`[Unit]
+Desc
+ription=Foo
+`,
+		},
+
+		// no verification is done on option values
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Unit",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Description", "Fo\no"},
+					},
+				},
+			},
+			`[Unit]
+Description=Fo
+o
+`,
+		},
+
+		// Duplicate sections are preserved.
+
+		{
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Route",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Gateway", "10.0.10.1"},
+						&UnitEntry{"Destination", "10.0.1.1/24"},
+					},
+				},
+				&UnitSection{
+					Section: "Route",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Gateway", "10.0.10.2"},
+						&UnitEntry{"Destination", "10.0.2.1/24"},
+					},
+				},
+			},
+			`[Route]
+Gateway=10.0.10.1
+Destination=10.0.1.1/24
+
+[Route]
+Gateway=10.0.10.2
+Destination=10.0.2.1/24
+`,
+		},
+	}
+
+	for i, tt := range tests {
+		outReader := SerializeSections(tt.input)
+		outBytes, err := ioutil.ReadAll(outReader)
+		if err != nil {
+			t.Errorf("case %d: encountered error while reading output: %v", i, err)
+			continue
+		}
+
+		output := string(outBytes)
+		if tt.output != output {
+			t.Errorf("case %d: incorrect output", i)
+			t.Logf("Expected:\n%s", tt.output)
+			t.Logf("Actual:\n%s", output)
+		}
+	}
+}
