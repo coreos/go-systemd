@@ -123,7 +123,7 @@ func (l *lexer) lexSectionSuffixFunc(section string) lexStep {
 
 		garbage = bytes.TrimSpace(garbage)
 		if len(garbage) > 0 {
-			return nil, fmt.Errorf("found garbage after section name %s: %v", l.section, garbage)
+			return nil, fmt.Errorf("found garbage after section name %s: %q", l.section, garbage)
 		}
 
 		return l.lexNextSectionOrOptionFunc(section), nil
