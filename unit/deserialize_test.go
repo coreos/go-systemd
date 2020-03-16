@@ -277,7 +277,7 @@ Option=value
 	}
 
 	for i, tt := range tests {
-		output, err := Deserialize(bytes.NewReader(tt.input))
+		output, err := DeserializeOptions(bytes.NewReader(tt.input))
 		if err != nil {
 			t.Errorf("case %d: unexpected error parsing unit: %v", i, err)
 			continue
@@ -290,6 +290,95 @@ Option=value
 			logUnitOptionSlice(t, tt.output)
 			t.Log("Actual options:")
 			logUnitOptionSlice(t, output)
+		}
+	}
+}
+
+func TestDeserializeSections(t *testing.T) {
+	tests := []struct {
+		input  []byte
+		output []*UnitSection
+	}{
+		// multiple options underneath a section
+		{
+			[]byte(`[Unit]
+Description=Foo
+Description=Bar
+Requires=baz.service
+After=baz.service
+`),
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Unit",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Description", "Foo"},
+						&UnitEntry{"Description", "Bar"},
+						&UnitEntry{"Requires", "baz.service"},
+						&UnitEntry{"After", "baz.service"},
+					},
+				},
+			},
+		},
+		{
+			[]byte(`[Route]
+Destination=10.0.0.1/24
+Gateway=10.0.10.1
+
+[Route]
+Destination=10.0.2.1/24
+Gateway=10.0.10.1
+`),
+			[]*UnitSection{
+				&UnitSection{
+					Section: "Route",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Destination", "10.0.0.1/24"},
+						&UnitEntry{"Gateway", "10.0.10.1"},
+					},
+				},
+				&UnitSection{
+					Section: "Route",
+					Entries: []*UnitEntry{
+						&UnitEntry{"Destination", "10.0.2.1/24"},
+						&UnitEntry{"Gateway", "10.0.10.1"},
+					},
+				},
+			},
+		},
+	}
+
+	assert := func(expect, output []*UnitSection) error {
+		if len(expect) != len(output) {
+			return fmt.Errorf("expected %d sections, got %d", len(expect), len(output))
+		}
+
+		for i := range expect {
+			if !reflect.DeepEqual(expect[i], output[i]) {
+				return fmt.Errorf("item %d: expected %v, got %v", i, expect[i], output[i])
+			}
+		}
+
+		return nil
+	}
+
+	for i, tt := range tests {
+		output, err := DeserializeSections(bytes.NewReader(tt.input))
+		if err != nil {
+			t.Errorf("case %d: unexpected error parsing unit: %v", i, err)
+			continue
+		}
+
+		err = assert(tt.output, output)
+		if err != nil {
+			t.Errorf("case %d: %v", i, err)
+			t.Log("Expected options:")
+			for _, s := range tt.output {
+				t.Log(s)
+			}
+			t.Log("Actual options:")
+			for _, s := range output {
+				t.Log(s)
+			}
 		}
 	}
 }
@@ -319,7 +408,7 @@ Description=Foo
 	}
 
 	for i, tt := range tests {
-		output, err := Deserialize(bytes.NewReader(tt))
+		output, err := DeserializeOptions(bytes.NewReader(tt))
 		if err == nil {
 			t.Errorf("case %d: unexpected nil error", i)
 			t.Log("Output:")
@@ -371,7 +460,7 @@ ExecStartExecStartExecStartExecStartExecStartExecStartExecStartExecStartExecStar
 	}
 
 	for i, tt := range tests {
-		output, err := Deserialize(bytes.NewReader(tt))
+		output, err := DeserializeOptions(bytes.NewReader(tt))
 		if err != ErrLineTooLong {
 			t.Errorf("case %d: unexpected err: %v", i, err)
 			t.Log("Output:")
