@@ -65,8 +65,8 @@ func Deserialize(f io.Reader) (opts []*UnitOption, err error) {
 type lexDataType int
 
 const (
-	SEC lexDataType = iota
-	OPT
+	sectionKind lexDataType = iota
+	optionKind
 )
 
 // lexChanData - support either datatype in the lex channel.
@@ -89,13 +89,13 @@ func deserializeAll(f io.Reader) ([]*UnitSection, []*UnitOption, error) {
 
 	for ld := range lexchan {
 		switch ld.Type {
-		case OPT:
+		case optionKind:
 			if ld.Option != nil {
 				// add to options
 				opt := ld.Option
 				options = append(options, &(*opt))
 
-				// sanity check. "should not happen" as SEC is first in code flow.
+				// sanity check. "should not happen" as sectionKind is first in code flow.
 				if len(sections) == 0 {
 					return nil, nil, fmt.Errorf(
 						"Unit file misparse: option before section")
@@ -106,7 +106,7 @@ func deserializeAll(f io.Reader) ([]*UnitSection, []*UnitOption, error) {
 				sections[s].Entries = append(sections[s].Entries,
 					&UnitEntry{Name: opt.Name, Value: opt.Value})
 			}
-		case SEC:
+		case sectionKind:
 			if ld.Section != nil {
 				sections = append(sections, ld.Section)
 			}
@@ -189,7 +189,7 @@ func (l *lexer) lexSectionSuffixFunc(section string) lexStep {
 		}
 
 		l.lexchan <- &lexData{
-			Type:    SEC,
+			Type:    sectionKind,
 			Section: &UnitSection{Section: section, Entries: []*UnitEntry{}},
 			Option:  nil,
 		}
@@ -321,7 +321,7 @@ func (l *lexer) lexOptionValueFunc(section, name string, partial bytes.Buffer) l
 			val = strings.TrimSpace(val)
 		}
 		l.lexchan <- &lexData{
-			Type:    OPT,
+			Type:    optionKind,
 			Section: nil,
 			Option:  &UnitOption{Section: section, Name: name, Value: val},
 		}
