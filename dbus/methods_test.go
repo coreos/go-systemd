@@ -132,6 +132,19 @@ func runStopUnit(t *testing.T, conn *Conn, trTarget TrUnitProp) error {
 	return nil
 }
 
+func getJobStatusIfExists(jobs []JobStatus, jobName string) *JobStatus {
+	for _, j := range jobs {
+		if j.Unit == jobName {
+			return &j
+		}
+	}
+	return nil
+}
+
+func isJobStatusEmpty(job JobStatus) bool {
+	return job.Id == 0 && job.Unit == "" && job.JobType == "" && job.Status == "" && job.JobPath == "" && job.UnitPath == ""
+}
+
 // Ensure that basic unit starting and stopping works.
 func TestStartStopUnit(t *testing.T) {
 	target := "start-stop.service"
@@ -639,6 +652,54 @@ func TestEnableDisableUnit(t *testing.T) {
 	}
 	if dChanges[0].Destination != "" {
 		t.Fatalf("Change destination should be empty, %+v", dChanges[0])
+	}
+}
+
+// Ensure that ListJobs works.
+func TestListJobs(t *testing.T) {
+	service := "oneshot.service"
+
+	conn := setupConn(t)
+
+	setupUnit(service, conn, t)
+	linkUnit(service, conn, t)
+
+	_, err := conn.StartUnit(service, "replace", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	jobs, err := conn.ListJobs()
+	if err != nil {
+		t.Skip(err)
+	}
+
+	found := getJobStatusIfExists(jobs, service)
+	if found == nil {
+		t.Fatalf("%s job not found in list", service)
+	}
+
+	if isJobStatusEmpty(*found) {
+		t.Fatalf("empty %s job found in list", service)
+	}
+
+	reschan := make(chan string)
+	_, err = conn.StopUnit(service, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	<-reschan
+
+	jobs, err = conn.ListJobs()
+
+	found = getJobStatusIfExists(jobs, service)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if found != nil {
+		t.Fatalf("%s job found in list when it shouldn't", service)
 	}
 }
 
