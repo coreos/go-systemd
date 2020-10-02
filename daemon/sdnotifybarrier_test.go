@@ -25,8 +25,6 @@ import (
 	"time"
 )
 
-const intSize uint = 32 << (^uint(0) >> 63) // bits of int on target platform
-
 func TestSdNotifyBarrier(t *testing.T) {
 
 	testDir, e := ioutil.TempDir("/tmp/", "test-")
@@ -93,7 +91,7 @@ func TestSdNotifyBarrier(t *testing.T) {
 		}
 
 		go func() {
-			resultCh <- SdNotifyBarrier(tt.unsetEnv, 100*time.Millisecond)
+			resultCh <- SdNotifyBarrier(tt.unsetEnv, 500*time.Millisecond)
 		}()
 
 		if tt.envSocket == notifySocket {
