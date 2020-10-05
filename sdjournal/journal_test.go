@@ -470,6 +470,27 @@ func TestJournalGetCatalog(t *testing.T) {
 	}
 }
 
+func TestJournalGetBootID(t *testing.T) {
+	j, err := NewJournal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer j.Close()
+
+	bootID, err := j.GetBootID()
+
+	if err != nil {
+		t.Fatalf("Failed to get bootID : %s", err)
+	}
+
+	if len(bootID) <= 0 {
+		t.Fatalf("Get bootID: %s is Null", bootID)
+	}
+
+	fmt.Printf("Test GetBootID: %s", bootID)
+}
+
 func contains(s []string, v string) bool {
 	for _, entry := range s {
 		if entry == v {
