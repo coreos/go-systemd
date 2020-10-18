@@ -16,6 +16,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net"
 	"os"
@@ -91,7 +92,8 @@ func TestSdNotifyBarrier(t *testing.T) {
 		}
 
 		go func() {
-			resultCh <- SdNotifyBarrier(tt.unsetEnv, 500*time.Millisecond)
+			ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			resultCh <- SdNotifyBarrier(ctx, tt.unsetEnv)
 		}()
 
 		if tt.envSocket == notifySocket {

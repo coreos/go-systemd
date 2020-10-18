@@ -16,6 +16,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -32,7 +33,7 @@ var ErrEnvironment = errors.New("unsupported environment")
 // If `unsetEnvironment` is true, the environment variable `NOTIFY_SOCKET`
 // will be unconditionally unset.
 //
-func SdNotifyBarrier(unsetEnvironment bool, timeout time.Duration) error {
+func SdNotifyBarrier(ctx context.Context, unsetEnvironment bool) error {
 	// modelled after libsystemd's sd_notify_barrier
 
 	// construct unix socket address from systemd environment variable
@@ -78,9 +79,17 @@ func SdNotifyBarrier(unsetEnvironment bool, timeout time.Duration) error {
 	pipe_w.Close()
 
 	// wait for systemd to close the pipe
+	ctxch := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			pipe_r.SetReadDeadline(time.Now())
+		case <-ctxch:
+		}
+	}()
 	var b [1]byte
-	pipe_r.SetReadDeadline(time.Now().Add(timeout))
 	_, err = pipe_r.Read(b[:])
+	close(ctxch)
 	if err == io.EOF {
 		err = nil
 	}
