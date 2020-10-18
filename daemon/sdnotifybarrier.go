@@ -25,7 +25,8 @@ import (
 	"time"
 )
 
-var ErrEnvironment = errors.New("unsupported environment")
+// ErrNoNotificationSocket is returned when NOTIFY_SOCKET is not set in the environment
+var ErrNoNotificationSocket = errors.New("notification socket not available")
 
 // SdNotifyBarrier allows the caller to synchronize against reception of
 // previously sent notification messages and uses the "BARRIER=1" command.
@@ -43,7 +44,7 @@ func SdNotifyBarrier(ctx context.Context, unsetEnvironment bool) error {
 		Net:  "unixgram",
 	}
 	if socketAddr.Name == "" {
-		return ErrEnvironment
+		return ErrNoNotificationSocket
 	}
 
 	// create a pipe for communicating with systemd daemon
