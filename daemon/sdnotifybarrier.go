@@ -33,6 +33,7 @@ var ErrEnvironment = errors.New("unsupported environment")
 // If `unsetEnvironment` is true, the environment variable `NOTIFY_SOCKET`
 // will be unconditionally unset.
 //
+// This feature was added in systemd v246
 func SdNotifyBarrier(ctx context.Context, unsetEnvironment bool) error {
 	// modelled after libsystemd's sd_notify_barrier
 
