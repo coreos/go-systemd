@@ -1,0 +1,56 @@
+---
+name: Go
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  # Minimum supported Go toolchain
+  ACTION_MINIMUM_TOOLCHAIN: "1.12"
+
+jobs:
+  build:
+    name: "Build"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        go: ['1.14', '1.15']
+    steps:
+      - name: Install libsystemd-dev
+        run: sudo apt-get install libsystemd-dev
+      - uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Go fmt
+        run: ./scripts/travis/pr-test.sh go_fmt
+      - name: Go build (source)
+        run: ./scripts/travis/pr-test.sh build_source
+      - name: Go build (tests)
+        run: ./scripts/travis/pr-test.sh build_tests
+      - name: Go vet
+        run: ./scripts/travis/pr-test.sh go_vet
+  build-minimum:
+    name: "Build on minimum supported toolchain"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Install libsystemd-dev
+        run: sudo apt-get install libsystemd-dev
+      - uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ env['ACTION_MINIMUM_TOOLCHAIN'] }}
+      - name: Go fmt
+        run: ./scripts/travis/pr-test.sh go_fmt
+      - name: Go build (source)
+        run: ./scripts/travis/pr-test.sh build_source
+      - name: Go build (tests)
+        run: ./scripts/travis/pr-test.sh build_tests
+      - name: Go vet
+        run: ./scripts/travis/pr-test.sh go_vet
