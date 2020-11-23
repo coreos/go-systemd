@@ -14,11 +14,11 @@ jobs:
   build:
     name: "Build"
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       matrix:
         go: ['1.14', '1.15']
     steps:
+      - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
         run: sudo apt-get install libsystemd-dev
       - uses: actions/checkout@v2
@@ -37,8 +37,8 @@ jobs:
   build-minimum:
     name: "Build on minimum supported toolchain"
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
+      - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
         run: sudo apt-get install libsystemd-dev
       - uses: actions/checkout@v2
