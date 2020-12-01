@@ -24,6 +24,7 @@ package journal
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -211,12 +212,17 @@ func tempFd() (*os.File, error) {
 // initConn initializes the global `unixConnPtr` socket.
 // It is meant to be called exactly once, at program startup.
 func initConn() {
-	autobind, err := net.ResolveUnixAddr("unixgram", "")
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return
+	}
+	bind, err := net.ResolveUnixAddr("unixgram", fmt.Sprintf("@go-systemd-journal-%x", b))
 	if err != nil {
 		return
 	}
 
-	sock, err := net.ListenUnixgram("unixgram", autobind)
+	sock, err := net.ListenUnixgram("unixgram", bind)
 	if err != nil {
 		return
 	}
