@@ -15,12 +15,14 @@
 package dbus
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1598,5 +1600,29 @@ func TestUnitName(t *testing.T) {
 		if got != unit {
 			t.Errorf("bad result for unitName(%s): got %q, want %q", unit, got, unit)
 		}
+	}
+}
+
+// TestGetUnitFileState reads the `systemd-udevd.service` which should exist on all systemd
+// systems and ensures that UnitFileState property is valid.
+func TestGetUnitFileState(t *testing.T) {
+	conn := setupConn(t)
+	defer conn.Close()
+	service := "systemd-udevd.service"
+	got, err := conn.GetUnitFileStateContext(context.Background(), service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok := false
+	// valid UnitFileState values
+	validUnitFileStates := []string{"enabled", "disabled", "static", "bad"}
+	for _, v := range validUnitFileStates {
+		if got == v {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		t.Errorf("invalid UnitFileState returned from GetUnitFileState(%s): got %s, want one of [%s]", service, got, strings.Join(validUnitFileStates, ", "))
 	}
 }

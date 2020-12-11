@@ -830,3 +830,18 @@ func (c *Conn) listJobsInternal(ctx context.Context) ([]JobStatus, error) {
 
 	return status, nil
 }
+
+// GetUnitFileStateContext returns UnitFileState
+func (c *Conn) GetUnitFileStateContext(ctx context.Context, name string) (string, error) {
+	var prop dbus.Variant
+	obj := c.sysconn.Object("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
+	err := obj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnitFileState", 0, name).Store(&prop)
+	if err != nil {
+		return "", err
+	}
+	state, ok := prop.Value().(string)
+	if !ok {
+		return "", fmt.Errorf("failed to cast UnitFileState prop to string")
+	}
+	return state, nil
+}
