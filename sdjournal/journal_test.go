@@ -96,8 +96,8 @@ func TestJournalWait(t *testing.T) {
 	if err := j.SeekTail(); err != nil {
 		t.Fatalf("Error seeking to tail: %s", err)
 	}
-	if _, err := j.Next(); err != nil {
-		t.Fatalf("Error retrieving next entry: %s", err)
+	if _, err := j.Previous(); err != nil {
+		t.Fatalf("Error retrieving previous entry: %s", err)
 	}
 
 	var t1, t2 time.Time

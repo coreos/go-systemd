@@ -946,7 +946,7 @@ func (j *Journal) SeekHead() error {
 }
 
 // SeekTail may be used to seek to the end of the journal, i.e. the most recent
-// available entry. This call must be followed by a call to Next before any
+// available entry. This call must be followed by a call to Previous before any
 // call to Get* will return data about the last element.
 func (j *Journal) SeekTail() error {
 	sd_journal_seek_tail, err := getFunction("sd_journal_seek_tail")
