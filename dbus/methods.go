@@ -360,7 +360,7 @@ func (c *Conn) SetUnitPropertiesContext(ctx context.Context, name string, runtim
 
 // Deprecated: use GetUnitTypePropertyContext instead
 func (c *Conn) GetUnitTypeProperty(unit string, unitType string, propertyName string) (*Property, error) {
-	return c.GetUnitTypePropertyContext(context.Background(), unitType, unitType, propertyName)
+	return c.GetUnitTypePropertyContext(context.Background(), unit, unitType, propertyName)
 }
 
 // GetUnitTypePropertyContext same as GetUnitTypeProperty with context
