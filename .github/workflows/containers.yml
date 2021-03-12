@@ -41,6 +41,8 @@ jobs:
       - run: rm -f /tmp/cidfile
       - name: Run systemd from ${{ matrix.baseimage }}
         run: docker run --shm-size=2gb -d --cidfile=/tmp/cidfile --privileged -e GOPATH=${GOPATH} -v ${PWD}:${BUILD_DIR} go-systemd/container-tests /bin/systemd --system
+      - name: Wait a bit for the whole system to settle
+        run: sleep 30s
       - name: Run tests
         run: docker exec --privileged `cat /tmp/cidfile` /bin/bash -c "cd ${BUILD_DIR} && ./scripts/travis/pr-test.sh run_tests"
       - name: Cleanup
