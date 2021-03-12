@@ -310,7 +310,7 @@ package sdjournal
 // }
 //
 // char *
-// my_sd_id128_to_string(void *f, sd_id128_t boot_id, char s[_SD_ARRAY_STATIC SD_ID128_STRING_MAX])
+// my_sd_id128_to_string(void *f, sd_id128_t boot_id, char s[SD_ID128_STRING_MAX])
 // {
 //   char *(*sd_id128_to_string)(sd_id128_t, char *);
 //
