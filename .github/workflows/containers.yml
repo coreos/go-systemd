@@ -29,9 +29,9 @@ jobs:
         with:
           go-version: ${{ env['GO_TOOLCHAIN'] }}
       - name: Go build (source)
-        run: ./scripts/travis/pr-test.sh build_source
+        run: ./scripts/ci-runner.sh build_source
       - name: Go build (tests)
-        run: ./scripts/travis/pr-test.sh build_tests
+        run: ./scripts/ci-runner.sh build_tests
       - name: Pull base image - ${{ matrix.baseimage }}
         run: docker pull ${{ matrix.baseimage }}
       - name: Install packages for ${{ matrix.baseimage }}
@@ -44,6 +44,6 @@ jobs:
       - name: Wait a bit for the whole system to settle
         run: sleep 30s
       - name: Run tests
-        run: docker exec --privileged `cat /tmp/cidfile` /bin/bash -c "cd ${BUILD_DIR} && ./scripts/travis/pr-test.sh run_tests"
+        run: docker exec --privileged `cat /tmp/cidfile` /bin/bash -c "cd ${BUILD_DIR} && ./scripts/ci-runner.sh run_tests"
       - name: Cleanup
         run: docker kill `cat /tmp/cidfile`

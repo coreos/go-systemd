@@ -27,13 +27,13 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - name: Go fmt
-        run: ./scripts/travis/pr-test.sh go_fmt
+        run: ./scripts/ci-runner.sh go_fmt
       - name: Go build (source)
-        run: ./scripts/travis/pr-test.sh build_source
+        run: ./scripts/ci-runner.sh build_source
       - name: Go build (tests)
-        run: ./scripts/travis/pr-test.sh build_tests
+        run: ./scripts/ci-runner.sh build_tests
       - name: Go vet
-        run: ./scripts/travis/pr-test.sh go_vet
+        run: ./scripts/ci-runner.sh go_vet
   build-minimum:
     name: "Build on minimum supported toolchain"
     runs-on: ubuntu-latest
@@ -47,10 +47,10 @@ jobs:
         with:
           go-version: ${{ env['ACTION_MINIMUM_TOOLCHAIN'] }}
       - name: Go fmt
-        run: ./scripts/travis/pr-test.sh go_fmt
+        run: ./scripts/ci-runner.sh go_fmt
       - name: Go build (source)
-        run: ./scripts/travis/pr-test.sh build_source
+        run: ./scripts/ci-runner.sh build_source
       - name: Go build (tests)
-        run: ./scripts/travis/pr-test.sh build_tests
+        run: ./scripts/ci-runner.sh build_tests
       - name: Go vet
-        run: ./scripts/travis/pr-test.sh go_vet
+        run: ./scripts/ci-runner.sh go_vet
