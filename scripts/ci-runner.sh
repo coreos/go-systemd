@@ -103,7 +103,7 @@ case "$subcommand" in
         ;;
 
     * )
-        echo "Error: unrecognized subcommand."
+        echo "Error: unrecognized subcommand (hint: try with 'run_tests')."
         exit 1
     ;;
 esac
