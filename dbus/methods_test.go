@@ -21,6 +21,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1599,4 +1600,56 @@ func TestUnitName(t *testing.T) {
 			t.Errorf("bad result for unitName(%s): got %q, want %q", unit, got, unit)
 		}
 	}
+}
+
+func assertNoError(t *testing.T, err error) {
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertEqualStr(t *testing.T, shouldBe, target string) {
+	if target != shouldBe {
+		t.Fatalf("expected %q to equal %q", target, shouldBe)
+	}
+}
+
+func TestGetUnitByPID(t *testing.T) {
+	target := "get-unit-pid.service"
+	conn := setupConn(t)
+	defer conn.Close()
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err := conn.StartUnit(target, "replace", reschan)
+	assertNoError(t, err)
+
+	job := <-reschan
+	assertEqualStr(t, "done", job)
+	prop, err := conn.GetServiceProperty("get-unit-pid.service", "MainPID")
+	assertNoError(t, err)
+
+	pid, ok := prop.Value.Value().(uint32)
+	if !ok {
+		t.Fatalf("expected MainPID to be uint32, got value %v of type %T", prop.Value, prop.Value)
+	}
+	if pid == 0 {
+		t.Fatal("expected MainPID to be greater than 0")
+	}
+
+	objectPath, err := conn.GetUnitByPID(pid)
+	assertNoError(t, err)
+	if strings.HasSuffix(string(objectPath), "_2eslice") {
+		// in ubuntu:18.04 the top-level root slice container is the unit that gets returned
+		assertEqualStr(t, "/org/freedesktop/systemd1/unit/_2d_2eslice", string(objectPath))
+	} else {
+		// otherwise, the service itself is returned
+		assertEqualStr(t, "/org/freedesktop/systemd1/unit/get_2dunit_2dpid_2eservice", string(objectPath))
+	}
+
+	_, err = conn.StopUnit(target, "replace", reschan)
+	assertNoError(t, err)
+	<-reschan
 }
