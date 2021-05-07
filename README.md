@@ -1,6 +1,5 @@
 # go-systemd
 
-[![Build Status](https://travis-ci.org/coreos/go-systemd.png?branch=master)](https://travis-ci.org/coreos/go-systemd)
 [![godoc](https://img.shields.io/badge/godoc-reference-5272B4)](https://pkg.go.dev/mod/github.com/coreos/go-systemd/v22/?tab=packages)
 ![minimum golang 1.12](https://img.shields.io/badge/golang-1.12%2B-orange.svg)
 
