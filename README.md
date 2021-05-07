@@ -19,7 +19,7 @@ Go bindings to systemd. The project has several packages:
 
 An example HTTP server using socket activation can be quickly set up by following this README on a Linux machine running systemd:
 
-https://github.com/coreos/go-systemd/tree/master/examples/activation/httpserver
+https://github.com/coreos/go-systemd/tree/main/examples/activation/httpserver
 
 ## systemd Service Notification
 
