@@ -3,9 +3,9 @@ name: Containers
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 env:
   GO_TOOLCHAIN: "1.15"

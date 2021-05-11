@@ -31,7 +31,7 @@ are very busy and read the mailing lists.
 
 This is a rough outline of what a contributor's workflow looks like:
 
-- Create a topic branch from where you want to base your work (usually master).
+- Create a topic branch from where you want to base your work (usually main).
 - Make commits of logical units.
 - Make sure your commit messages are in the proper format (see below).
 - Push your changes to a topic branch in your fork of the repository.
@@ -39,12 +39,6 @@ This is a rough outline of what a contributor's workflow looks like:
 - Submit a pull request to the original repository.
 
 Thanks for your contributions!
-
-### Coding Style
-
-CoreOS projects written in Go follow a set of style guidelines that we've documented 
-[here](https://github.com/coreos/docs/tree/master/golang). Please follow them when 
-working on your contributions.
 
 ### Format of the Commit Message
 
