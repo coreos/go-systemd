@@ -15,6 +15,7 @@
 package dbus
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -1599,4 +1600,60 @@ func TestUnitName(t *testing.T) {
 			t.Errorf("bad result for unitName(%s): got %q, want %q", unit, got, unit)
 		}
 	}
+}
+
+func TestFreezer(t *testing.T) {
+	target := "freeze.service"
+	conn := setupConn(t)
+	defer conn.Close()
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err := conn.StartUnit(target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Job is not done:", job)
+	}
+
+	if err := conn.FreezeUnit(context.Background(), target); err != nil {
+		// Don't fail the test if freezing units is not implemented at all (on older systemd versions) or
+		// not supported (on systems running with cgroup v1).
+		e, ok := err.(dbus.Error)
+		if ok && (e.Name == "org.freedesktop.DBus.Error.UnknownMethod" || e.Name == "org.freedesktop.DBus.Error.NotSupported") {
+			t.SkipNow()
+		}
+		t.Fatalf("failed to freeze unit %s: %s", target, err)
+	}
+
+	p, err := conn.GetUnitProperty(target, "FreezerState")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v := p.Value.Value().(string)
+	if v != "frozen" {
+		t.Fatalf("unit is not frozen after calling FreezeUnit(), FreezerState=%s", v)
+	}
+
+	if err := conn.ThawUnit(context.Background(), target); err != nil {
+		t.Fatalf("failed to thaw unit %s: %s", target, err)
+	}
+
+	p, err = conn.GetUnitProperty(target, "FreezerState")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v = p.Value.Value().(string)
+	if v != "running" {
+		t.Fatalf("unit is not frozen after calling ThawUnit(), FreezerState=%s", v)
+	}
+
+	runStopUnit(t, conn, TrUnitProp{target, nil})
 }

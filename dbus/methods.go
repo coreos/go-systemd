@@ -828,3 +828,14 @@ func (c *Conn) listJobsInternal(ctx context.Context) ([]JobStatus, error) {
 
 	return status, nil
 }
+
+// Freeze the cgroup associated with the unit.
+// Note that FreezeUnit and ThawUnit are only supported on systems running with cgroup v2.
+func (c *Conn) FreezeUnit(ctx context.Context, unit string) error {
+	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.FreezeUnit", 0, unit).Store()
+}
+
+// Unfreeze the cgroup associated with the unit.
+func (c *Conn) ThawUnit(ctx context.Context, unit string) error {
+	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.ThawUnit", 0, unit).Store()
+}
