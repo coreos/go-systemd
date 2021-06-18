@@ -112,6 +112,12 @@ func (c *Conn) getPath(method string, args ...interface{}) (dbus.ObjectPath, err
 	return path, nil
 }
 
+// CloneImage clones the specified image under a new name. Also takes a boolean argument indicating whether the
+// resulting image shall be read-only or not.
+func (c *Conn) CloneImage(name, new_name string, read_only bool) error {
+	return c.object.Call(dbusInterface+".CloneImage", 0, name, new_name, read_only).Err
+}
+
 // CreateMachine creates a new virtual machine or container with systemd-machined, generating a scope unit for it
 func (c *Conn) CreateMachine(name string, id []byte, service string, class string, pid int, root_directory string, scope_properties []sd_dbus.Property) error {
 	return c.object.Call(dbusInterface+".CreateMachine", 0, name, id, service, class, uint32(pid), root_directory, scope_properties).Err
