@@ -40,6 +40,13 @@ const (
 	PriDebug
 )
 
+func (i Priority) String() string {
+	if i < 0 || i > PriDebug {
+		return ""
+	}
+	return []string{"Emergency", "Alert", "Critical", "Error", "Warning", "Notice", "Info", "Debug"}[i]
+}
+
 // Print prints a message to the local systemd journal using Send().
 func Print(priority Priority, format string, a ...interface{}) error {
 	return Send(fmt.Sprintf(format, a...), priority, nil)
