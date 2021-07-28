@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   # Minimum supported Go toolchain
   ACTION_MINIMUM_TOOLCHAIN: "1.12"
