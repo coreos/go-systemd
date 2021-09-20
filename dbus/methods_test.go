@@ -22,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1686,7 +1687,7 @@ func TestListUnitProcesses(t *testing.T) {
 
 	exists := false
 	for _, p := range processes {
-		if p.PID == pid && p.Command == cmd.String() {
+		if p.PID == pid && strings.HasPrefix(p.Command, "/bin/sleep") {
 			exists = true
 			t.Logf("Found %v\n", p)
 		}
