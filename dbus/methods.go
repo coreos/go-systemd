@@ -839,3 +839,38 @@ func (c *Conn) FreezeUnit(ctx context.Context, unit string) error {
 func (c *Conn) ThawUnit(ctx context.Context, unit string) error {
 	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.ThawUnit", 0, unit).Store()
 }
+
+type Process struct {
+	Path    string // The primary unit name as string
+	PID     uint64
+	Command string
+}
+
+// GetUnitProcessesContext returns an array with all currently running processes in a unit
+func (c *Conn) GetUnitProcessesContext(ctx context.Context, unit string) ([]Process, error) {
+	return c.getUnitProcessesInternal(ctx, unit)
+}
+
+func (c *Conn) getUnitProcessesInternal(ctx context.Context, unit string) ([]Process, error) {
+	result := make([][]interface{}, 0)
+	if err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnitProcesses", 0, unit).Store(&result); err != nil {
+		return nil, err
+	}
+
+	resultInterface := make([]interface{}, len(result))
+	for i := range result {
+		resultInterface[i] = result[i]
+	}
+
+	process := make([]Process, len(result))
+	processInterface := make([]interface{}, len(process))
+	for i := range process {
+		processInterface[i] = &process[i]
+	}
+
+	if err := dbus.Store(resultInterface, processInterface...); err != nil {
+		return nil, err
+	}
+
+	return process, nil
+}

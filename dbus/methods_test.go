@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-systemd/v22/util"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -1656,4 +1657,42 @@ func TestFreezer(t *testing.T) {
 	}
 
 	runStopUnit(t, conn, TrUnitProp{target, nil})
+}
+
+func TestListUnitProcesses(t *testing.T) {
+	target, err := util.CurrentUnitName()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conn := setupConn(t)
+	defer conn.Close()
+
+	cmd := exec.Command("/bin/sleep", "400")
+	err = cmd.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cmd.Process.Kill()
+
+	pid := uint64(cmd.Process.Pid)
+
+	ctx := context.Background()
+	processes, err := conn.GetUnitProcessesContext(ctx, target)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exists := false
+	for _, p := range processes {
+		if p.PID == pid && p.Command == cmd.String() {
+			exists = true
+			t.Logf("Found %v\n", p)
+		}
+	}
+
+	if !exists {
+		t.Errorf("PID %d ('/bin/sleep 400') not found in current unit's process list", pid)
+	}
 }
