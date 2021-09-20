@@ -1660,7 +1660,7 @@ func TestFreezer(t *testing.T) {
 }
 
 func TestListUnitProcesses(t *testing.T) {
-	target, err := util.CurrentUnitName()
+	target, err := util.GetRunningSlice() // This test should still pass even if the cmd is spawned in a child unit (i.e. session Scope) of the current Slice
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1693,6 +1693,6 @@ func TestListUnitProcesses(t *testing.T) {
 	}
 
 	if !exists {
-		t.Errorf("PID %d ('/bin/sleep 400') not found in current unit's process list", pid)
+		t.Errorf("PID %d ('/bin/sleep 400') not found in current Slice unit's process list", pid)
 	}
 }

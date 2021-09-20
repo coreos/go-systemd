@@ -841,12 +841,12 @@ func (c *Conn) ThawUnit(ctx context.Context, unit string) error {
 }
 
 type Process struct {
-	Path    string // The primary unit name as string
-	PID     uint64
-	Command string
+	Path    string // Where this process exists in the unit/cgroup hierarchy
+	PID     uint64 // The numeric process ID (PID)
+	Command string // The process command and arguments as a string
 }
 
-// GetUnitProcessesContext returns an array with all currently running processes in a unit
+// GetUnitProcessesContext returns an array with all currently running processes in a unit *including* its child units.
 func (c *Conn) GetUnitProcessesContext(ctx context.Context, unit string) ([]Process, error) {
 	return c.getUnitProcessesInternal(ctx, unit)
 }
