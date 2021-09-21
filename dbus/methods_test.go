@@ -27,7 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-systemd/v22/util"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -1661,46 +1660,43 @@ func TestFreezer(t *testing.T) {
 }
 
 func TestListUnitProcesses(t *testing.T) {
-	target, err := util.GetRunningSlice() // This test should still pass even if the cmd is spawned in a child unit (i.e. session Scope) of the current Slice
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctx := context.Background()
+	target := "list-me.service"
 
 	conn := setupConn(t)
 	defer conn.Close()
 
-	cmd := exec.Command("/bin/sleep", "400")
-	err = cmd.Start()
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err := conn.StartUnitContext(ctx, target, "replace", reschan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cmd.Process.Kill()
+	defer runStopUnit(t, conn, TrUnitProp{target, nil})
 
-	pid := uint64(cmd.Process.Pid)
-
-	ctx := context.Background()
-
-	exists := false
-	retries := 3
-	var attempt int
-	for attempt = 1; !exists && attempt <= retries; attempt++ {
-		time.Sleep(time.Millisecond * 50)
-		processes, err := conn.GetUnitProcesses(ctx, target)
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		for _, p := range processes {
-			if p.PID == pid && strings.HasPrefix(p.Command, "/bin/sleep") {
-				exists = true
-				t.Logf("Found %v after %d attempts\n", p, attempt)
-				break
-			}
-		}
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Job is not done:", job)
 	}
 
-	if !exists {
-		t.Errorf("PID %d ('/bin/sleep 400') not found in current Slice unit's process list after %d attempts", pid, attempt)
+	processes, err := conn.GetUnitProcesses(ctx, target)
+
+	if err != nil {
+		e, ok := err.(dbus.Error)
+		if ok && (e.Name == "org.freedesktop.DBus.Error.UnknownMethod" || e.Name == "org.freedesktop.DBus.Error.NotSupported") {
+			t.SkipNow()
+		}
+		t.Fatalf("failed to list processes of %s: %s", target, err)
 	}
+
+	for _, p := range processes {
+		if strings.HasPrefix(p.Command, "/bin/sleep") {
+			t.Logf("Found %v.\n", p)
+			return
+		}
+	}
+	t.Log("processes:", processes)
+	t.Error("The sleep process was not found in list-me.service unit's process list.")
 }
