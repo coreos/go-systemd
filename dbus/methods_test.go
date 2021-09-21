@@ -1692,7 +1692,7 @@ func TestListUnitProcesses(t *testing.T) {
 	}
 
 	for _, p := range processes {
-		if strings.HasPrefix(p.Command, "/bin/sleep") {
+		if strings.Contains(p.Command, "sleep") {
 			t.Logf("Found %v.\n", p)
 			return
 		}
