@@ -846,12 +846,8 @@ type Process struct {
 	Command string // The process command and arguments as a string
 }
 
-// GetUnitProcessesContext returns an array with all currently running processes in a unit *including* its child units.
-func (c *Conn) GetUnitProcessesContext(ctx context.Context, unit string) ([]Process, error) {
-	return c.getUnitProcessesInternal(ctx, unit)
-}
-
-func (c *Conn) getUnitProcessesInternal(ctx context.Context, unit string) ([]Process, error) {
+// GetUnitProcesses returns an array with all currently running processes in a unit *including* its child units.
+func (c *Conn) GetUnitProcesses(ctx context.Context, unit string) ([]Process, error) {
 	result := make([][]interface{}, 0)
 	if err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnitProcesses", 0, unit).Store(&result); err != nil {
 		return nil, err
