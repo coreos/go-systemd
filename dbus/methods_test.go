@@ -1679,21 +1679,28 @@ func TestListUnitProcesses(t *testing.T) {
 	pid := uint64(cmd.Process.Pid)
 
 	ctx := context.Background()
-	processes, err := conn.GetUnitProcessesContext(ctx, target)
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	exists := false
-	for _, p := range processes {
-		if p.PID == pid && strings.HasPrefix(p.Command, "/bin/sleep") {
-			exists = true
-			t.Logf("Found %v\n", p)
+	retries := 3
+	var attempt int
+	for attempt = 1; !exists && attempt <= retries; attempt++ {
+		time.Sleep(time.Millisecond * 50)
+		processes, err := conn.GetUnitProcesses(ctx, target)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, p := range processes {
+			if p.PID == pid && strings.HasPrefix(p.Command, "/bin/sleep") {
+				exists = true
+				t.Logf("Found %v after %d attempts\n", p, attempt)
+				break
+			}
 		}
 	}
 
 	if !exists {
-		t.Errorf("PID %d ('/bin/sleep 400') not found in current Slice unit's process list", pid)
+		t.Errorf("PID %d ('/bin/sleep 400') not found in current Slice unit's process list after %d attempts", pid, attempt)
 	}
 }
