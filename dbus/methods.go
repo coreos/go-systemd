@@ -417,22 +417,27 @@ func (c *Conn) listUnitsInternal(f storeFunc) ([]UnitStatus, error) {
 	return status, nil
 }
 
-func (c *Conn) getUnitInternal(f storeFunc) (string, error) {
+// GetUnitByPID returns the unit object path of the unit a process ID
+// belongs to. It takes a UNIX PID and returns the object path. The PID must
+// refer to an existing system process
+func (c *Conn) GetUnitByPID(ctx context.Context, pid uint32) (dbus.ObjectPath, error) {
 	var result dbus.ObjectPath
 
-	err := f(&result)
+	err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnitByPID", 0, pid).Store(&result)
 
-	// Nothing in this library actually accepts a dbus.ObjectPath, so it's much
-	// more useful as a name
-	name := unitName(result)
-
-	return name, err
+	return result, err
 }
 
-// GetUnitByPIDContext returns the unit name for a given PID. The PID must refer
-// to an existing system process
-func (c *Conn) GetUnitByPIDContext(ctx context.Context, pid uint32) (string, error) {
-	return c.getUnitInternal(c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnitByPID", 0, pid).Store)
+// GetUnitNameByPID returns the name of the unit a process ID belongs to. It
+// takes a UNIX PID and returns the object path. The PID must refer to an
+// existing system process
+func (c *Conn) GetUnitNameByPID(ctx context.Context, pid uint32) (string, error) {
+	path, err := c.GetUnitByPID(ctx, pid)
+	if err != nil {
+		return "", err
+	}
+
+	return unitName(path), nil
 }
 
 // Deprecated: use ListUnitsContext instead.

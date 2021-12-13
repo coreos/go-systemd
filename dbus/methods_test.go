@@ -450,12 +450,28 @@ func TestReloadOrRestartUnit(t *testing.T) {
 	}
 }
 
-// Ensure that GetUnitByPIDContext works.
-func TestGetUnitByPIDContext(t *testing.T) {
+// Ensure that GetUnitByPID works.
+func TestGetUnitByPID(t *testing.T) {
 	conn := setupConn(t)
 	defer conn.Close()
 
-	name, err := conn.GetUnitByPIDContext(context.Background(), 1)
+	path, err := conn.GetUnitByPID(context.Background(), 1)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if path == "" {
+		t.Fatal("path is empty")
+	}
+}
+
+// Ensure that GetUnitNameByPID works.
+func TestGetUnitNameByPID(t *testing.T) {
+	conn := setupConn(t)
+	defer conn.Close()
+
+	name, err := conn.GetUnitNameByPID(context.Background(), 1)
 
 	if err != nil {
 		t.Error(err)
