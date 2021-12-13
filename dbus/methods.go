@@ -417,6 +417,24 @@ func (c *Conn) listUnitsInternal(f storeFunc) ([]UnitStatus, error) {
 	return status, nil
 }
 
+func (c *Conn) getUnitInternal(f storeFunc) (string, error) {
+	var result dbus.ObjectPath
+
+	err := f(&result)
+
+	// Nothing in this library actually accepts a dbus.ObjectPath, so it's much
+	// more useful as a name
+	name := unitName(result)
+
+	return name, err
+}
+
+// GetUnitByPIDContext returns the unit name for a given PID. The PID must refer
+// to an existing system process
+func (c *Conn) GetUnitByPIDContext(ctx context.Context, pid uint32) (string, error) {
+	return c.getUnitInternal(c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnitByPID", 0, pid).Store)
+}
+
 // Deprecated: use ListUnitsContext instead.
 func (c *Conn) ListUnits() ([]UnitStatus, error) {
 	return c.ListUnitsContext(context.Background())

@@ -450,6 +450,22 @@ func TestReloadOrRestartUnit(t *testing.T) {
 	}
 }
 
+// Ensure that GetUnitByPIDContext works.
+func TestGetUnitByPIDContext(t *testing.T) {
+	conn := setupConn(t)
+	defer conn.Close()
+
+	name, err := conn.GetUnitByPIDContext(context.Background(), 1)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if name == "" {
+		t.Fatal("name is empty")
+	}
+}
+
 // Ensure that ListUnitsByNames works.
 func TestListUnitsByNames(t *testing.T) {
 	target1 := "systemd-journald.service"
