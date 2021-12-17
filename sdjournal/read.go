@@ -256,8 +256,8 @@ process:
 	}
 }
 
-// FollowTail synchronously follows the JournalReader, writing each new journal entry to writer. The
-// follow will continue until a single time.Time is received on the until channel.
+// FollowTail synchronously follows the JournalReader, writing each new journal entry to entries.
+// It will start from the next unread entry.
 func (r *JournalReader) FollowTail(entries chan *JournalEntry) error {
 	defer close(entries)
 
