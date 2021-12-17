@@ -256,15 +256,24 @@ process:
 	}
 }
 
+// SkipN skips the next n entries and returns the number of skipped entries and an eventual error.
+func (r *JournalReader) SkipN(n int) (int, error) {
+	var i int
+	for i := 1; i <= n; i++ {
+		c, err := r.journal.Next()
+		if err != nil {
+			return i, err
+		} else if c == 0 {
+			return i, nil
+		}
+	}
+	return i, nil
+}
+
 // FollowTail synchronously follows the JournalReader, writing each new journal entry to entries.
 // It will start from the next unread entry.
 func (r *JournalReader) FollowTail(entries chan *JournalEntry) error {
 	defer close(entries)
-
-	// skip first entry which has already been read
-	if _, err := r.journal.Next(); err != nil {
-		return err
-	}
 
 	for {
 		status := r.journal.Wait(200 * time.Millisecond)
