@@ -256,6 +256,39 @@ process:
 	}
 }
 
+// FollowTail synchronously follows the JournalReader, writing each new journal entry to writer. The
+// follow will continue until a single time.Time is received on the until channel.
+func (r *JournalReader) FollowTail(entries chan *JournalEntry) error {
+	defer close(entries)
+
+	// skip first entry which has already been read
+	if _, err := r.journal.Next(); err != nil {
+		return err
+	}
+
+	for {
+		status := r.journal.Wait(200 * time.Millisecond)
+		if status != SD_JOURNAL_APPEND && status != SD_JOURNAL_INVALIDATE {
+			continue
+		}
+
+		for {
+			if c, err := r.journal.Next(); err != nil {
+				return err
+			} else if c == 0 {
+				// EOF, should mean we're at the tail
+				break
+			}
+
+			if entry, err := r.journal.GetEntry(); err != nil {
+				return err
+			} else {
+				entries <- entry
+			}
+		}
+	}
+}
+
 // simpleMessageFormatter is the default formatter.
 // It returns a string representing the current journal entry in a simple format which
 // includes the entry timestamp and MESSAGE field.
