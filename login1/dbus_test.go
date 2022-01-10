@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/godbus/dbus/v5"
+
 	"github.com/coreos/go-systemd/v22/login1"
 )
 
@@ -190,4 +192,97 @@ func TestConn_GetUserPropertyContext(t *testing.T) {
 			}
 		}()
 	}
+}
+
+func Test_Creating_new_connection_with_custom_connection(t *testing.T) {
+	t.Parallel()
+
+	t.Run("connects_to_global_login1_path_and_interface", func(t *testing.T) {
+		t.Parallel()
+
+		objectConstructorCalled := false
+
+		connectionWithContextCheck := &mockConnection{
+			ObjectF: func(dest string, path dbus.ObjectPath) dbus.BusObject {
+				objectConstructorCalled = true
+
+				expectedDest := "org.freedesktop.login1"
+
+				if dest != expectedDest {
+					t.Fatalf("Expected D-Bus destination %q, got %q", expectedDest, dest)
+				}
+
+				expectedPath := dbus.ObjectPath("/org/freedesktop/login1")
+
+				if path != expectedPath {
+					t.Fatalf("Expected D-Bus path %q, got %q", expectedPath, path)
+				}
+
+				return nil
+			},
+		}
+
+		if _, err := login1.NewWithConnection(connectionWithContextCheck); err != nil {
+			t.Fatalf("Unexpected error creating connection: %v", err)
+		}
+
+		if !objectConstructorCalled {
+			t.Fatalf("Expected object constructor to be called")
+		}
+	})
+
+	t.Run("returns_error_when_no_custom_connection_is_given", func(t *testing.T) {
+		t.Parallel()
+
+		testConn, err := login1.NewWithConnection(nil)
+		if err == nil {
+			t.Fatalf("Expected error creating connection with no connector")
+		}
+
+		if testConn != nil {
+			t.Fatalf("Expected connection to be nil when New returns error")
+		}
+	})
+}
+
+// mockConnection is a test helper for mocking dbus.Conn.
+type mockConnection struct {
+	ObjectF func(string, dbus.ObjectPath) dbus.BusObject
+}
+
+// Auth ...
+func (m *mockConnection) Auth(authMethods []dbus.Auth) error {
+	return nil
+}
+
+// Hello ...
+func (m *mockConnection) Hello() error {
+	return nil
+}
+
+// Signal ...
+func (m *mockConnection) Signal(ch chan<- *dbus.Signal) {}
+
+// Object ...
+func (m *mockConnection) Object(dest string, path dbus.ObjectPath) dbus.BusObject {
+	if m.ObjectF == nil {
+		return nil
+	}
+
+	return m.ObjectF(dest, path)
+}
+
+// Close ...
+func (m *mockConnection) Close() error {
+	return nil
+}
+
+// BusObject ...
+func (m *mockConnection) BusObject() dbus.BusObject {
+	return nil
+}
+
+// Connected ...
+func (m *mockConnection) Connected() bool {
+	return true
 }
