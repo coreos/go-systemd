@@ -16,6 +16,7 @@
 package login1
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -59,6 +60,7 @@ type connectionManager interface {
 type Caller interface {
 	// TODO: This method should eventually be removed, as it provides no context support.
 	Call(method string, flags dbus.Flags, args ...interface{}) *dbus.Call
+	CallWithContext(ctx context.Context, method string, flags dbus.Flags, args ...interface{}) *dbus.Call
 }
 
 // New establishes a connection to the system bus and authenticates.
@@ -345,6 +347,15 @@ func (c *Conn) TerminateUser(uid uint32) {
 // Reboot asks logind for a reboot optionally asking for auth.
 func (c *Conn) Reboot(askForAuth bool) {
 	c.object.Call(dbusInterface+".Reboot", 0, askForAuth)
+}
+
+// Reboot asks logind for a reboot using given context, optionally asking for auth.
+func (c *Conn) RebootWithContext(ctx context.Context, askForAuth bool) error {
+	if call := c.object.CallWithContext(ctx, dbusInterface+".Reboot", 0, askForAuth); call.Err != nil {
+		return fmt.Errorf("calling reboot: %w", call.Err)
+	}
+
+	return nil
 }
 
 // Inhibit takes inhibition lock in logind.
