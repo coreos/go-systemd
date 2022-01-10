@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package login1
+package login1_test
 
 import (
 	"context"
@@ -21,18 +21,19 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"github.com/coreos/go-systemd/v22/login1"
 )
 
 // TestNew ensures that New() works without errors.
 func TestNew(t *testing.T) {
-	_, err := New()
-	if err != nil {
+	if _, err := login1.New(); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestListSessions(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func TestListSessions(t *testing.T) {
 }
 
 func TestListUsers(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +91,7 @@ func TestListUsers(t *testing.T) {
 }
 
 func TestConn_GetSessionPropertiesContext(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +118,7 @@ func TestConn_GetSessionPropertiesContext(t *testing.T) {
 }
 
 func TestConn_GetSessionPropertyContext(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +142,7 @@ func TestConn_GetSessionPropertyContext(t *testing.T) {
 }
 
 func TestConn_GetUserPropertiesContext(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +169,7 @@ func TestConn_GetUserPropertiesContext(t *testing.T) {
 }
 
 func TestConn_GetUserPropertyContext(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
