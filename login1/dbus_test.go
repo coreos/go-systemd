@@ -12,26 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package login1
+package login1_test
 
 import (
 	"fmt"
 	"os/user"
 	"regexp"
 	"testing"
+
+	"github.com/coreos/go-systemd/v22/login1"
 )
 
 // TestNew ensures that New() works without errors.
 func TestNew(t *testing.T) {
-	_, err := New()
-
+	_, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestListSessions(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestListSessions(t *testing.T) {
 }
 
 func TestListUsers(t *testing.T) {
-	c, err := New()
+	c, err := login1.New()
 	if err != nil {
 		t.Fatal(err)
 	}
