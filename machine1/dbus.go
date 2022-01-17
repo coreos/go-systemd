@@ -112,6 +112,11 @@ func (c *Conn) getPath(method string, args ...interface{}) (dbus.ObjectPath, err
 	return path, nil
 }
 
+// Connected returns whether conn is connected
+func (c *Conn) Connected() bool {
+	return c.conn.Connected()
+}
+
 // CreateMachine creates a new virtual machine or container with systemd-machined, generating a scope unit for it
 func (c *Conn) CreateMachine(name string, id []byte, service string, class string, pid int, root_directory string, scope_properties []sd_dbus.Property) error {
 	return c.object.Call(dbusInterface+".CreateMachine", 0, name, id, service, class, uint32(pid), root_directory, scope_properties).Err

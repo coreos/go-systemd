@@ -64,6 +64,11 @@ func New() (*Conn, error) {
 	return c, nil
 }
 
+// Connected returns whether conn is connected
+func (c *Conn) Connected() bool {
+	return c.conn.Connected()
+}
+
 func (c *Conn) initConnection() error {
 	var err error
 	c.conn, err = dbus.SystemBusPrivate()
