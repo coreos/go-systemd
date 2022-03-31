@@ -58,6 +58,11 @@ func (c *Conn) Close() {
 	}
 }
 
+// Connected returns whether conn is connected
+func (c *Conn) Connected() bool {
+	return c.conn.Connected()
+}
+
 func (c *Conn) initConnection() error {
 	var err error
 	c.conn, err = dbus.SystemBusPrivate()
