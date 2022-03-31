@@ -16,10 +16,12 @@
 package sdjournal
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -258,24 +260,35 @@ process:
 
 // SkipN skips the next n entries and returns the number of skipped entries and an eventual error.
 func (r *JournalReader) SkipN(n int) (int, error) {
+	if n < 0 {
+		return -1, errors.New("can not skip by negative number " + strconv.Itoa(n))
+	}
 	var i int
-	for i := 1; i <= n; i++ {
+	for i < n {
 		c, err := r.journal.Next()
 		if err != nil {
 			return i, err
 		} else if c == 0 {
 			return i, nil
 		}
+		i += 1
 	}
 	return i, nil
 }
 
 // FollowTail synchronously follows the JournalReader, writing each new journal entry to entries.
 // It will start from the next unread entry.
-func (r *JournalReader) FollowTail(entries chan *JournalEntry) error {
+func (r *JournalReader) FollowTail(entries chan *JournalEntry, ctx context.Context) error {
 	defer close(entries)
 
 	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Context done, exit FollowTail")
+			return nil
+		default:
+		}
+
 		status := r.journal.Wait(200 * time.Millisecond)
 		if status != SD_JOURNAL_APPEND && status != SD_JOURNAL_INVALIDATE {
 			continue
