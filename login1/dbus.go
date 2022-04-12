@@ -16,6 +16,7 @@
 package login1
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -32,8 +33,34 @@ const (
 
 // Conn is a connection to systemds dbus endpoint.
 type Conn struct {
-	conn   *dbus.Conn
-	object dbus.BusObject
+	conn        Connection
+	connManager connectionManager
+	object      Caller
+}
+
+// Objector describes functionality required from a given D-Bus connection.
+type Connection interface {
+	Object(string, dbus.ObjectPath) dbus.BusObject
+	Signal(ch chan<- *dbus.Signal)
+	// TODO: This should be replaced with AddMatchSignal.
+	// See https://github.com/coreos/go-systemd/issues/388 for details.
+	BusObject() dbus.BusObject
+}
+
+// ConnectionManager explicitly wraps dependencies on established D-Bus connection.
+type connectionManager interface {
+	Hello() error
+	Auth(authMethods []dbus.Auth) error
+	Close() error
+
+	Connection
+}
+
+// Caller describes required functionality from D-Bus object.
+type Caller interface {
+	// TODO: This method should eventually be removed, as it provides no context support.
+	Call(method string, flags dbus.Flags, args ...interface{}) *dbus.Call
+	CallWithContext(ctx context.Context, method string, flags dbus.Flags, args ...interface{}) *dbus.Call
 }
 
 // New establishes a connection to the system bus and authenticates.
@@ -47,14 +74,26 @@ func New() (*Conn, error) {
 	return c, nil
 }
 
+// NewWithConnection creates new login1 client using given D-Bus connection.
+func NewWithConnection(connection Connection) (*Conn, error) {
+	if connection == nil {
+		return nil, fmt.Errorf("no connection given")
+	}
+
+	return &Conn{
+		conn:   connection,
+		object: connection.Object(dbusDest, dbusPath),
+	}, nil
+}
+
 // Close closes the dbus connection
 func (c *Conn) Close() {
 	if c == nil {
 		return
 	}
 
-	if c.conn != nil {
-		c.conn.Close()
+	if c.conn != nil && c.connManager != nil {
+		c.connManager.Close()
 	}
 }
 
@@ -65,7 +104,7 @@ func (c *Conn) Connected() bool {
 
 func (c *Conn) initConnection() error {
 	var err error
-	c.conn, err = dbus.SystemBusPrivate()
+	c.connManager, err = dbus.SystemBusPrivate()
 	if err != nil {
 		return err
 	}
@@ -75,18 +114,19 @@ func (c *Conn) initConnection() error {
 	// libc)
 	methods := []dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Getuid()))}
 
-	err = c.conn.Auth(methods)
+	err = c.connManager.Auth(methods)
 	if err != nil {
-		c.conn.Close()
+		c.connManager.Close()
 		return err
 	}
 
-	err = c.conn.Hello()
+	err = c.connManager.Hello()
 	if err != nil {
-		c.conn.Close()
+		c.connManager.Close()
 		return err
 	}
 
+	c.conn = c.connManager
 	c.object = c.conn.Object("org.freedesktop.login1", dbus.ObjectPath(dbusPath))
 
 	return nil
@@ -312,6 +352,15 @@ func (c *Conn) TerminateUser(uid uint32) {
 // Reboot asks logind for a reboot optionally asking for auth.
 func (c *Conn) Reboot(askForAuth bool) {
 	c.object.Call(dbusInterface+".Reboot", 0, askForAuth)
+}
+
+// Reboot asks logind for a reboot using given context, optionally asking for auth.
+func (c *Conn) RebootWithContext(ctx context.Context, askForAuth bool) error {
+	if call := c.object.CallWithContext(ctx, dbusInterface+".Reboot", 0, askForAuth); call.Err != nil {
+		return fmt.Errorf("calling reboot: %w", call.Err)
+	}
+
+	return nil
 }
 
 // Inhibit takes inhibition lock in logind.

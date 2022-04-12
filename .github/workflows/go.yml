@@ -11,7 +11,7 @@ permissions:
 
 env:
   # Minimum supported Go toolchain
-  ACTION_MINIMUM_TOOLCHAIN: "1.12"
+  ACTION_MINIMUM_TOOLCHAIN: "1.13"
 
 jobs:
   build:
