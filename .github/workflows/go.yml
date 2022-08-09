@@ -1,6 +1,5 @@
----
 name: Go
-"on":
+on:
   push:
     branches: [main]
   pull_request:
@@ -11,7 +10,7 @@ permissions:
 
 env:
   # Minimum supported Go toolchain
-  ACTION_MINIMUM_TOOLCHAIN: "1.12"
+  ACTION_MINIMUM_TOOLCHAIN: "1.12.x"
 
 jobs:
   build:
@@ -19,14 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.17', '1.18']
+        go: ['1.17.x', '1.18.x']
     steps:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
         run: sudo apt-get install libsystemd-dev
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
       - name: Go fmt
@@ -44,9 +43,9 @@ jobs:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
         run: sudo apt-get install libsystemd-dev
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ env['ACTION_MINIMUM_TOOLCHAIN'] }}
       - name: Go fmt
