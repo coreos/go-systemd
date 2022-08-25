@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -86,12 +87,17 @@ func TestJournalFollow(t *testing.T) {
 }
 
 func TestJournalFollowTail(t *testing.T) {
+	documentation := "https://github.com/coreos/go-systemd/"
 	r, err := NewJournalReader(JournalReaderConfig{
 		Since: time.Duration(-15) * time.Second,
 		Matches: []Match{
 			{
-				Field: SD_JOURNAL_FIELD_SYSTEMD_UNIT,
-				Value: "NetworkManager.service",
+				Field: SD_JOURNAL_FIELD_PRIORITY,
+				Value: strconv.Itoa(int(journal.PriInfo)),
+			},
+			{
+				Field: "DOCUMENTATION",
+				Value: documentation,
 			},
 		},
 	})
@@ -109,35 +115,34 @@ func TestJournalFollowTail(t *testing.T) {
 	// start writing some test entries
 	done := make(chan struct{}, 1)
 	errCh := make(chan error, 1)
-	defer close(done)
 	go func() {
 		for {
 			select {
 			case <-done:
 				return
 			default:
-				if perr := journal.Print(journal.PriInfo, "test message %s", time.Now()); err != nil {
+				vars := make(map[string]string)
+				vars["DOCUMENTATION"] = documentation
+				if perr := journal.Send(fmt.Sprintf("test message %s", time.Now()), journal.PriInfo, vars); perr != nil {
 					errCh <- perr
 					return
 				}
-
 				time.Sleep(time.Second)
 			}
 		}
 	}()
 
-	// and follow the reader synchronously
 	entries := make(chan *JournalEntry)
-	timeout := time.Duration(5) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(5)*time.Second)
 	defer cancel()
-	if err = r.FollowTail(entries, ctx); err != nil {
-		t.Fatalf("Error during follow: %s", err)
-	}
+	go r.FollowTail(entries, errCh, ctx)
 
 	select {
 	case err := <-errCh:
 		t.Fatalf("Error writing to journal: %s", err)
+	case entry := <-entries:
+		t.Log("received: " + entry.Cursor)
+		return
 	default:
 	}
 }

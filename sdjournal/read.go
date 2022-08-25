@@ -294,19 +294,19 @@ func (r *JournalReader) FollowTail(entries chan<- *JournalEntry, errors chan<- e
 			continue
 		}
 
-		for {
-			if c, err := r.journal.Next(); err != nil {
-				errors <- err
-			} else if c == 0 {
-				// EOF, should mean we're at the tail
-				break
-			}
+		if c, err := r.journal.Next(); err != nil {
+			errors <- err
+			continue
+		} else if c == 0 {
+			// EOF, should mean we're at the tail
+			break
+		}
 
-			if entry, err := r.journal.GetEntry(); err != nil {
-				errors <- err
-			} else {
-				entries <- entry
-			}
+		if entry, err := r.journal.GetEntry(); err != nil {
+			errors <- err
+			continue
+		} else {
+			entries <- entry
 		}
 	}
 }
