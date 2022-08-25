@@ -278,14 +278,14 @@ func (r *JournalReader) SkipN(n int) (int, error) {
 
 // FollowTail synchronously follows the JournalReader, writing each new journal entry to entries.
 // It will start from the next unread entry.
-func (r *JournalReader) FollowTail(entries chan *JournalEntry, ctx context.Context) error {
+func (r *JournalReader) FollowTail(entries chan<- *JournalEntry, errors chan<- error, ctx context.Context) {
 	defer close(entries)
 
 	for {
 		select {
 		case <-ctx.Done():
 			fmt.Println("Context done, exit FollowTail")
-			return nil
+			return
 		default:
 		}
 
@@ -296,14 +296,14 @@ func (r *JournalReader) FollowTail(entries chan *JournalEntry, ctx context.Conte
 
 		for {
 			if c, err := r.journal.Next(); err != nil {
-				return err
+				errors <- err
 			} else if c == 0 {
 				// EOF, should mean we're at the tail
 				break
 			}
 
 			if entry, err := r.journal.GetEntry(); err != nil {
-				return err
+				errors <- err
 			} else {
 				entries <- entry
 			}
