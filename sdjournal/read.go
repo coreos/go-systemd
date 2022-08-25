@@ -280,7 +280,7 @@ func (r *JournalReader) SkipN(n int) (int, error) {
 // It will start from the next unread entry.
 func (r *JournalReader) FollowTail(entries chan<- *JournalEntry, errors chan<- error, ctx context.Context) {
 	defer close(entries)
-
+	defer close(errors)
 	for {
 		select {
 		case <-ctx.Done():
