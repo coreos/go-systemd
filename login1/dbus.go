@@ -16,6 +16,7 @@
 package login1
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -253,10 +254,15 @@ func (c *Conn) GetSession(id string) (dbus.ObjectPath, error) {
 	return ret, nil
 }
 
-// ListSessions returns an array with all current sessions.
+// Deprecated: use ListSessionsContext instead.
 func (c *Conn) ListSessions() ([]Session, error) {
+	return c.ListSessionsContext(context.Background())
+}
+
+// ListSessionsContext returns an array with all current sessions.
+func (c *Conn) ListSessionsContext(ctx context.Context) ([]Session, error) {
 	out := [][]interface{}{}
-	if err := c.object.Call(dbusInterface+".ListSessions", 0).Store(&out); err != nil {
+	if err := c.object.CallWithContext(ctx, dbusInterface+".ListSessions", 0).Store(&out); err != nil {
 		return nil, err
 	}
 
@@ -271,10 +277,15 @@ func (c *Conn) ListSessions() ([]Session, error) {
 	return ret, nil
 }
 
-// ListUsers returns an array with all currently logged in users.
+// Deprecated: use ListUsersContext instead.
 func (c *Conn) ListUsers() ([]User, error) {
+	return c.ListUsersContext(context.Background())
+}
+
+// ListUsersContext returns an array with all currently logged-in users.
+func (c *Conn) ListUsersContext(ctx context.Context) ([]User, error) {
 	out := [][]interface{}{}
-	if err := c.object.Call(dbusInterface+".ListUsers", 0).Store(&out); err != nil {
+	if err := c.object.CallWithContext(ctx, dbusInterface+".ListUsers", 0).Store(&out); err != nil {
 		return nil, err
 	}
 
