@@ -15,10 +15,12 @@
 package login1
 
 import (
+	"context"
 	"fmt"
 	"os/user"
 	"regexp"
 	"testing"
+	"time"
 )
 
 // TestNew ensures that New() works without errors.
@@ -85,5 +87,107 @@ func TestListUsers(t *testing.T) {
 				t.Fatalf("invalid user path: %s", u.Path)
 			}
 		}
+	}
+}
+
+func TestConn_GetSessionPropertiesContext(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sessions, err := c.ListSessions()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, s := range sessions {
+		func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+
+			props, err := c.GetSessionPropertiesContext(ctx, s.Path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(props) == 0 {
+				t.Fatal("no properties returned")
+			}
+		}()
+	}
+}
+
+func TestConn_GetSessionPropertyContext(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sessions, err := c.ListSessions()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, s := range sessions {
+		func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+
+			_, err := c.GetSessionPropertyContext(ctx, s.Path, "Remote")
+			if err != nil {
+				t.Fatal(err)
+			}
+		}()
+	}
+}
+
+func TestConn_GetUserPropertiesContext(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, err := c.ListUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, u := range users {
+		func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+
+			props, err := c.GetUserPropertiesContext(ctx, u.Path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(props) == 0 {
+				t.Fatal("no properties returned")
+			}
+		}()
+	}
+}
+
+func TestConn_GetUserPropertyContext(t *testing.T) {
+	c, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	users, err := c.ListUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, u := range users {
+		func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer cancel()
+
+			_, err := c.GetUserPropertyContext(ctx, u.Path, "State")
+			if err != nil {
+				t.Fatal(err)
+			}
+		}()
 	}
 }
