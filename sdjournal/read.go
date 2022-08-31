@@ -282,14 +282,13 @@ func (r *JournalReader) FollowTail(entries chan<- *JournalEntry, errors chan<- e
 	defer close(entries)
 	defer close(errors)
 	for {
-		select {
-		case <-ctx.Done():
-			fmt.Println("Context done, exit FollowTail")
-			return
-		default:
-		}
-
 		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println("Context done, exit FollowTail")
+				return
+			default:
+			}
 			if c, err := r.journal.Next(); err != nil {
 				errors <- err
 				break
