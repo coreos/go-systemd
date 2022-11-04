@@ -20,13 +20,14 @@ package journal_test
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"syscall"
 	"testing"
 
 	"github.com/coreos/go-systemd/v22/journal"
 )
 
-func TestStderrIsJournalStream(t *testing.T) {
+func TestJournalStreamParsing(t *testing.T) {
 	if _, ok := os.LookupEnv("JOURNAL_STREAM"); ok {
 		t.Fatal("unset JOURNAL_STREAM before running this test")
 	}
@@ -82,6 +83,51 @@ func TestStderrIsJournalStream(t *testing.T) {
 			}
 		})
 	})
+}
+
+func TestStderrIsJournalStream(t *testing.T) {
+	const (
+		message = "TEST_MESSAGE"
+	)
+
+	userOrSystem := "--user"
+	if os.Getuid() == 0 {
+		userOrSystem = "--system"
+	}
+
+	if _, ok := os.LookupEnv("JOURNAL_STREAM"); !ok {
+		// Re-execute this test under systemd (see the else branch),
+		// and observe its exit code.
+		args := []string{
+			"systemd-run",
+			userOrSystem,
+			"--wait",
+			"--quiet",
+			"--",
+			os.Args[0],
+			"-test.run=TestStderrIsJournalStream",
+			"-test.count=1", // inhibit caching
+		}
+
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		ok, err := journal.StderrIsJournalStream()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			t.Fatal("StderrIsJournalStream should've returned true")
+		}
+
+		err = journal.Send(message, journal.PriInfo, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func ExampleStderrIsJournalStream() {
