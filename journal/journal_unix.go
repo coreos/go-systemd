@@ -82,6 +82,24 @@ func Enabled() bool {
 //
 // [Journal Native Protocol]: https://systemd.io/JOURNAL_NATIVE_PROTOCOL/#automatic-protocol-upgrading
 func StderrIsJournalStream() (bool, error) {
+	return fdIsJournalStream(syscall.Stderr)
+}
+
+// StdoutIsJournalStream returns whether the process stdout is connected
+// to the Journal's stream transport.
+//
+// Returns true if JOURNAL_STREAM environment variable is present,
+// and stdout's device and inode numbers match it.
+//
+// Error is returned if unexpected error occurs: e.g. if JOURNAL_STREAM environment variable
+// is present, but malformed, fstat syscall fails, etc.
+//
+// Most users should probably use [StderrIsJournalStream].
+func StdoutIsJournalStream() (bool, error) {
+	return fdIsJournalStream(syscall.Stdout)
+}
+
+func fdIsJournalStream(fd int) (bool, error) {
 	journalStream := os.Getenv("JOURNAL_STREAM")
 	if journalStream == "" {
 		return false, nil
@@ -94,7 +112,7 @@ func StderrIsJournalStream() (bool, error) {
 	}
 
 	var stat syscall.Stat_t
-	err = syscall.Fstat(syscall.Stderr, &stat)
+	err = syscall.Fstat(fd, &stat)
 	if err != nil {
 		return false, err
 	}

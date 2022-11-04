@@ -37,3 +37,7 @@ func Send(message string, priority Priority, vars map[string]string) error {
 func StderrIsJournalStream() (bool, error) {
 	return false, nil
 }
+
+func StdoutIsJournalStream() (bool, error) {
+	return false, nil
+}
