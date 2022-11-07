@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        baseimage: ['debian:stretch', 'ubuntu:16.04', 'ubuntu:18.04']
+        baseimage: ['debian:stretch', 'ubuntu:18.04', 'ubuntu:20.04']
     steps:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
@@ -38,7 +38,7 @@ jobs:
       - name: Pull base image - ${{ matrix.baseimage }}
         run: docker pull ${{ matrix.baseimage }}
       - name: Install packages for ${{ matrix.baseimage }}
-        run: docker run --privileged -e GOPATH=${GOPATH} --cidfile=/tmp/cidfile ${{ matrix.baseimage }} /bin/bash -c "apt-get update && apt-get install -y sudo build-essential git golang dbus libsystemd-dev libpam-systemd systemd-container"
+        run: docker run --privileged -e GOPATH=${GOPATH} --cidfile=/tmp/cidfile ${{ matrix.baseimage }} /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; apt-get update && apt-get install -y sudo build-essential git golang dbus libsystemd-dev libpam-systemd systemd-container"
       - name: Persist base container
         run: docker commit `cat /tmp/cidfile` go-systemd/container-tests
       - run: rm -f /tmp/cidfile

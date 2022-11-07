@@ -23,6 +23,8 @@ function build_tests {
         echo "  - examples/${ex}"
         go build -o ./test_bins/${ex}.example ./examples/activation/${ex}.go
     done
+    # just to make sure it's buildable
+    go build -o ./test_bins/journal ./examples/journal/
 }
 
 function run_tests {
