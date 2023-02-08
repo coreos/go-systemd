@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.17.x', '1.18.x', '1.19.x']
+        go: ['1.17.x', '1.18.x', '1.19.x', '1.20.x']
     steps:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
