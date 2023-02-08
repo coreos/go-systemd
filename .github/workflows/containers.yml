@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        baseimage: ['debian:stretch', 'ubuntu:18.04', 'ubuntu:20.04']
+        baseimage: ['debian:bullseye', 'ubuntu:18.04', 'ubuntu:20.04']
     steps:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
