@@ -25,7 +25,7 @@ jobs:
         run: sudo apt-get install libsystemd-dev
       - uses: actions/checkout@v3
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
       - name: Go fmt
@@ -45,7 +45,7 @@ jobs:
         run: sudo apt-get install libsystemd-dev
       - uses: actions/checkout@v3
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env['ACTION_MINIMUM_TOOLCHAIN'] }}
       - name: Go fmt
