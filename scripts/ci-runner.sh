@@ -6,7 +6,7 @@ PROJ="go-systemd"
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/${PROJ}"
 
-PACKAGES="activation daemon dbus journal login1 machine1 sdjournal unit util import1"
+PACKAGES="activation daemon dbus internal/dlopen journal login1 machine1 sdjournal unit util import1"
 EXAMPLES="activation listen udpconn"
 
 function build_source {
@@ -23,6 +23,8 @@ function build_tests {
         echo "  - examples/${ex}"
         go build -o ./test_bins/${ex}.example ./examples/activation/${ex}.go
     done
+    # just to make sure it's buildable
+    go build -o ./test_bins/journal ./examples/journal/
 }
 
 function run_tests {
