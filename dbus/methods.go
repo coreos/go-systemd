@@ -718,6 +718,11 @@ func (c *Conn) ListJobsContext(ctx context.Context) ([]JobStatus, error) {
 	return storeSlice[JobStatus](c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.ListJobs", 0).Store)
 }
 
+// CancelJob cancels the specified job ID.
+func (c *Conn) CancelJob(ctx context.Context, id uint32) error {
+	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.CancelJob", 0, id).Store()
+}
+
 // FreezeUnit freezes the cgroup associated with the unit.
 // Note that FreezeUnit and [Conn.ThawUnit] are only supported on systems running with cgroup v2.
 func (c *Conn) FreezeUnit(ctx context.Context, unit string) error {
