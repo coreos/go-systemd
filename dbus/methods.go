@@ -67,10 +67,25 @@ func (c *Conn) startJob(ctx context.Context, ch chan<- string, job string, args 
 		c.jobListener.jobs[p] = ch
 	}
 
+	go c.observeContextCancellation(ctx, p)
+
 	// ignore error since 0 is fine if conversion fails
 	jobID, _ := strconv.Atoi(path.Base(string(p)))
 
 	return jobID, nil
+}
+
+func (c *Conn) observeContextCancellation(ctx context.Context, jobId dbus.ObjectPath) {
+	<-ctx.Done()
+
+	// remove job listener if one exists
+	c.jobListener.Lock()
+	defer c.jobListener.Unlock()
+
+	_, ok := c.jobListener.jobs[jobId]
+	if ok {
+		delete(c.jobListener.jobs, jobId)
+	}
 }
 
 // Deprecated: use StartUnitContext instead.
