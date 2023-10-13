@@ -45,7 +45,10 @@ func (c *Conn) jobComplete(signal *dbus.Signal) {
 	c.jobListener.Lock()
 	out, ok := c.jobListener.jobs[job]
 	if ok {
-		out <- result
+		select {
+		case out <- result:
+		default:
+		}
 		delete(c.jobListener.jobs, job)
 	}
 	c.jobListener.Unlock()
