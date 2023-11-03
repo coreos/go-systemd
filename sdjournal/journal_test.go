@@ -17,6 +17,7 @@ package sdjournal
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -74,6 +75,63 @@ func TestJournalFollow(t *testing.T) {
 	// and follow the reader synchronously
 	timeout := time.Duration(5) * time.Second
 	if err = r.Follow(time.After(timeout), os.Stdout); err != ErrExpired {
+		t.Fatalf("Error during follow: %s", err)
+	}
+
+	select {
+	case err := <-errCh:
+		t.Fatalf("Error writing to journal: %s", err)
+	default:
+	}
+}
+
+func TestJournalFollowTail(t *testing.T) {
+	r, err := NewJournalReader(JournalReaderConfig{
+		Since: time.Duration(-15) * time.Second,
+		Matches: []Match{
+			{
+				Field: SD_JOURNAL_FIELD_SYSTEMD_UNIT,
+				Value: "NetworkManager.service",
+			},
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+
+	if r == nil {
+		t.Fatal("Got a nil reader")
+	}
+
+	defer r.Close()
+
+	// start writing some test entries
+	done := make(chan struct{}, 1)
+	errCh := make(chan error, 1)
+	defer close(done)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				if perr := journal.Print(journal.PriInfo, "test message %s", time.Now()); err != nil {
+					errCh <- perr
+					return
+				}
+
+				time.Sleep(time.Second)
+			}
+		}
+	}()
+
+	// and follow the reader synchronously
+	entries := make(chan *JournalEntry)
+	timeout := time.Duration(5) * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err = r.FollowTail(entries, ctx); err != nil {
 		t.Fatalf("Error during follow: %s", err)
 	}
 
