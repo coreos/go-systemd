@@ -112,6 +112,39 @@ func (c *Conn) StartUnitContext(ctx context.Context, name string, mode string, c
 	return c.startJob(ctx, ch, "org.freedesktop.systemd1.Manager.StartUnit", name, mode)
 }
 
+// Starts Multiple units and waits for their success or failure before returning
+func (c *Conn) StartMultipleUnitsAndWait(ctx context.Context, names []string, mode string) ([]string, []error) {
+	channels := make([]chan string, len(names))
+	res := make([]string, len(names))
+	errs := make([]error, len(names))
+	for i := range names {
+		channels[i] = make(chan string, 1)
+	}
+	for i, name := range names {
+		_, errs[i] = c.StartUnitContext(ctx, name, mode, channels[i])
+		if errs[i] != nil {
+			channels[i] = nil
+		}
+	}
+	for i, ch := range channels {
+		if ch == nil {
+			continue
+		}
+		select {
+		case status := <-ch:
+			res[i] = status
+		case <-ctx.Done():
+			errs[i] = fmt.Errorf("operation halted: %w", ctx.Err())
+		}
+	}
+	for _, err := range errs {
+		if err != nil {
+			return res, errs
+		}
+	}
+	return res, nil
+}
+
 // Deprecated: use StopUnitContext instead.
 func (c *Conn) StopUnit(name string, mode string, ch chan<- string) (int, error) {
 	return c.StopUnitContext(context.Background(), name, mode, ch)
@@ -121,6 +154,39 @@ func (c *Conn) StopUnit(name string, mode string, ch chan<- string) (int, error)
 // rather than starting it.
 func (c *Conn) StopUnitContext(ctx context.Context, name string, mode string, ch chan<- string) (int, error) {
 	return c.startJob(ctx, ch, "org.freedesktop.systemd1.Manager.StopUnit", name, mode)
+}
+
+// Stops Multiple units and waits for their success or failure before returning
+func (c *Conn) StopMultipleUnitsAndWait(ctx context.Context, names []string, mode string) ([]string, []error) {
+	channels := make([]chan string, len(names))
+	res := make([]string, len(names))
+	errs := make([]error, len(names))
+	for i := range names {
+		channels[i] = make(chan string, 1)
+	}
+	for i, name := range names {
+		_, errs[i] = c.StopUnitContext(ctx, name, mode, channels[i])
+		if errs[i] != nil {
+			channels[i] = nil
+		}
+	}
+	for i, ch := range channels {
+		if ch == nil {
+			continue
+		}
+		select {
+		case status := <-ch:
+			res[i] = status
+		case <-ctx.Done():
+			errs[i] = fmt.Errorf("operation halted: %w", ctx.Err())
+		}
+	}
+	for _, err := range errs {
+		if err != nil {
+			return res, errs
+		}
+	}
+	return res, nil
 }
 
 // Deprecated: use ReloadUnitContext instead.
