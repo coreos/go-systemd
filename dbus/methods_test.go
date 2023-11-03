@@ -22,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1688,4 +1689,46 @@ func TestFreezer(t *testing.T) {
 	}
 
 	runStopUnit(t, conn, TrUnitProp{target, nil})
+}
+
+func TestListUnitProcesses(t *testing.T) {
+	ctx := context.Background()
+	target := "list-me.service"
+
+	conn := setupConn(t)
+	defer conn.Close()
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err := conn.StartUnitContext(ctx, target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runStopUnit(t, conn, TrUnitProp{target, nil})
+
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Job is not done:", job)
+	}
+
+	processes, err := conn.GetUnitProcesses(ctx, target)
+
+	if err != nil {
+		e, ok := err.(dbus.Error)
+		if ok && (e.Name == "org.freedesktop.DBus.Error.UnknownMethod" || e.Name == "org.freedesktop.DBus.Error.NotSupported") {
+			t.SkipNow()
+		}
+		t.Fatalf("failed to list processes of %s: %s", target, err)
+	}
+
+	for _, p := range processes {
+		if strings.Contains(p.Command, "sleep") {
+			t.Logf("Found %v.\n", p)
+			return
+		}
+	}
+	t.Log("processes:", processes)
+	t.Error("The sleep process was not found in list-me.service unit's process list.")
 }
