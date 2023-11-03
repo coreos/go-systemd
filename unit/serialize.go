@@ -41,17 +41,19 @@ func Serialize(opts []*UnitOption) io.Reader {
 		idx[sec] = append(idx[sec], opt)
 	}
 
-	for i, sect := range sections {
+	for _, sect := range sections {
 		writeSectionHeader(&buf, sect)
-		writeNewline(&buf)
 
 		opts := idx[sect]
 		for _, opt := range opts {
-			writeOption(&buf, opt)
-			writeNewline(&buf)
-		}
-		if i < len(sections)-1 {
-			writeNewline(&buf)
+			if len(opt.Name) == 0 && len(opt.Value) > 0 {
+				buf.WriteString(opt.Value)
+			} else if len(opt.Name) > 0 && len(opt.Value) > 0 {
+				writeNewline(&buf)
+				writeOption(&buf, opt)
+			} else {
+				writeNewline(&buf)
+			}
 		}
 	}
 

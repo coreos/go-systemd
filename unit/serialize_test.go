@@ -35,6 +35,7 @@ func TestSerialize(t *testing.T) {
 			[]*UnitOption{
 				&UnitOption{"Unit", "Description", "Foo"},
 				&UnitOption{"Unit", "BindsTo", "bar.service"},
+				&UnitOption{"Unit", "", ""},
 			},
 			`[Unit]
 Description=Foo
@@ -47,6 +48,7 @@ BindsTo=bar.service
 			[]*UnitOption{
 				&UnitOption{"Unit", "Description", "Foo"},
 				&UnitOption{"Unit", "Description", "Bar"},
+				&UnitOption{"Unit", "", ""},
 			},
 			`[Unit]
 Description=Foo
@@ -58,7 +60,10 @@ Description=Bar
 		{
 			[]*UnitOption{
 				&UnitOption{"Unit", "Description", "Foo"},
+				&UnitOption{"Unit", "", "\n"},
+				&UnitOption{"Unit", "", ""},
 				&UnitOption{"Service", "ExecStart", "/usr/bin/sleep infinity"},
+				&UnitOption{"Service", "", ""},
 			},
 			`[Unit]
 Description=Foo
@@ -74,6 +79,9 @@ ExecStart=/usr/bin/sleep infinity
 				&UnitOption{"Unit", "Description", "Foo"},
 				&UnitOption{"Service", "ExecStart", "/usr/bin/sleep infinity"},
 				&UnitOption{"Unit", "BindsTo", "bar.service"},
+				&UnitOption{"Unit", "", "\n"},
+				&UnitOption{"Unit", "", ""},
+				&UnitOption{"Service", "", ""},
 			},
 			`[Unit]
 Description=Foo
@@ -92,7 +100,12 @@ ExecStart=/usr/bin/sleep infinity
 				&UnitOption{"Unit", "BindsTo", "bar.service"},
 				&UnitOption{"X-Foo", "Bar", "baz"},
 				&UnitOption{"Service", "ExecStop", "/usr/bin/sleep 1"},
+				&UnitOption{"Service", "", "\n"},
+				&UnitOption{"Service", "", ""},
 				&UnitOption{"Unit", "Documentation", "https://foo.com"},
+				&UnitOption{"Unit", "", "\n"},
+				&UnitOption{"Unit", "", ""},
+				&UnitOption{"X-Foo", "", ""},
 			},
 			`[Unit]
 Description=Foo
@@ -112,6 +125,7 @@ Bar=baz
 		{
 			[]*UnitOption{
 				&UnitOption{"©", "µ☃", "ÇôrèÕ$"},
+				&UnitOption{"©", "", ""},
 			},
 			`[©]
 µ☃=ÇôrèÕ$
@@ -122,6 +136,7 @@ Bar=baz
 		{
 			[]*UnitOption{
 				&UnitOption{"Un\nit", "Description", "Foo"},
+				&UnitOption{"Un\nit", "", ""},
 			},
 			`[Un
 it]
@@ -133,6 +148,7 @@ Description=Foo
 		{
 			[]*UnitOption{
 				&UnitOption{"Unit", "Desc\nription", "Foo"},
+				&UnitOption{"Unit", "", ""},
 			},
 			`[Unit]
 Desc
@@ -144,6 +160,7 @@ ription=Foo
 		{
 			[]*UnitOption{
 				&UnitOption{"Unit", "Description", "Fo\no"},
+				&UnitOption{"Unit", "", ""},
 			},
 			`[Unit]
 Description=Fo
