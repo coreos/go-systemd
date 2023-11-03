@@ -852,6 +852,11 @@ func (c *Conn) listJobsInternal(ctx context.Context) ([]JobStatus, error) {
 	return status, nil
 }
 
+// Cancel the specified job ID.
+func (c *Conn) CancelJobContext(ctx context.Context, id uint32) error {
+	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.CancelJob", 0, id).Store()
+}
+
 // Freeze the cgroup associated with the unit.
 // Note that FreezeUnit and ThawUnit are only supported on systems running with cgroup v2.
 func (c *Conn) FreezeUnit(ctx context.Context, unit string) error {
