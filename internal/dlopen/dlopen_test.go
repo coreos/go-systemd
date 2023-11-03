@@ -16,6 +16,7 @@ package dlopen
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 )
 
@@ -61,4 +62,43 @@ func TestDlopen(t *testing.T) {
 			t.Errorf("case %d: expected length %d, got %d", i, expLen, len)
 		}
 	}
+}
+
+// Note this is not a reliable reproducer for the problem.
+// It depends on the fact the it first generates some dlerror() errors
+// by using non existent libraries.
+func TestDlopenThreadSafety(t *testing.T) {
+	libs := []string{
+		"libstrange1.so",
+		"libstrange2.so",
+		"libstrange3.so",
+		"libstrange4.so",
+		"libstrange5.so",
+		"libstrange6.so",
+		"libstrange7.so",
+		"libstrange8.so",
+		"libc.so.6",
+		"libc.so",
+	}
+
+	// 10000 is the default golang thread limit, so adding more will likely fail
+	// but this number is enough to reproduce the issue most of the time for me.
+	count := 10000
+	wg := sync.WaitGroup{}
+	wg.Add(count)
+
+	for i := 0; i < count; i++ {
+		go func() {
+			defer wg.Done()
+			lib, err := GetHandle(libs)
+			if err != nil {
+				t.Errorf("GetHandle failed unexpectedly: %v", err)
+			}
+			_, err = lib.GetSymbolPointer("strlen")
+			if err != nil {
+				t.Errorf("GetSymbolPointer strlen failed unexpectedly: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
 }
