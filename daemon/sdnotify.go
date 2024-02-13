@@ -24,6 +24,9 @@ package daemon
 import (
 	"net"
 	"os"
+	"strconv"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -81,4 +84,17 @@ func SdNotify(unsetEnvironment bool, state string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// SdNotifyMonotonicUsec returns a MONOTONIC_USEC=... assignment for the current time.
+// This is typically used with [SdNotifyReloading].
+//
+// If the monotonic clock is not available on the system, the empty string is returned.
+func SdNotifyMonotonicUsec() string {
+	var ts unix.Timespec
+	if err := unix.ClockGettime(unix.CLOCK_MONOTONIC, &ts); err != nil {
+		// Monotonic clock is not available on this system.
+		return ""
+	}
+	return "MONOTONIC_USEC=" + strconv.FormatInt(ts.Nano()/1000, 10)
 }

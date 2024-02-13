@@ -1,2 +1,4 @@
 github.com/godbus/dbus/v5 v5.1.0 h1:4KLkAxT3aOY8Li4FRJe/KvhoNFFxo0m6fNuFUO8QJUk=
 github.com/godbus/dbus/v5 v5.1.0/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
+golang.org/x/sys v0.0.0-20180927150500-dad3d9fb7b6e h1:AqqkRhkzWTerVplYmF0GrGl2ri2S5+F5xhJfDSc/SJY=
+golang.org/x/sys v0.0.0-20180927150500-dad3d9fb7b6e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
