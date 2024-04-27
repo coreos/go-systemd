@@ -2,11 +2,7 @@
 set -e
 set -o pipefail
 
-PROJ="go-systemd"
-ORG_PATH="github.com/coreos"
-REPO_PATH="${ORG_PATH}/${PROJ}"
-
-PACKAGES="activation daemon dbus internal/dlopen journal login1 machine1 sdjournal unit util import1"
+PACKAGES="activation daemon dbus hostname1 internal/dlopen journal login1 machine1 sdjournal unit util import1"
 EXAMPLES="activation listen udpconn"
 
 function build_source {
@@ -17,11 +13,11 @@ function build_tests {
     rm -rf ./test_bins ; mkdir -p ./test_bins
     for pkg in ${PACKAGES}; do
         echo "  - ${pkg}"
-        go test -c -o ./test_bins/${pkg}.test ./${pkg}
+        go test -c -o "./test_bins/${pkg}.test" "./${pkg}"
     done
     for ex in ${EXAMPLES}; do
         echo "  - examples/${ex}"
-        go build -o ./test_bins/${ex}.example ./examples/activation/${ex}.go
+        go build -o "./test_bins/${ex}.example" "./examples/activation/${ex}.go"
     done
     # just to make sure it's buildable
     go build -o ./test_bins/journal ./examples/journal/
@@ -32,7 +28,7 @@ function run_tests {
     sudo -v
     for pkg in ${PACKAGES}; do
         echo "  - ${pkg}"
-        sudo -E ./${pkg}.test -test.v
+        sudo -E "./${pkg}.test" -test.v
     done
     popd
     sudo rm -rf ./test_bins
