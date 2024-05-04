@@ -20,7 +20,9 @@ func UseMethod(m Method) option {
 }
 
 func Options(opts ...option) *options {
-	o := &options{}
+	o := &options{
+		unsetEnv: true,
+	}
 
 	for _, opt := range opts {
 		opt(o)
