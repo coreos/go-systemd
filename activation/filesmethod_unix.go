@@ -40,7 +40,7 @@ func (m Method) Apply(f *os.File) error {
 
 	switch m {
 	case ConsumeFiles:
-		f.Close()
+		return f.Close()
 	case ReserveFiles:
 		devNull, err := os.OpenFile(os.DevNull, os.O_RDWR, 0755)
 		if err != nil {
@@ -55,6 +55,8 @@ func (m Method) Apply(f *os.File) error {
 		} else {
 			// "makes newfd be the copy of oldfd, closing newfd first if necessary"
 			if err := syscall.Dup3(nullFd, saveFd, syscall.O_CLOEXEC); err != nil {
+				devNull.Close() // on an error tidy up.
+
 				return ErrorDevNullSetup{err: err, fd: saveFd}
 			}
 		}
