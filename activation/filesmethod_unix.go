@@ -18,10 +18,22 @@
 package activation
 
 import (
-	"fmt"
 	"os"
 	"syscall"
 )
+
+type ErrorDevNullSetup struct {
+	fd  int
+	err error
+}
+
+func (e ErrorDevNullSetup) Error() string {
+	return "setting up %d fd to /dev/null: " + e.err.Error()
+}
+
+func (e ErrorDevNullSetup) Unwrap() error {
+	return e.err
+}
 
 func (m Method) Apply(f *os.File) error {
 	saveFd := int(f.Fd()) // get the idx before being closed.
@@ -32,7 +44,7 @@ func (m Method) Apply(f *os.File) error {
 	case ReserveFiles:
 		devNull, err := os.OpenFile(os.DevNull, os.O_RDWR, 0755)
 		if err != nil {
-			return fmt.Errorf("accessing /dev/null: %w", err)
+			return ErrorDevNullSetup{err: err, fd: saveFd}
 		}
 
 		nullFd := int(devNull.Fd())
@@ -43,7 +55,7 @@ func (m Method) Apply(f *os.File) error {
 		} else {
 			// "makes newfd be the copy of oldfd, closing newfd first if necessary"
 			if err := syscall.Dup3(nullFd, saveFd, syscall.O_CLOEXEC); err != nil {
-				return fmt.Errorf("setting %d fd to /dev/null: %w", saveFd, err)
+				return ErrorDevNullSetup{err: err, fd: saveFd}
 			}
 		}
 	case ConserveFiles:
