@@ -48,6 +48,10 @@ type JournalReaderConfig struct {
 	// in this directory. The supplied path may be relative or absolute.
 	Path string
 
+	// If not nil, the journal instance will point to a journal with a list
+	// of flags indicating the scope and type of entries that will be accessed.
+	Flags []int
+
 	// If not nil, Formatter will be used to translate the resulting entries
 	// into strings. If not set, the default format (timestamp and message field)
 	// will be used. If Formatter returns an error, Read will stop and return the error.
@@ -78,6 +82,12 @@ func NewJournalReader(config JournalReaderConfig) (*JournalReader, error) {
 	var err error
 	if config.Path != "" {
 		r.journal, err = NewJournalFromDir(config.Path)
+	} else if len(config.Flags) > 0 {
+		flags := config.Flags[0]
+		for i := 1; i < len(config.Flags); i++ {
+			flags |= config.Flags[i]
+		}
+		r.journal, err = NewJournalWithFlags(flags)
 	} else {
 		r.journal, err = NewJournal()
 	}
