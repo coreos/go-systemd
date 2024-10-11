@@ -163,7 +163,7 @@ func (c *Conn) DescribeMachine(name string) (machineProps map[string]interface{}
 	for key, val := range dbusProps {
 		machineProps[key] = val.Value()
 	}
-	return
+	return machineProps, nil
 }
 
 // KillMachine sends a signal to a machine
