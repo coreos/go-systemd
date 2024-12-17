@@ -358,6 +358,10 @@ func (c *Conn) ScheduleShutdown(typ ScheduleShutdownType, when time.Time) {
 	c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), when.UnixMicro())
 }
 
+func (c *Conn) SetWallMessage(message string, enable bool) {
+	c.object.Call(dbusManagerInterface+".SetWallMessage", 0, message, enable)
+}
+
 // Inhibit takes inhibition lock in logind.
 func (c *Conn) Inhibit(what, who, why, mode string) (*os.File, error) {
 	var fd dbus.UnixFD
