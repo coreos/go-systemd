@@ -21,6 +21,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -345,6 +346,16 @@ func (c *Conn) TerminateUser(uid uint32) {
 // Reboot asks logind for a reboot optionally asking for auth.
 func (c *Conn) Reboot(askForAuth bool) {
 	c.object.Call(dbusManagerInterface+".Reboot", 0, askForAuth)
+}
+
+// RebootWithFlags asks logind for a reboot with flags.
+func (c *Conn) RebootWithFlags(flags uint64) {
+	c.object.Call(dbusManagerInterface+".RebootWithFlags", 0, flags)
+}
+
+// ScheduleShutdown asks logind to schedule a shutdown.
+func (c *Conn) ScheduleShutdown(typ ScheduleShutdownType, when time.Time) {
+	c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), when.UnixMicro())
 }
 
 // Inhibit takes inhibition lock in logind.
