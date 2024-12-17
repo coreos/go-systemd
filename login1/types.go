@@ -5,12 +5,12 @@ package login1
 type ScheduleShutdownType int
 
 const (
-	PowerOff    ScheduleShutdownType = iota // poweroff
-	DryPowerOff                             // dry-poweroff
-	Reboot                                  // reboot
-	DryReboot                               // dry-reboot
-	Halt                                    // halt
-	DryHalt                                 // dry-halt
+	ScheduleTypePowerOff    ScheduleShutdownType = iota // poweroff
+	ScheduleTypeDryPowerOff                             // dry-poweroff
+	ScheduleTypeReboot                                  // reboot
+	ScheduleTypeDryReboot                               // dry-reboot
+	ScheduleTypeHalt                                    // halt
+	SceduleTypeDryHalt                                  // dry-halt
 )
 
 const (

@@ -8,12 +8,12 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[PowerOff-0]
-	_ = x[DryPowerOff-1]
-	_ = x[Reboot-2]
-	_ = x[DryReboot-3]
-	_ = x[Halt-4]
-	_ = x[DryHalt-5]
+	_ = x[ScheduleTypePowerOff-0]
+	_ = x[ScheduleTypeDryPowerOff-1]
+	_ = x[ScheduleTypeReboot-2]
+	_ = x[ScheduleTypeDryReboot-3]
+	_ = x[ScheduleTypeHalt-4]
+	_ = x[SceduleTypeDryHalt-5]
 }
 
 const _ScheduleShutdownType_name = "poweroffdry-poweroffrebootdry-reboothaltdry-halt"
