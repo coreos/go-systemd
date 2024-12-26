@@ -1,4 +1,4 @@
-//go:generate stringer -type=ScheduleShutdownType -linecomment
+//go:generate go run golang.org/x/tools/cmd/stringer@latest -linecomment -type=ScheduleShutdownType
 
 package login1
 
