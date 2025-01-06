@@ -127,6 +127,24 @@ func TestStderrIsJournalStream(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		err = journal.Send(message, journal.PriInfo, map[string]string{"KEY": "VALUE"})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = journal.SendVals(message, journal.PriInfo)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = journal.SendVals(message, journal.PriInfo,
+			journal.String("KEY", "VALUE"),
+			journal.Int("INT_KEY", 1),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
