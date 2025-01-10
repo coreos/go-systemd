@@ -355,7 +355,7 @@ func (c *Conn) RebootWithFlags(flags uint64) {
 
 // ScheduleShutdown asks logind to schedule a shutdown.
 func (c *Conn) ScheduleShutdown(typ ScheduleShutdownType, when time.Time) {
-	c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), when.UnixMicro())
+	c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), when.UTC().UnixMicro())
 }
 
 func (c *Conn) SetWallMessage(message string, enable bool) {
