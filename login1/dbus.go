@@ -324,42 +324,50 @@ func (c *Conn) GetUserPropertyContext(ctx context.Context, userPath dbus.ObjectP
 }
 
 // LockSession asks the session with the specified ID to activate the screen lock.
-func (c *Conn) LockSession(id string) {
-	c.object.Call(dbusManagerInterface+".LockSession", 0, id)
+func (c *Conn) LockSession(id string) error {
+	call := c.object.Call(dbusManagerInterface+".LockSession", 0, id)
+	return call.Err
 }
 
 // LockSessions asks all sessions to activate the screen locks. This may be used to lock any access to the machine in one action.
-func (c *Conn) LockSessions() {
-	c.object.Call(dbusManagerInterface+".LockSessions", 0)
+func (c *Conn) LockSessions() error {
+	call := c.object.Call(dbusManagerInterface+".LockSessions", 0)
+	return call.Err
 }
 
 // TerminateSession forcibly terminate one specific session.
-func (c *Conn) TerminateSession(id string) {
-	c.object.Call(dbusManagerInterface+".TerminateSession", 0, id)
+func (c *Conn) TerminateSession(id string) error {
+	call := c.object.Call(dbusManagerInterface+".TerminateSession", 0, id)
+	return call.Err
 }
 
 // TerminateUser forcibly terminates all processes of a user.
-func (c *Conn) TerminateUser(uid uint32) {
-	c.object.Call(dbusManagerInterface+".TerminateUser", 0, uid)
+func (c *Conn) TerminateUser(uid uint32) error {
+	call := c.object.Call(dbusManagerInterface+".TerminateUser", 0, uid)
+	return call.Err
 }
 
 // Reboot asks logind for a reboot optionally asking for auth.
-func (c *Conn) Reboot(askForAuth bool) {
-	c.object.Call(dbusManagerInterface+".Reboot", 0, askForAuth)
+func (c *Conn) Reboot(askForAuth bool) error {
+	call := c.object.Call(dbusManagerInterface+".Reboot", 0, askForAuth)
+	return call.Err
 }
 
 // RebootWithFlags asks logind for a reboot with flags.
-func (c *Conn) RebootWithFlags(flags uint64) {
-	c.object.Call(dbusManagerInterface+".RebootWithFlags", 0, flags)
+func (c *Conn) RebootWithFlags(flags uint64) error {
+	call := c.object.Call(dbusManagerInterface+".RebootWithFlags", 0, flags)
+	return call.Err
 }
 
 // ScheduleShutdown asks logind to schedule a shutdown.
-func (c *Conn) ScheduleShutdown(typ ScheduleShutdownType, when time.Time) {
-	c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), when.UTC().UnixMicro())
+func (c *Conn) ScheduleShutdown(typ ScheduleShutdownType, when time.Time) error {
+	call := c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), when.UTC().UnixMicro())
+	return call.Err
 }
 
-func (c *Conn) SetWallMessage(message string, enable bool) {
-	c.object.Call(dbusManagerInterface+".SetWallMessage", 0, message, enable)
+func (c *Conn) SetWallMessage(message string, enable bool) error {
+	call := c.object.Call(dbusManagerInterface+".SetWallMessage", 0, message, enable)
+	return call.Err
 }
 
 // Inhibit takes inhibition lock in logind.
