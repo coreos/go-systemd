@@ -361,7 +361,7 @@ func (c *Conn) RebootWithFlags(flags uint64) error {
 
 // ScheduleShutdown asks logind to schedule a shutdown.
 func (c *Conn) ScheduleShutdown(typ ScheduleShutdownType, when time.Time) error {
-	call := c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), when.UTC().UnixMicro())
+	call := c.object.Call(dbusManagerInterface+".ScheduleShutdown", 0, typ.String(), uint64(when.UTC().UnixMicro()))
 	return call.Err
 }
 
