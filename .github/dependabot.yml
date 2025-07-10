@@ -3,6 +3,12 @@
 
 version: 2
 updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["skip-notes"]
+    open-pull-requests-limit: 3
   - package-ecosystem: gomod
     directory: /
     schedule:
@@ -10,3 +16,11 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - area/dependencies
+
+    # Group all updates together in a single PR. We can remove some
+    # updates from a combined update PR via comments to dependabot:
+    # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/managing-pull-requests-for-dependency-updates#managing-dependabot-pull-requests-for-grouped-updates-with-comment-commands
+    groups:
+      build:
+        patterns:
+          - "*"
