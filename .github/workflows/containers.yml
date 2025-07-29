@@ -11,14 +11,14 @@ permissions:
   contents: read
 
 env:
-  GO_TOOLCHAIN: "1.15"
+  GO_TOOLCHAIN: "1.24"
   GOPATH: "/opt"
   BUILD_DIR: "/opt/src/github.com/coreos/go-systemd"
 
 jobs:
-  ditro-test:
+  distro-test:
     name: "Distro test"
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         baseimage: ['debian:bullseye', 'ubuntu:20.04', 'ubuntu:22.04']
@@ -26,9 +26,9 @@ jobs:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
         run: sudo apt-get install libsystemd-dev
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env['GO_TOOLCHAIN'] }}
       - name: Go build (source)
