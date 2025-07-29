@@ -1,0 +1,6 @@
+[Unit]
+Description=attach processes test
+
+[Service]
+Delegate=yes
+ExecStart=/bin/sleep 400

@@ -1689,3 +1689,91 @@ func TestFreezer(t *testing.T) {
 
 	runStopUnit(t, conn, TrUnitProp{target, nil})
 }
+
+func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
+	target := "attach-processes.service"
+	conn := setupConn(t)
+	defer conn.Close()
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	// Start the unit first.
+	reschan := make(chan string)
+	_, err := conn.StartUnit(target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Job is not done:", job)
+	}
+
+	// Cleanup.
+	defer func() {
+		_, err = conn.StopUnit(target, "replace", reschan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		<-reschan
+	}()
+
+	if subcgroup != "" {
+		// Pre-create a sub-cgroup.
+		prop, err := conn.GetServiceProperty(target, "ControlGroup")
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := prop.Value.Value().(string)
+		err = os.Mkdir(filepath.Join("/sys/fs/cgroup", path, subcgroup), 0777)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	}
+
+	// Start a test process that we can attach.
+	cmd := exec.Command("/bin/sleep", "400")
+	err = cmd.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		cmd.Process.Kill()
+		cmd.Wait()
+	}()
+
+	pid := uint32(cmd.Process.Pid)
+
+	// Test attaching the process to the unit.
+	ctx := context.Background()
+	err = conn.AttachProcessesToUnit(ctx, target, subcgroup, []uint32{pid})
+	if err != nil {
+		// AttachProcessesToUnit might not be supported on all systemd versions.
+		e, ok := err.(dbus.Error)
+		if ok && (e.Name == "org.freedesktop.DBus.Error.UnknownMethod" ||
+			e.Name == "org.freedesktop.DBus.Error.NotSupported") {
+			t.SkipNow()
+		}
+		t.Fatalf("failed to attach process %d to unit %s: %s", pid, target, err)
+	}
+
+	// Verify the process was attached by getting the unit it belongs to.
+	attachedPath, err := conn.GetUnitByPID(ctx, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachedUnit := unitName(attachedPath)
+	if attachedUnit != target {
+		t.Fatalf("process was not attached to correct unit: got %s, want %s", attachedUnit, target)
+	}
+}
+
+func TestAttachProcessesToUnit(t *testing.T) {
+	testAttachProcessesToUnit(t, "")
+}
+
+func TestAttachProcessesToUnitWithSubcgroup(t *testing.T) {
+	testAttachProcessesToUnit(t, "/test-subcgroup")
+}
