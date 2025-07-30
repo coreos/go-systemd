@@ -1689,3 +1689,38 @@ func TestFreezer(t *testing.T) {
 
 	runStopUnit(t, conn, TrUnitProp{target, nil})
 }
+
+func TestCancel(t *testing.T) {
+	target := "cancelme.service"
+	conn := setupConn(t)
+	defer conn.Close()
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err := conn.StartUnit(target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := context.Background()
+	units, err := conn.ListUnitsByNamesContext(ctx, []string{target})
+	if err != nil {
+		t.Fatal("couldn't list units ", err)
+	}
+
+	if err := conn.CancelJobContext(ctx, units[0].JobId); err != nil {
+		t.Fatal("couldn't cancel job ", err)
+	}
+
+	units, err = conn.ListUnitsByNamesContext(ctx, []string{target})
+	if err != nil {
+		t.Fatal("couldn't list units after cancel ", err)
+	}
+
+	job := <-reschan
+	if job != "canceled" {
+		t.Fatal("Job is not canceled:", job)
+	}
+}
