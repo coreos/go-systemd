@@ -41,3 +41,10 @@ jobs:
         run: docker exec --privileged `cat /tmp/cidfile` /bin/bash -e -c 'cd /src; ./scripts/ci-runner.sh run_tests'
       - name: Cleanup
         run: docker kill `cat /tmp/cidfile`
+
+  all-done:
+    needs:
+    - distro-test
+    runs-on: ubuntu-latest
+    steps:
+    - run: echo "All jobs completed"
