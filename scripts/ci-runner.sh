@@ -2,10 +2,6 @@
 set -e
 set -o pipefail
 
-PROJ="go-systemd"
-ORG_PATH="github.com/coreos"
-REPO_PATH="${ORG_PATH}/${PROJ}"
-
 PACKAGES="activation daemon dbus internal/dlopen journal login1 machine1 sdjournal unit util import1"
 EXAMPLES="activation listen udpconn"
 

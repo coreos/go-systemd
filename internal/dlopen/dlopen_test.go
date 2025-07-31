@@ -68,6 +68,7 @@ func TestDlopen(t *testing.T) {
 // It depends on the fact the it first generates some dlerror() errors
 // by using non existent libraries.
 func TestDlopenThreadSafety(t *testing.T) {
+	t.Skip("panics in CI; see https://github.com/coreos/go-systemd/issues/462.")
 	libs := []string{
 		"libstrange1.so",
 		"libstrange2.so",

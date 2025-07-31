@@ -8,24 +8,20 @@ on:
 permissions:
   contents: read
 
-env:
-  # Minimum supported Go toolchain
-  ACTION_MINIMUM_TOOLCHAIN: "1.12.x"
-
 jobs:
   build:
     name: "Build"
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.17.x', '1.18.x', '1.19.x', '1.20.x']
+        go: ['1.12.x', '1.23.x', '1.24.x']
     steps:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
         run: sudo apt-get install libsystemd-dev
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
       - name: Go fmt
@@ -36,23 +32,10 @@ jobs:
         run: ./scripts/ci-runner.sh build_tests
       - name: Go vet
         run: ./scripts/ci-runner.sh go_vet
-  build-minimum:
-    name: "Build on minimum supported toolchain"
+
+  all-done:
+    needs:
+    - build
     runs-on: ubuntu-latest
     steps:
-      - run: sudo apt-get -qq update
-      - name: Install libsystemd-dev
-        run: sudo apt-get install libsystemd-dev
-      - uses: actions/checkout@v3
-      - name: Setup go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env['ACTION_MINIMUM_TOOLCHAIN'] }}
-      - name: Go fmt
-        run: ./scripts/ci-runner.sh go_fmt
-      - name: Go build (source)
-        run: ./scripts/ci-runner.sh build_source
-      - name: Go build (tests)
-        run: ./scripts/ci-runner.sh build_tests
-      - name: Go vet
-        run: ./scripts/ci-runner.sh go_vet
+    - run: echo "All jobs completed"
