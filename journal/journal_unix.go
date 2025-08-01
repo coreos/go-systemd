@@ -129,6 +129,24 @@ func fdIsJournalStream(fd int) (bool, error) {
 // (http://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html)
 // for more details.  vars may be nil.
 func Send(message string, priority Priority, vars map[string]string) error {
+	return send(message, priority, func(b *bytes.Buffer) {
+		for k, v := range vars {
+			appendVariable(b, k, v)
+		}
+	})
+}
+
+// Send a message to the local systemd journal. Optional values may be
+// provided as a list of Value variablese.
+func SendVals(message string, priority Priority, values ...Value) error {
+	return send(message, priority, func(b *bytes.Buffer) {
+		for _, v := range values {
+			appendVariable(b, v.Name(), v.Value())
+		}
+	})
+}
+
+func send(message string, priority Priority, varFunc func(data *bytes.Buffer)) error {
 	conn := getOrInitConn()
 	if conn == nil {
 		return errors.New("could not initialize socket to journald")
@@ -142,9 +160,7 @@ func Send(message string, priority Priority, vars map[string]string) error {
 	data := new(bytes.Buffer)
 	appendVariable(data, "PRIORITY", strconv.Itoa(int(priority)))
 	appendVariable(data, "MESSAGE", message)
-	for k, v := range vars {
-		appendVariable(data, k, v)
-	}
+	varFunc(data)
 
 	_, _, err := conn.WriteMsgUnix(data.Bytes(), nil, socketAddr)
 	if err == nil {
