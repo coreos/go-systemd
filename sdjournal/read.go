@@ -16,10 +16,12 @@
 package sdjournal
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -252,6 +254,57 @@ process:
 					log.Printf("received unknown event: %d\n", e)
 				}
 			}
+		}
+	}
+}
+
+// SkipN skips the next n entries and returns the number of skipped entries and an eventual error.
+func (r *JournalReader) SkipN(n int) (int, error) {
+	if n < 0 {
+		return -1, errors.New("can not skip by negative number " + strconv.Itoa(n))
+	}
+	var i int
+	for i < n {
+		c, err := r.journal.Next()
+		if err != nil {
+			return i, err
+		} else if c == 0 {
+			return i, nil
+		}
+		i += 1
+	}
+	return i, nil
+}
+
+// FollowTail synchronously follows the JournalReader, writing each new journal entry to entries.
+// It will start from the next unread entry.
+func (r *JournalReader) FollowTail(entries chan<- *JournalEntry, errors chan<- error, ctx context.Context) {
+	defer close(entries)
+	defer close(errors)
+	for {
+		for {
+			select {
+			case <-ctx.Done():
+				fmt.Println("Context done, exit FollowTail")
+				return
+			default:
+			}
+			if c, err := r.journal.Next(); err != nil {
+				errors <- err
+				break
+			} else if c == 0 {
+				// EOF, should mean we're at the tail
+				break
+			} else if entry, err := r.journal.GetEntry(); err != nil {
+				errors <- err
+			} else {
+				entries <- entry
+			}
+		}
+
+		status := r.journal.Wait(200 * time.Millisecond)
+		if status != SD_JOURNAL_APPEND && status != SD_JOURNAL_INVALIDATE {
+			continue
 		}
 	}
 }
