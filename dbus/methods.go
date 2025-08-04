@@ -102,6 +102,10 @@ func (c *Conn) StartUnit(name string, mode string, ch chan<- string) (int, error
 // has been removed too. skipped indicates that a job was skipped because it
 // didn't apply to the units current state.
 //
+// Important: It is the caller's responsibility to unblock the provided channel write,
+// either by reading from the channel or by using a buffered channel. Until the write
+// is unblocked, the Conn object cannot handle other jobs.
+//
 // If no error occurs, the ID of the underlying systemd job will be returned. There
 // does exist the possibility for no error to be returned, but for the returned job
 // ID to be 0. In this case, the actual underlying ID is not 0 and this datapoint
