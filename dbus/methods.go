@@ -335,7 +335,7 @@ func (c *Conn) GetServiceProperty(service string, propertyName string) (*Propert
 	return c.GetServicePropertyContext(context.Background(), service, propertyName)
 }
 
-// GetServiceProperty returns property for given service name and property name.
+// GetServicePropertyContext returns property for given service name and property name.
 func (c *Conn) GetServicePropertyContext(ctx context.Context, service string, propertyName string) (*Property, error) {
 	return c.getProperty(ctx, service, "org.freedesktop.systemd1.Service", propertyName)
 }
@@ -533,7 +533,7 @@ func (c *Conn) ListUnitFiles() ([]UnitFile, error) {
 	return c.ListUnitFilesContext(context.Background())
 }
 
-// ListUnitFiles returns an array of all available units on disk.
+// ListUnitFilesContext returns an array of all available units on disk.
 func (c *Conn) ListUnitFilesContext(ctx context.Context) ([]UnitFile, error) {
 	return c.listUnitFilesInternal(c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.ListUnitFiles", 0).Store)
 }
@@ -856,13 +856,13 @@ func (c *Conn) listJobsInternal(ctx context.Context) ([]JobStatus, error) {
 	return status, nil
 }
 
-// Freeze the cgroup associated with the unit.
-// Note that FreezeUnit and ThawUnit are only supported on systems running with cgroup v2.
+// FreezeUnit freezes the cgroup associated with the unit.
+// Note that FreezeUnit and [ThawUnit] are only supported on systems running with cgroup v2.
 func (c *Conn) FreezeUnit(ctx context.Context, unit string) error {
 	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.FreezeUnit", 0, unit).Store()
 }
 
-// Unfreeze the cgroup associated with the unit.
+// ThawUnit unfreezes the cgroup associated with the unit.
 func (c *Conn) ThawUnit(ctx context.Context, unit string) error {
 	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.ThawUnit", 0, unit).Store()
 }
