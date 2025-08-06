@@ -1455,7 +1455,7 @@ waitevent:
 			if !ok {
 				continue waitevent
 			}
-			if tch == nil || (tch != nil && tch.Name == target && tch.ActiveState != "active") {
+			if tch == nil || (tch.Name == target && tch.ActiveState != "active") {
 				break waitevent
 			}
 		case err = <-errChan:
