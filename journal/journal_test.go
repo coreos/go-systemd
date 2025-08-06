@@ -46,12 +46,12 @@ func TestValidVarName(t *testing.T) {
 
 	for _, tt := range validTestCases {
 		if err := validVarName(tt); err != nil {
-			t.Fatalf("\"%s\" should be a valid variable", tt)
+			t.Fatalf("%q should be a valid variable", tt)
 		}
 	}
 	for _, tt := range invalidTestCases {
 		if err := validVarName(tt); err == nil {
-			t.Fatalf("\"%s\" should be an invalid variable", tt)
+			t.Fatalf("%q should be an invalid variable", tt)
 		}
 	}
 

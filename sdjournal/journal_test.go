@@ -282,7 +282,7 @@ func TestJournalGetData(t *testing.T) {
 		}
 
 		if dataStr != data {
-			t.Fatalf("Invalid data for \"%s\": got %s, want %s", k, dataStr, data)
+			t.Fatalf("Invalid data for %q: got %s, want %s", k, dataStr, data)
 		}
 
 		dataBytes, err := j.GetDataBytes(k)
@@ -291,7 +291,7 @@ func TestJournalGetData(t *testing.T) {
 		}
 
 		if string(dataBytes) != data {
-			t.Fatalf("Invalid data bytes for \"%s\": got %s, want %s", k, string(dataBytes), data)
+			t.Fatalf("Invalid data bytes for %q: got %s, want %s", k, string(dataBytes), data)
 		}
 
 		valStr, err := j.GetDataValue(k)
@@ -300,7 +300,7 @@ func TestJournalGetData(t *testing.T) {
 		}
 
 		if valStr != v {
-			t.Fatalf("Invalid data value for \"%s\": got %s, want %s", k, valStr, v)
+			t.Fatalf("Invalid data value for %q: got %s, want %s", k, valStr, v)
 		}
 
 		valBytes, err := j.GetDataValueBytes(k)
@@ -309,7 +309,7 @@ func TestJournalGetData(t *testing.T) {
 		}
 
 		if string(valBytes) != v {
-			t.Fatalf("Invalid data value bytes for \"%s\": got %s, want %s", k, string(valBytes), v)
+			t.Fatalf("Invalid data value bytes for %q: got %s, want %s", k, string(valBytes), v)
 		}
 	}
 }
@@ -330,7 +330,7 @@ func TestJournalGetEntry(t *testing.T) {
 	for k, wantV := range wantEntry {
 		gotV := entry.Fields[k]
 		if gotV != wantV {
-			t.Fatalf("Bad result for entry.Fields[\"%s\"]: got %s, want %s", k, gotV, wantV)
+			t.Fatalf("Bad result for entry.Fields[%q]: got %s, want %s", k, gotV, wantV)
 		}
 	}
 }
@@ -480,7 +480,7 @@ func TestJournalGetCatalog(t *testing.T) {
 
 	for _, w := range want {
 		if !strings.Contains(catalog, w) {
-			t.Fatalf("Failed to find \"%s\" in \n%s", w, catalog)
+			t.Fatalf("Failed to find %q in \n%s", w, catalog)
 		}
 	}
 }
