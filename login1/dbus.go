@@ -111,10 +111,6 @@ type User struct {
 	Path dbus.ObjectPath
 }
 
-func (s Session) toInterface() []any {
-	return []any{s.ID, s.UID, s.User, s.Seat, s.Path}
-}
-
 func sessionFromInterfaces(session []any) (*Session, error) {
 	if len(session) < 5 {
 		return nil, fmt.Errorf("invalid number of session fields: %d", len(session))
