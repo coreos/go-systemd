@@ -17,7 +17,6 @@ package sdjournal
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -30,6 +29,23 @@ import (
 	"github.com/coreos/go-systemd/v22/journal"
 )
 
+func newJournal(t *testing.T) *Journal {
+	t.Helper()
+	j, err := NewJournal()
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+	if j == nil {
+		t.Fatal("Got a nil journal")
+	}
+	t.Cleanup(func() {
+		if err := j.Close(); err != nil {
+			t.Fatalf("Error closing journal: %s", err)
+		}
+	})
+	return j
+}
+
 func TestJournalFollow(t *testing.T) {
 	r, err := NewJournalReader(JournalReaderConfig{
 		Since: time.Duration(-15) * time.Second,
@@ -40,7 +56,6 @@ func TestJournalFollow(t *testing.T) {
 			},
 		},
 	})
-
 	if err != nil {
 		t.Fatalf("Error opening journal: %s", err)
 	}
@@ -85,11 +100,8 @@ func TestJournalFollow(t *testing.T) {
 }
 
 func TestJournalWait(t *testing.T) {
+	j := newJournal(t)
 	id := time.Now().String()
-	j, err := NewJournal()
-	if err != nil {
-		t.Fatalf("Error opening journal: %s", err)
-	}
 	if err := j.AddMatch("TEST=TestJournalWait " + id); err != nil {
 		t.Fatalf("Error adding match: %s", err)
 	}
@@ -128,45 +140,21 @@ func TestJournalWait(t *testing.T) {
 }
 
 func TestJournalGetUsage(t *testing.T) {
-	j, err := NewJournal()
-
-	if err != nil {
-		t.Fatalf("Error opening journal: %s", err)
-	}
-
-	if j == nil {
-		t.Fatal("Got a nil journal")
-	}
-
-	defer j.Close()
-
-	_, err = j.GetUsage()
-
+	j := newJournal(t)
+	_, err := j.GetUsage()
 	if err != nil {
 		t.Fatalf("Error getting journal size: %s", err)
 	}
 }
 
 func TestJournalCursorGetSeekAndTest(t *testing.T) {
-	j, err := NewJournal()
-	if err != nil {
-		t.Fatalf("Error opening journal: %s", err)
-	}
+	j := newJournal(t)
 
-	if j == nil {
-		t.Fatal("Got a nil journal")
-	}
-
-	defer j.Close()
-
-	err = journal.Print(journal.PriInfo, "test message for cursor %s", time.Now())
+	err := journal.Print(journal.PriInfo, "test message for cursor %s", time.Now())
 	if err != nil {
 		t.Fatalf("Error writing to journal: %s", err)
 	}
-
-	if err = waitAndNext(j); err != nil {
-		t.Fatalf(err.Error())
-	}
+	waitAndNext(t, j)
 
 	c, err := j.GetCursor()
 	if err != nil {
@@ -177,10 +165,7 @@ func TestJournalCursorGetSeekAndTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error seeking cursor to journal: %s", err)
 	}
-
-	if err = waitAndNext(j); err != nil {
-		t.Fatalf(err.Error())
-	}
+	waitAndNext(t, j)
 
 	err = j.TestCursor(c)
 	if err != nil {
@@ -191,10 +176,7 @@ func TestJournalCursorGetSeekAndTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error writing to journal: %s", err)
 	}
-
-	if err = waitAndNext(j); err != nil {
-		t.Fatalf(err.Error())
-	}
+	waitAndNext(t, j)
 
 	err = j.TestCursor(c)
 	if err != ErrNoTestCursor {
@@ -207,7 +189,7 @@ func TestNewJournalFromDir(t *testing.T) {
 	dir := "/ClearlyNonExistingPath/"
 	j, err := NewJournalFromDir(dir)
 	if err == nil {
-		defer j.Close()
+		j.Close()
 		t.Fatalf("Error expected when opening dummy path (%s)", dir)
 	}
 	// test for main code path
@@ -222,57 +204,45 @@ func TestNewJournalFromDir(t *testing.T) {
 	j.Close()
 }
 
-func setupJournalRoundtrip() (*Journal, map[string]string, error) {
-	j, err := NewJournal()
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error opening journal: %s", err)
-	}
-
-	if j == nil {
-		return nil, nil, fmt.Errorf("Got a nil journal")
-	}
+func setupJournalRoundtrip(t *testing.T) (*Journal, map[string]string) {
+	t.Helper()
+	j := newJournal(t)
 
 	j.FlushMatches()
 
 	matchField := "TESTJOURNALENTRY"
 	matchValue := fmt.Sprintf("%d", time.Now().UnixNano())
 	m := Match{Field: matchField, Value: matchValue}
-	err = j.AddMatch(m.String())
+	err := j.AddMatch(m.String())
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error adding matches to journal: %s", err)
+		t.Fatalf("Error adding matches to journal: %s", err)
 	}
 
 	msg := fmt.Sprintf("test journal get entry message %s", time.Now())
 	data := map[string]string{matchField: matchValue}
 	err = journal.Send(msg, journal.PriInfo, data)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error writing to journal: %s", err)
+		t.Fatalf("Error writing to journal: %s", err)
 	}
 
 	time.Sleep(time.Duration(1) * time.Second)
 
 	n, err := j.Next()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error reading from journal: %s", err)
+		t.Fatalf("Error reading from journal: %s", err)
 	}
 
 	if n == 0 {
-		return nil, nil, fmt.Errorf("Error reading from journal: %s", io.EOF)
+		t.Fatalf("Error reading from journal: %s", io.EOF)
 	}
 
 	data["MESSAGE"] = msg
 
-	return j, data, nil
+	return j, data
 }
 
 func TestJournalGetData(t *testing.T) {
-	j, wantEntry, err := setupJournalRoundtrip()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	defer j.Close()
-
+	j, wantEntry := setupJournalRoundtrip(t)
 	for k, v := range wantEntry {
 		data := fmt.Sprintf("%s=%s", k, v)
 
@@ -315,13 +285,7 @@ func TestJournalGetData(t *testing.T) {
 }
 
 func TestJournalGetEntry(t *testing.T) {
-	j, wantEntry, err := setupJournalRoundtrip()
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	defer j.Close()
-
+	j, wantEntry := setupJournalRoundtrip(t)
 	entry, err := j.GetEntry()
 	if err != nil {
 		t.Fatalf("Error getting the entry to journal: %s", err)
@@ -389,17 +353,12 @@ func TestJournalReaderSmallReadBuffer(t *testing.T) {
 }
 
 func TestJournalGetUniqueValues(t *testing.T) {
-	j, err := NewJournal()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer j.Close()
+	j := newJournal(t)
 
 	uniqueString := generateRandomField(20)
 	testEntries := []string{"A", "B", "C", "D"}
 	for _, v := range testEntries {
-		err = journal.Send("TEST: "+uniqueString, journal.PriInfo, map[string]string{uniqueString: v})
+		err := journal.Send("TEST: "+uniqueString, journal.PriInfo, map[string]string{uniqueString: v})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -430,24 +389,15 @@ func TestJournalGetCatalog(t *testing.T) {
 		"Defined-By: systemd",
 		"Support: ",
 	}
-	j, err := NewJournal()
-	if err != nil {
-		t.Fatalf("Error opening journal: %s", err)
-	}
+	j := newJournal(t)
 
-	if j == nil {
-		t.Fatal("Got a nil journal")
-	}
-
-	defer j.Close()
-
-	if err = j.SeekHead(); err != nil {
+	if err := j.SeekHead(); err != nil {
 		t.Fatalf("Seek to head failed: %s", err)
 	}
 
 	matchField := SD_JOURNAL_FIELD_SYSTEMD_UNIT
 	m := Match{Field: matchField, Value: "systemd-journald.service"}
-	if err = j.AddMatch(m.String()); err != nil {
+	if err := j.AddMatch(m.String()); err != nil {
 		t.Fatalf("Error adding matches to journal: %s", err)
 	}
 
@@ -486,15 +436,9 @@ func TestJournalGetCatalog(t *testing.T) {
 }
 
 func TestJournalGetBootID(t *testing.T) {
-	j, err := NewJournal()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer j.Close()
+	j := newJournal(t)
 
 	bootID, err := j.GetBootID()
-
 	if err != nil {
 		t.Fatalf("Failed to get bootID : %s", err)
 	}
@@ -515,20 +459,19 @@ func generateRandomField(n int) string {
 	return string(s)
 }
 
-func waitAndNext(j *Journal) error {
+func waitAndNext(t *testing.T, j *Journal) {
+	t.Helper()
 	r := j.Wait(time.Duration(1) * time.Second)
 	if r < 0 {
-		return errors.New("Error waiting to journal")
+		t.Fatal("Error waiting to journal")
 	}
 
 	n, err := j.Next()
 	if err != nil {
-		return fmt.Errorf("Error reading to journal: %s", err)
+		t.Fatalf("Error reading to journal: %s", err)
 	}
 
 	if n == 0 {
-		return fmt.Errorf("Error reading to journal: %s", io.EOF)
+		t.Fatalf("Error reading to journal: %s", io.EOF)
 	}
-
-	return nil
 }
