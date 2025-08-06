@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -421,8 +422,10 @@ func TestJournalGetUniqueValues(t *testing.T) {
 		t.Fatalf("Expect %d entries. Got %d", len(testEntries), len(values))
 	}
 
-	if !contains(values, "A") || !contains(values, "B") || !contains(values, "C") || !contains(values, "D") {
-		t.Fatalf("Expect 4 values for %s field: A,B,C,D. Got %s", uniqueString, values)
+	for _, exp := range testEntries {
+		if !slices.Contains(values, exp) {
+			t.Fatalf("Expect %v to contain %s", values, exp)
+		}
 	}
 }
 
@@ -506,15 +509,6 @@ func TestJournalGetBootID(t *testing.T) {
 	}
 
 	t.Log("bootid:", bootID)
-}
-
-func contains(s []string, v string) bool {
-	for _, entry := range s {
-		if entry == v {
-			return true
-		}
-	}
-	return false
 }
 
 func generateRandomField(n int) string {
