@@ -514,7 +514,6 @@ func TestJournalGetBootID(t *testing.T) {
 func generateRandomField(n int) string {
 	letters := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	s := make([]rune, n)
-	rand.Seed(time.Now().UnixNano())
 	for i := range s {
 		s[i] = letters[rand.Intn(len(letters))]
 	}
