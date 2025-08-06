@@ -262,7 +262,7 @@ func (c *Conn) shouldIgnore(path dbus.ObjectPath) bool {
 	return ok && t >= time.Now().UnixNano()
 }
 
-func (c *Conn) updateIgnore(path dbus.ObjectPath, info map[string]interface{}) {
+func (c *Conn) updateIgnore(path dbus.ObjectPath, info map[string]any) {
 	loadState, ok := info["LoadState"].(string)
 	if !ok {
 		return

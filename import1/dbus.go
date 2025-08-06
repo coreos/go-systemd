@@ -101,7 +101,7 @@ func (c *Conn) initConnection() error {
 // getResult will return:
 //   - transfer object (*Transfer)
 //   - err (error)
-func (c *Conn) getResult(method string, args ...interface{}) (*Transfer, error) {
+func (c *Conn) getResult(method string, args ...any) (*Transfer, error) {
 	result := c.object.Call(fmt.Sprintf("%s.%s", dbusInterface, method), 0, args...)
 	if result.Err != nil {
 		return nil, result.Err
@@ -170,7 +170,7 @@ func (c *Conn) PullRaw(
 
 // ListTransfers will list ongoing import, export or download operations.
 func (c *Conn) ListTransfers() ([]TransferStatus, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	if err := c.object.Call(dbusInterface+".ListTransfers", 0).Store(&result); err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (c *Conn) CancelTransfer(transfer_id uint32) error {
 	return c.object.Call(dbusInterface+".CancelTransfer", 0, transfer_id).Err
 }
 
-func transferFromInterfaces(transfer []interface{}) (*TransferStatus, error) {
+func transferFromInterfaces(transfer []any) (*TransferStatus, error) {
 	// Verify may be not defined in response.
 	if len(transfer) < 5 {
 		return nil, fmt.Errorf("invalid number of transfer fields: %d", len(transfer))

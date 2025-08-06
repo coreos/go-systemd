@@ -51,7 +51,7 @@ func (c *Conn) jobComplete(signal *dbus.Signal) {
 	c.jobListener.Unlock()
 }
 
-func (c *Conn) startJob(ctx context.Context, ch chan<- string, job string, args ...interface{}) (int, error) {
+func (c *Conn) startJob(ctx context.Context, ch chan<- string, job string, args ...any) (int, error) {
 	if ch != nil {
 		c.jobListener.Lock()
 		defer c.jobListener.Unlock()
@@ -244,7 +244,7 @@ func (c *Conn) SystemStateContext(ctx context.Context) (*Property, error) {
 }
 
 // getProperties takes the unit path and returns all of its dbus object properties, for the given dbus interface.
-func (c *Conn) getProperties(ctx context.Context, path dbus.ObjectPath, dbusInterface string) (map[string]interface{}, error) {
+func (c *Conn) getProperties(ctx context.Context, path dbus.ObjectPath, dbusInterface string) (map[string]any, error) {
 	var err error
 	var props map[string]dbus.Variant
 
@@ -258,7 +258,7 @@ func (c *Conn) getProperties(ctx context.Context, path dbus.ObjectPath, dbusInte
 		return nil, err
 	}
 
-	out := make(map[string]interface{}, len(props))
+	out := make(map[string]any, len(props))
 	for k, v := range props {
 		out[k] = v.Value()
 	}
@@ -267,36 +267,36 @@ func (c *Conn) getProperties(ctx context.Context, path dbus.ObjectPath, dbusInte
 }
 
 // Deprecated: use GetUnitPropertiesContext instead.
-func (c *Conn) GetUnitProperties(unit string) (map[string]interface{}, error) {
+func (c *Conn) GetUnitProperties(unit string) (map[string]any, error) {
 	return c.GetUnitPropertiesContext(context.Background(), unit)
 }
 
 // GetUnitPropertiesContext takes the (unescaped) unit name and returns all of
 // its dbus object properties.
-func (c *Conn) GetUnitPropertiesContext(ctx context.Context, unit string) (map[string]interface{}, error) {
+func (c *Conn) GetUnitPropertiesContext(ctx context.Context, unit string) (map[string]any, error) {
 	path := unitPath(unit)
 	return c.getProperties(ctx, path, "org.freedesktop.systemd1.Unit")
 }
 
 // Deprecated: use GetUnitPathPropertiesContext instead.
-func (c *Conn) GetUnitPathProperties(path dbus.ObjectPath) (map[string]interface{}, error) {
+func (c *Conn) GetUnitPathProperties(path dbus.ObjectPath) (map[string]any, error) {
 	return c.GetUnitPathPropertiesContext(context.Background(), path)
 }
 
 // GetUnitPathPropertiesContext takes the (escaped) unit path and returns all
 // of its dbus object properties.
-func (c *Conn) GetUnitPathPropertiesContext(ctx context.Context, path dbus.ObjectPath) (map[string]interface{}, error) {
+func (c *Conn) GetUnitPathPropertiesContext(ctx context.Context, path dbus.ObjectPath) (map[string]any, error) {
 	return c.getProperties(ctx, path, "org.freedesktop.systemd1.Unit")
 }
 
 // Deprecated: use GetAllPropertiesContext instead.
-func (c *Conn) GetAllProperties(unit string) (map[string]interface{}, error) {
+func (c *Conn) GetAllProperties(unit string) (map[string]any, error) {
 	return c.GetAllPropertiesContext(context.Background(), unit)
 }
 
 // GetAllPropertiesContext takes the (unescaped) unit name and returns all of
 // its dbus object properties.
-func (c *Conn) GetAllPropertiesContext(ctx context.Context, unit string) (map[string]interface{}, error) {
+func (c *Conn) GetAllPropertiesContext(ctx context.Context, unit string) (map[string]any, error) {
 	path := unitPath(unit)
 	return c.getProperties(ctx, path, "")
 }
@@ -341,14 +341,14 @@ func (c *Conn) GetServicePropertyContext(ctx context.Context, service string, pr
 }
 
 // Deprecated: use GetUnitTypePropertiesContext instead.
-func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]interface{}, error) {
+func (c *Conn) GetUnitTypeProperties(unit string, unitType string) (map[string]any, error) {
 	return c.GetUnitTypePropertiesContext(context.Background(), unit, unitType)
 }
 
 // GetUnitTypePropertiesContext returns the extra properties for a unit, specific to the unit type.
 // Valid values for unitType: Service, Socket, Target, Device, Mount, Automount, Snapshot, Timer, Swap, Path, Slice, Scope.
 // Returns "dbus.Error: Unknown interface" error if the unitType is not the correct type of the unit.
-func (c *Conn) GetUnitTypePropertiesContext(ctx context.Context, unit string, unitType string) (map[string]interface{}, error) {
+func (c *Conn) GetUnitTypePropertiesContext(ctx context.Context, unit string, unitType string) (map[string]any, error) {
 	path := unitPath(unit)
 	return c.getProperties(ctx, path, "org.freedesktop.systemd1."+unitType)
 }
@@ -393,22 +393,22 @@ type UnitStatus struct {
 	JobPath     dbus.ObjectPath // The job object path
 }
 
-type storeFunc func(retvalues ...interface{}) error
+type storeFunc func(retvalues ...any) error
 
 func (c *Conn) listUnitsInternal(f storeFunc) ([]UnitStatus, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	err := f(&result)
 	if err != nil {
 		return nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	status := make([]UnitStatus, len(result))
-	statusInterface := make([]interface{}, len(status))
+	statusInterface := make([]any, len(status))
 	for i := range status {
 		statusInterface[i] = &status[i]
 	}
@@ -503,19 +503,19 @@ type UnitFile struct {
 }
 
 func (c *Conn) listUnitFilesInternal(f storeFunc) ([]UnitFile, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	err := f(&result)
 	if err != nil {
 		return nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	files := make([]UnitFile, len(result))
-	fileInterface := make([]interface{}, len(files))
+	fileInterface := make([]any, len(files))
 	for i := range files {
 		fileInterface[i] = &files[i]
 	}
@@ -573,19 +573,19 @@ func (c *Conn) LinkUnitFiles(files []string, runtime bool, force bool) ([]LinkUn
 // or unlink), the file name of the symlink and the destination of the
 // symlink.
 func (c *Conn) LinkUnitFilesContext(ctx context.Context, files []string, runtime bool, force bool) ([]LinkUnitFileChange, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.LinkUnitFiles", 0, files, runtime, force).Store(&result)
 	if err != nil {
 		return nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	changes := make([]LinkUnitFileChange, len(result))
-	changesInterface := make([]interface{}, len(changes))
+	changesInterface := make([]any, len(changes))
 	for i := range changes {
 		changesInterface[i] = &changes[i]
 	}
@@ -622,19 +622,19 @@ func (c *Conn) EnableUnitFiles(files []string, runtime bool, force bool) (bool, 
 func (c *Conn) EnableUnitFilesContext(ctx context.Context, files []string, runtime bool, force bool) (bool, []EnableUnitFileChange, error) {
 	var carries_install_info bool
 
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.EnableUnitFiles", 0, files, runtime, force).Store(&carries_install_info, &result)
 	if err != nil {
 		return false, nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	changes := make([]EnableUnitFileChange, len(result))
-	changesInterface := make([]interface{}, len(changes))
+	changesInterface := make([]any, len(changes))
 	for i := range changes {
 		changesInterface[i] = &changes[i]
 	}
@@ -671,19 +671,19 @@ func (c *Conn) DisableUnitFiles(files []string, runtime bool) ([]DisableUnitFile
 // symlink or unlink), the file name of the symlink and the destination of the
 // symlink.
 func (c *Conn) DisableUnitFilesContext(ctx context.Context, files []string, runtime bool) ([]DisableUnitFileChange, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.DisableUnitFiles", 0, files, runtime).Store(&result)
 	if err != nil {
 		return nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	changes := make([]DisableUnitFileChange, len(result))
-	changesInterface := make([]interface{}, len(changes))
+	changesInterface := make([]any, len(changes))
 	for i := range changes {
 		changesInterface[i] = &changes[i]
 	}
@@ -717,19 +717,19 @@ func (c *Conn) MaskUnitFiles(files []string, runtime bool, force bool) ([]MaskUn
 // runtime only (true, /run/systemd/..), or persistently (false,
 // /etc/systemd/..).
 func (c *Conn) MaskUnitFilesContext(ctx context.Context, files []string, runtime bool, force bool) ([]MaskUnitFileChange, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.MaskUnitFiles", 0, files, runtime, force).Store(&result)
 	if err != nil {
 		return nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	changes := make([]MaskUnitFileChange, len(result))
-	changesInterface := make([]interface{}, len(changes))
+	changesInterface := make([]any, len(changes))
 	for i := range changes {
 		changesInterface[i] = &changes[i]
 	}
@@ -761,19 +761,19 @@ func (c *Conn) UnmaskUnitFiles(files []string, runtime bool) ([]UnmaskUnitFileCh
 // for runtime only (true, /run/systemd/..), or persistently (false,
 // /etc/systemd/..).
 func (c *Conn) UnmaskUnitFilesContext(ctx context.Context, files []string, runtime bool) ([]UnmaskUnitFileChange, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.UnmaskUnitFiles", 0, files, runtime).Store(&result)
 	if err != nil {
 		return nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	changes := make([]UnmaskUnitFileChange, len(result))
-	changesInterface := make([]interface{}, len(changes))
+	changesInterface := make([]any, len(changes))
 	for i := range changes {
 		changesInterface[i] = &changes[i]
 	}
@@ -833,18 +833,18 @@ func (c *Conn) ListJobsContext(ctx context.Context) ([]JobStatus, error) {
 }
 
 func (c *Conn) listJobsInternal(ctx context.Context) ([]JobStatus, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	if err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.ListJobs", 0).Store(&result); err != nil {
 		return nil, err
 	}
 
-	resultInterface := make([]interface{}, len(result))
+	resultInterface := make([]any, len(result))
 	for i := range result {
 		resultInterface[i] = result[i]
 	}
 
 	status := make([]JobStatus, len(result))
-	statusInterface := make([]interface{}, len(status))
+	statusInterface := make([]any, len(status))
 	for i := range status {
 		statusInterface[i] = &status[i]
 	}

@@ -111,11 +111,11 @@ type User struct {
 	Path dbus.ObjectPath
 }
 
-func (s Session) toInterface() []interface{} {
-	return []interface{}{s.ID, s.UID, s.User, s.Seat, s.Path}
+func (s Session) toInterface() []any {
+	return []any{s.ID, s.UID, s.User, s.Seat, s.Path}
 }
 
-func sessionFromInterfaces(session []interface{}) (*Session, error) {
+func sessionFromInterfaces(session []any) (*Session, error) {
 	if len(session) < 5 {
 		return nil, fmt.Errorf("invalid number of session fields: %d", len(session))
 	}
@@ -144,7 +144,7 @@ func sessionFromInterfaces(session []interface{}) (*Session, error) {
 	return &ret, nil
 }
 
-func userFromInterfaces(user []interface{}) (*User, error) {
+func userFromInterfaces(user []any) (*User, error) {
 	if len(user) < 3 {
 		return nil, fmt.Errorf("invalid number of user fields: %d", len(user))
 	}
@@ -177,7 +177,7 @@ func (c *Conn) GetActiveSession() (dbus.ObjectPath, error) {
 	if err != nil {
 		return "", err
 	}
-	activeSessionMap, ok := activeSession.Value().([]interface{})
+	activeSessionMap, ok := activeSession.Value().([]any)
 	if !ok || len(activeSessionMap) < 2 {
 		return "", fmt.Errorf("failed to typecast active session map")
 	}
@@ -205,7 +205,7 @@ func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbusUser, ok := sessionUser.Value().([]interface{})
+	dbusUser, ok := sessionUser.Value().([]any)
 	if !ok {
 		return nil, fmt.Errorf("failed to typecast dbus session user")
 	}
@@ -243,7 +243,7 @@ func (c *Conn) GetSessionDisplay(sessionPath dbus.ObjectPath) (string, error) {
 
 // GetSession may be used to get the session object path for the session with the specified ID.
 func (c *Conn) GetSession(id string) (dbus.ObjectPath, error) {
-	var out interface{}
+	var out any
 	if err := c.object.Call(dbusManagerInterface+".GetSession", 0, id).Store(&out); err != nil {
 		return "", err
 	}
@@ -263,7 +263,7 @@ func (c *Conn) ListSessions() ([]Session, error) {
 
 // ListSessionsContext returns an array with all current sessions.
 func (c *Conn) ListSessionsContext(ctx context.Context) ([]Session, error) {
-	out := [][]interface{}{}
+	out := [][]any{}
 	if err := c.object.CallWithContext(ctx, dbusManagerInterface+".ListSessions", 0).Store(&out); err != nil {
 		return nil, err
 	}
@@ -286,7 +286,7 @@ func (c *Conn) ListUsers() ([]User, error) {
 
 // ListUsersContext returns an array with all currently logged-in users.
 func (c *Conn) ListUsersContext(ctx context.Context) ([]User, error) {
-	out := [][]interface{}{}
+	out := [][]any{}
 	if err := c.object.CallWithContext(ctx, dbusManagerInterface+".ListUsers", 0).Store(&out); err != nil {
 		return nil, err
 	}
