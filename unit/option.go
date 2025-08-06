@@ -49,7 +49,7 @@ func AllMatch(u1 []*UnitOption, u2 []*UnitOption) bool {
 		return false
 	}
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		if !u1[i].Match(u2[i]) {
 			return false
 		}
