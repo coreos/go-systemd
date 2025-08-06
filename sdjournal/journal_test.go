@@ -17,12 +17,14 @@ package sdjournal
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -80,6 +82,67 @@ func TestJournalFollow(t *testing.T) {
 	select {
 	case err := <-errCh:
 		t.Fatalf("Error writing to journal: %s", err)
+	default:
+	}
+}
+
+func TestJournalFollowTail(t *testing.T) {
+	documentation := "https://github.com/coreos/go-systemd/"
+	r, err := NewJournalReader(JournalReaderConfig{
+		Since: time.Duration(-15) * time.Second,
+		Matches: []Match{
+			{
+				Field: SD_JOURNAL_FIELD_PRIORITY,
+				Value: strconv.Itoa(int(journal.PriInfo)),
+			},
+			{
+				Field: "DOCUMENTATION",
+				Value: documentation,
+			},
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("Error opening journal: %s", err)
+	}
+
+	if r == nil {
+		t.Fatal("Got a nil reader")
+	}
+
+	defer r.Close()
+
+	// start writing some test entries
+	done := make(chan struct{}, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				vars := make(map[string]string)
+				vars["DOCUMENTATION"] = documentation
+				if perr := journal.Send(fmt.Sprintf("test message %s", time.Now()), journal.PriInfo, vars); perr != nil {
+					errCh <- perr
+					return
+				}
+				time.Sleep(time.Second)
+			}
+		}
+	}()
+
+	entries := make(chan *JournalEntry)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(5)*time.Second)
+	defer cancel()
+	go r.FollowTail(entries, errCh, ctx)
+
+	select {
+	case err := <-errCh:
+		t.Fatalf("Error writing to journal: %s", err)
+	case entry := <-entries:
+		t.Log("received: " + entry.Cursor)
+		return
 	default:
 	}
 }
