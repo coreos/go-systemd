@@ -28,11 +28,8 @@ import (
 )
 
 func TestJournalStreamParsing(t *testing.T) {
-	if _, ok := os.LookupEnv("JOURNAL_STREAM"); ok {
-		t.Fatal("unset JOURNAL_STREAM before running this test")
-	}
-
 	t.Run("Missing", func(t *testing.T) {
+		t.Setenv("JOURNAL_STREAM", "")
 		ok, err := journal.StderrIsJournalStream()
 		if err != nil {
 			t.Fatal(err)
@@ -44,8 +41,7 @@ func TestJournalStreamParsing(t *testing.T) {
 	t.Run("Present", func(t *testing.T) {
 		f, stat := getUnixStreamSocket(t)
 		defer f.Close()
-		os.Setenv("JOURNAL_STREAM", fmt.Sprintf("%d:%d", stat.Dev, stat.Ino))
-		defer os.Unsetenv("JOURNAL_STREAM")
+		t.Setenv("JOURNAL_STREAM", fmt.Sprintf("%d:%d", stat.Dev, stat.Ino))
 		replaceStderr(int(f.Fd()), func() {
 			ok, err := journal.StderrIsJournalStream()
 			if err != nil {
@@ -59,8 +55,7 @@ func TestJournalStreamParsing(t *testing.T) {
 	t.Run("NotMatching", func(t *testing.T) {
 		f, stat := getUnixStreamSocket(t)
 		defer f.Close()
-		os.Setenv("JOURNAL_STREAM", fmt.Sprintf("%d:%d", stat.Dev+1, stat.Ino))
-		defer os.Unsetenv("JOURNAL_STREAM")
+		t.Setenv("JOURNAL_STREAM", fmt.Sprintf("%d:%d", stat.Dev+1, stat.Ino))
 		replaceStderr(int(f.Fd()), func() {
 			ok, err := journal.StderrIsJournalStream()
 			if err != nil {
@@ -74,8 +69,7 @@ func TestJournalStreamParsing(t *testing.T) {
 	t.Run("Malformed", func(t *testing.T) {
 		f, stat := getUnixStreamSocket(t)
 		defer f.Close()
-		os.Setenv("JOURNAL_STREAM", fmt.Sprintf("%d-%d", stat.Dev, stat.Ino))
-		defer os.Unsetenv("JOURNAL_STREAM")
+		t.Setenv("JOURNAL_STREAM", fmt.Sprintf("%d-%d", stat.Dev, stat.Ino))
 		replaceStderr(int(f.Fd()), func() {
 			_, err := journal.StderrIsJournalStream()
 			if err == nil {

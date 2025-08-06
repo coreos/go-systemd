@@ -50,10 +50,7 @@ func TestSdNotify(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		must(os.Unsetenv("NOTIFY_SOCKET"))
-		if tt.envSocket != "" {
-			must(os.Setenv("NOTIFY_SOCKET", tt.envSocket))
-		}
+		t.Setenv("NOTIFY_SOCKET", tt.envSocket)
 		sent, err := SdNotify(tt.unsetEnv, fmt.Sprintf("TestSdNotify test message #%d", i))
 
 		if sent != tt.wsent {
