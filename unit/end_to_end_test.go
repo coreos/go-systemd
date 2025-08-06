@@ -16,7 +16,7 @@ package unit
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -74,7 +74,7 @@ Description=Bar
 			t.Errorf("case %d: unexpected error parsing unit: %v", i, err)
 			continue
 		}
-		out, err := ioutil.ReadAll(Serialize(ds))
+		out, err := io.ReadAll(Serialize(ds))
 		if err != nil {
 			t.Errorf("case %d: unexpected error serializing unit: %v", i, err)
 			continue

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"slices"
@@ -212,11 +211,7 @@ func TestNewJournalFromDir(t *testing.T) {
 		t.Fatalf("Error expected when opening dummy path (%s)", dir)
 	}
 	// test for main code path
-	dir, err = ioutil.TempDir("", "go-systemd-test")
-	if err != nil {
-		t.Fatalf("Error creating tempdir: %s", err)
-	}
-	defer os.RemoveAll(dir)
+	dir = t.TempDir()
 	j, err = NewJournalFromDir(dir)
 	if err != nil {
 		t.Fatalf("Error opening journal: %s", err)

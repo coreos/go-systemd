@@ -16,7 +16,7 @@ package journal
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -68,7 +68,7 @@ func TestJournalSend(t *testing.T) {
 	// a value slightly larger than default limit,
 	// see `SO_SNDBUF` in socket(7)
 	largeValue := hugeValue
-	if wmem, err := ioutil.ReadFile("/proc/sys/net/core/wmem_default"); err == nil {
+	if wmem, err := os.ReadFile("/proc/sys/net/core/wmem_default"); err == nil {
 		wmemStr := strings.TrimSpace(string(wmem))
 		if v, err := strconv.Atoi(wmemStr); err == nil {
 			largeValue = v + 1

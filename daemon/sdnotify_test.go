@@ -16,29 +16,22 @@ package daemon
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
 )
 
-// TestSdNotify
 func TestSdNotify(t *testing.T) {
-
-	testDir, e := ioutil.TempDir("/tmp/", "test-")
-	if e != nil {
-		panic(e)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	notifySocket := testDir + "/notify-socket.sock"
 	laddr := net.UnixAddr{
 		Name: notifySocket,
 		Net:  "unixgram",
 	}
-	_, e = net.ListenUnixgram("unixgram", &laddr)
-	if e != nil {
-		panic(e)
+	_, err := net.ListenUnixgram("unixgram", &laddr)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	tests := []struct {

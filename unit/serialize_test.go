@@ -15,7 +15,7 @@
 package unit
 
 import (
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -154,7 +154,7 @@ o
 
 	for i, tt := range tests {
 		outReader := Serialize(tt.input)
-		outBytes, err := ioutil.ReadAll(outReader)
+		outBytes, err := io.ReadAll(outReader)
 		if err != nil {
 			t.Errorf("case %d: encountered error while reading output: %v", i, err)
 			continue
@@ -334,7 +334,7 @@ Destination=10.0.2.1/24
 
 	for i, tt := range tests {
 		outReader := SerializeSections(tt.input)
-		outBytes, err := ioutil.ReadAll(outReader)
+		outBytes, err := io.ReadAll(outReader)
 		if err != nil {
 			t.Errorf("case %d: encountered error while reading output: %v", i, err)
 			continue
