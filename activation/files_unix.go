@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !windows
-// +build !windows
+//go:build !windows && !plan9
+// +build !windows,!plan9
 
 // Package activation implements primitives for systemd socket activation.
 package activation
