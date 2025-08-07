@@ -53,7 +53,7 @@ func TestActivation(t *testing.T) {
 
 	err := cmd.Run()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	correctStringWritten(t, r1, "Hello world: fd1")
@@ -68,7 +68,7 @@ func TestActivationNoFix(t *testing.T) {
 
 	out, _ := cmd.CombinedOutput()
 	if !bytes.Contains(out, []byte("No files")) {
-		t.Fatalf("Child didn't error out as expected")
+		t.Fatal("Child didn't error out as expected")
 	}
 }
 
@@ -80,6 +80,6 @@ func TestActivationNoFiles(t *testing.T) {
 
 	out, _ := cmd.CombinedOutput()
 	if !bytes.Contains(out, []byte("No files")) {
-		t.Fatalf("Child didn't error out as expected")
+		t.Fatal("Child didn't error out as expected")
 	}
 }

@@ -43,11 +43,11 @@ func TestListeners(t *testing.T) {
 
 	l1, err := net.Listen("tcp", ":9999")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	l2, err := net.Listen("tcp", ":1234")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	t1 := l1.(*net.TCPListener)
@@ -63,13 +63,13 @@ func TestListeners(t *testing.T) {
 
 	r1, err := net.Dial("tcp", "127.0.0.1:9999")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	r1.Write([]byte("Hi"))
 
 	r2, err := net.Dial("tcp", "127.0.0.1:1234")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	r2.Write([]byte("Hi"))
 
@@ -78,8 +78,7 @@ func TestListeners(t *testing.T) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		println(string(out))
-		t.Fatalf(err.Error())
+		t.Fatalf("Unexpected error: %v (command output: %s)", err, out)
 	}
 
 	correctStringWrittenNet(t, r1, "Hello world: fd1")
