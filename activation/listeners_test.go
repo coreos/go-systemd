@@ -15,25 +15,11 @@
 package activation
 
 import (
-	"io"
 	"net"
 	"os"
 	"os/exec"
 	"testing"
 )
-
-// correctStringWritten fails the text if the correct string wasn't written
-// to the other side of the pipe.
-func correctStringWrittenNet(t *testing.T, r net.Conn, expected string) bool {
-	bytes := make([]byte, len(expected))
-	io.ReadAtLeast(r, bytes, len(expected))
-
-	if string(bytes) != expected {
-		t.Fatalf("Unexpected string %s", string(bytes))
-	}
-
-	return true
-}
 
 // TestActivation forks out a copy of activation.go example and reads back two
 // strings from the pipes that are passed in.
@@ -81,6 +67,6 @@ func TestListeners(t *testing.T) {
 		t.Fatalf("Unexpected error: %v (command output: %s)", err, out)
 	}
 
-	correctStringWrittenNet(t, r1, "Hello world: fd1")
-	correctStringWrittenNet(t, r2, "Goodbye world: fd2")
+	correctStringWritten(t, r1, "Hello world: fd1")
+	correctStringWritten(t, r2, "Goodbye world: fd2")
 }

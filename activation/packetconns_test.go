@@ -64,6 +64,6 @@ func TestPacketConns(t *testing.T) {
 		t.Fatalf("Cmd output '%s', err: '%s'\n", out, err)
 	}
 
-	correctStringWrittenNet(t, r1, "Hello world")
-	correctStringWrittenNet(t, r2, "Goodbye world")
+	correctStringWritten(t, r1, "Hello world")
+	correctStringWritten(t, r2, "Goodbye world")
 }
