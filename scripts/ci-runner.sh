@@ -23,6 +23,38 @@ function build_tests {
     go build -o ./test_bins/journal ./examples/journal/
 }
 
+function run_in_ct {
+    local image=$1
+    local name="go-systemd/container-tests"
+    local cidfile=/tmp/cidfile.$$
+    local cid
+
+    set -x
+    docker pull "$image"
+    docker run -i --privileged --cidfile="$cidfile" "$image" /bin/bash -e -x << EOF
+export DEBIAN_FRONTEND=noninteractive
+apt-get -qq update
+apt-get -qq install -y sudo build-essential git golang dbus libsystemd-dev libpam-systemd systemd-container
+# Fixup git.
+git config --global --add safe.directory /src
+EOF
+    cid=$(cat "$cidfile")
+    rm -f "$cidfile"
+    docker commit "$cid" "$name"
+    docker rm -f "$cid"
+
+    echo "Starting a container with systemd..."
+    docker run --shm-size=2gb -d --cidfile="$cidfile" --privileged -v "${PWD}:/src" "$name" /bin/systemd --system
+    cid=$(cat "$cidfile")
+    rm -f "$cidfile"
+    docker exec --privileged "$cid" /bin/bash -e -c 'cd /src; ./scripts/ci-runner.sh build_tests'
+    # Wait a bit for the whole system to settle.
+    sleep 10s
+    docker exec --privileged "$cid" /bin/bash -e -c 'cd /src; ./scripts/ci-runner.sh run_tests'
+    # Cleanup.
+    docker kill "$cid"
+}
+
 function run_tests {
     pushd test_bins
     sudo -v
@@ -79,6 +111,11 @@ case "$subcommand" in
         echo "Building tests..."
         build_tests
         ;;
+
+    "run_in_ct" )
+	shift
+	run_in_ct "$@"
+	;;
 
     "run_tests" )
         echo "Running tests..."
