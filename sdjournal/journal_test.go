@@ -488,7 +488,7 @@ func TestJournalGetBootID(t *testing.T) {
 		t.Fatalf("Get bootID: %s is Null", bootID)
 	}
 
-	fmt.Printf("Test GetBootID: %s", bootID)
+	t.Log("bootid:", bootID)
 }
 
 func contains(s []string, v string) bool {
