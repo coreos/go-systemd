@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        baseimage: ['debian:bullseye', 'ubuntu:20.04', 'ubuntu:22.04']
+        baseimage: ['debian:bullseye', 'debian:trixie', 'ubuntu:20.04', 'ubuntu:24.04', 'fedora']
         go: [1.23, 1.24]
     steps:
       - uses: actions/checkout@v4
