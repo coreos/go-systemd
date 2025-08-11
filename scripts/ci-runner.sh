@@ -25,9 +25,16 @@ function build_tests {
 
 function run_in_ct {
     local image=$1
+    local gover=$2
     local name="go-systemd/container-tests"
     local cidfile=/tmp/cidfile.$$
     local cid
+
+    # Figure out Go URL, based on $gover.
+    local prefix="https://go.dev/dl/" filename
+    filename=$(curl -fsSL "${prefix}?mode=json&include=all" |
+	jq -r --arg Ver "go$gover" '. | map(select(.version | contains($Ver))) | first | .files[] | select(.os == "linux" and .arch == "amd64" and .kind == "archive") | .filename')
+    gourl="${prefix}${filename}"
 
     set -x
     docker pull "$image"
@@ -35,9 +42,14 @@ function run_in_ct {
 export DEBIAN_FRONTEND=noninteractive
 apt-get -qq update
 apt-get -qq install -y -o Dpkg::Use-Pty=0 \
-	sudo build-essential git golang dbus libsystemd-dev libpam-systemd systemd-container
+	sudo build-essential curl git dbus libsystemd-dev libpam-systemd systemd-container
 # Fixup git.
 git config --global --add safe.directory /src
+# Install Go.
+curl -fsSL "$gourl" | tar Cxz /usr/local
+ln -s /usr/local/go/bin/go /usr/local/bin/go
+go version
+go env
 EOF
     cid=$(cat "$cidfile")
     rm -f "$cidfile"
