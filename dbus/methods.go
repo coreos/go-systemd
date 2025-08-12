@@ -41,7 +41,8 @@ func (c *Conn) jobComplete(signal *dbus.Signal) {
 	var job dbus.ObjectPath
 	var unit string
 	var result string
-	dbus.Store(signal.Body, &id, &job, &unit, &result)
+
+	_ = dbus.Store(signal.Body, &id, &job, &unit, &result)
 	c.jobListener.Lock()
 	out, ok := c.jobListener.jobs[job]
 	if ok {

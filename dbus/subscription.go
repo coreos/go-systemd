@@ -70,7 +70,7 @@ func (c *Conn) dispatch() {
 			switch signal.Name {
 			case "org.freedesktop.systemd1.Manager.JobRemoved":
 				unitName := signal.Body[2].(string)
-				c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnit", 0, unitName).Store(&unitPath)
+				_ = c.sysobj.Call("org.freedesktop.systemd1.Manager.GetUnit", 0, unitName).Store(&unitPath)
 			case "org.freedesktop.systemd1.Manager.UnitNew":
 				unitPath = signal.Body[1].(dbus.ObjectPath)
 			case "org.freedesktop.DBus.Properties.PropertiesChanged":
