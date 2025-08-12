@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Integration with the systemd machined API.  See http://www.freedesktop.org/wiki/Software/systemd/machined/
+// Package machine1 provides integration with the systemd machined API.
+// See http://www.freedesktop.org/wiki/Software/systemd/machined/.
 package machine1
 
 import (
@@ -58,7 +59,7 @@ type ImageStatus struct {
 	JobPath    dbus.ObjectPath // The job object path
 }
 
-// New() establishes a connection to the system bus and authenticates.
+// New establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
 	c := new(Conn)
 
