@@ -28,7 +28,10 @@ func correctStringWritten(t *testing.T, r io.Reader, expected string) {
 	t.Helper()
 
 	bytes := make([]byte, len(expected))
-	io.ReadAtLeast(r, bytes, len(expected))
+	_, err := io.ReadAtLeast(r, bytes, len(expected))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if string(bytes) != expected {
 		t.Fatalf("Unexpected string %s", string(bytes))

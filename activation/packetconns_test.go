@@ -48,13 +48,17 @@ func TestPacketConns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r1.Write([]byte("Hi"))
+	if _, err := r1.Write([]byte("Hi")); err != nil {
+		t.Fatal(err)
+	}
 
 	r2, err := net.Dial("udp", "127.0.0.1:1234")
 	if err != nil {
 		t.Fatal(err)
 	}
-	r2.Write([]byte("Hi"))
+	if _, err := r2.Write([]byte("Hi")); err != nil {
+		t.Fatal(err)
+	}
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LISTEN_FDS=2", "LISTEN_FDNAMES=fd1:fd2", "FIX_LISTEN_PID=1")
