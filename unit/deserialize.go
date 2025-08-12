@@ -92,8 +92,8 @@ func deserializeAll(f io.Reader) ([]*UnitSection, []*UnitOption, error) {
 		case optionKind:
 			if ld.Option != nil {
 				// add to options
-				opt := ld.Option
-				options = append(options, &(*opt))
+				opt := *ld.Option
+				options = append(options, &opt)
 
 				// sanity check. "should not happen" as sectionKind is first in code flow.
 				if len(sections) == 0 {
