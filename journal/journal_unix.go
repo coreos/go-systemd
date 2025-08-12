@@ -213,7 +213,7 @@ func validVarName(name string) error {
 	}
 
 	for _, c := range name {
-		if !(('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_') {
+		if ('A' > c || c > 'Z') && ('0' > c || c > '9') && c != '_' {
 			return errors.New("Variable name contains invalid characters")
 		}
 	}
