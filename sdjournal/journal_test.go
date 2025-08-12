@@ -347,7 +347,7 @@ func TestJournalReaderSmallReadBuffer(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("Got unexpected entry %s", b)
 	}
-	if got[1] != strings.Trim(want, delim) {
+	if got[1] != strings.Trim(want, string(delim[0])) {
 		t.Fatalf("Got unexpected message %s", got[1])
 	}
 }
