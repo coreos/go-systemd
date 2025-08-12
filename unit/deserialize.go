@@ -287,29 +287,23 @@ func (l *lexer) lexOptionNameFunc(section string) lexStep {
 
 func (l *lexer) lexOptionValueFunc(section, name string, partial bytes.Buffer) lexStep {
 	return func() (lexStep, error) {
-		for {
-			line, eof, err := l.toEOL()
-			if err != nil {
-				return nil, err
-			}
+		line, eof, err := l.toEOL()
+		if err != nil {
+			return nil, err
+		}
 
-			if len(bytes.TrimSpace(line)) == 0 {
-				break
-			}
-
+		if len(bytes.TrimSpace(line)) != 0 {
 			partial.Write(line)
 
 			// lack of continuation means this value has been exhausted
-			idx := bytes.LastIndex(line, []byte{'\\'})
-			if idx == -1 || idx != (len(line)-1) {
-				break
-			}
+			if bytes.HasSuffix(line, []byte{'\\'}) {
+				// line ends with backslash, continue parsing
+				if !eof {
+					partial.WriteRune('\n')
+				}
 
-			if !eof {
-				partial.WriteRune('\n')
+				return l.lexOptionValueFunc(section, name, partial), nil
 			}
-
-			return l.lexOptionValueFunc(section, name, partial), nil
 		}
 
 		val := partial.String()
