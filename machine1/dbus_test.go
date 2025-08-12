@@ -17,6 +17,7 @@ limitations under the License.
 package machine1
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -48,12 +49,12 @@ func mustCreateTestProcess(machineName string) (pid int) {
 	if err != nil {
 		panic(fmt.Errorf("systemd-run failed: %q", out))
 	}
-	dbusConn, err := sd_dbus.New()
+	dbusConn, err := sd_dbus.NewWithContext(context.TODO()) // Switch to t.Context once go < 1.24 is not supported.
 	if err != nil {
 		panic(err.Error())
 	}
 	defer dbusConn.Close()
-	mainPIDProperty, err := dbusConn.GetServiceProperty(testServiceName, "MainPID")
+	mainPIDProperty, err := dbusConn.GetServicePropertyContext(context.TODO(), testServiceName, "MainPID") // Switch to t.Context once go < 1.24 is not supported.
 	if err != nil {
 		panic(err.Error())
 	}
