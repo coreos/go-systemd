@@ -453,12 +453,29 @@ func TestJournalGetCatalog(t *testing.T) {
 		t.Fatalf("Error adding matches to journal: %s", err)
 	}
 
-	if err = waitAndNext(j); err != nil {
-		t.Fatalf(err.Error())
+	// Look for an entry with MESSAGE_ID (required for GetCatalog).
+	found := false
+	for range 100 {
+		n, err := j.Next()
+		if err != nil {
+			t.Fatalf("Error reading journal: %s", err)
+		}
+		if n == 0 {
+			break
+		}
+
+		// Check if this entry has a MESSAGE_ID
+		if _, err := j.GetData("MESSAGE_ID"); err == nil {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Skip("No journal entries with MESSAGE_ID found for systemd-journald.service")
 	}
 
 	catalog, err := j.GetCatalog()
-
 	if err != nil {
 		t.Fatalf("Failed to retrieve catalog entry: %s", err)
 	}
@@ -488,7 +505,7 @@ func TestJournalGetBootID(t *testing.T) {
 		t.Fatalf("Get bootID: %s is Null", bootID)
 	}
 
-	fmt.Printf("Test GetBootID: %s", bootID)
+	t.Log("bootid:", bootID)
 }
 
 func contains(s []string, v string) bool {

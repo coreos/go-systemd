@@ -53,7 +53,7 @@ func TestListSessions(t *testing.T) {
 				t.Fatalf("expected uid '%d' but got '%s'", s.UID, lookup.Uid)
 			}
 
-			validPath := regexp.MustCompile(`/org/freedesktop/login1/session/_[0-9]+`)
+			validPath := regexp.MustCompile(`/org/freedesktop/login1/session/[_c][0-9]+`)
 			if !validPath.MatchString(fmt.Sprint(s.Path)) {
 				t.Fatalf("invalid session path: %s", s.Path)
 			}
