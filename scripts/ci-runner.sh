@@ -34,7 +34,8 @@ function run_in_ct {
     docker run -i --privileged --cidfile="$cidfile" "$image" /bin/bash -e -x << EOF
 export DEBIAN_FRONTEND=noninteractive
 apt-get -qq update
-apt-get -qq install -y sudo build-essential git golang dbus libsystemd-dev libpam-systemd systemd-container
+apt-get -qq install -y -o Dpkg::Use-Pty=0 \
+	sudo build-essential git golang dbus libsystemd-dev libpam-systemd systemd-container
 # Fixup git.
 git config --global --add safe.directory /src
 EOF
