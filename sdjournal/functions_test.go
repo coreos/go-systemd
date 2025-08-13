@@ -19,7 +19,6 @@ import "testing"
 
 func TestGetFunction(t *testing.T) {
 	f, err := getFunction("sd_journal_open")
-
 	if err != nil {
 		t.Errorf("Error getting an existing function: %s", err)
 	}

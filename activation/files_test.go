@@ -24,15 +24,18 @@ import (
 
 // correctStringWritten fails the text if the correct string wasn't written
 // to the other side of the pipe.
-func correctStringWritten(t *testing.T, r *os.File, expected string) bool {
+func correctStringWritten(t *testing.T, r io.Reader, expected string) {
+	t.Helper()
+
 	bytes := make([]byte, len(expected))
-	io.ReadAtLeast(r, bytes, len(expected))
+	_, err := io.ReadAtLeast(r, bytes, len(expected))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if string(bytes) != expected {
 		t.Fatalf("Unexpected string %s", string(bytes))
 	}
-
-	return true
 }
 
 // TestActivation forks out a copy of activation.go example and reads back two
@@ -53,7 +56,7 @@ func TestActivation(t *testing.T) {
 
 	err := cmd.Run()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	correctStringWritten(t, r1, "Hello world: fd1")
@@ -68,7 +71,7 @@ func TestActivationNoFix(t *testing.T) {
 
 	out, _ := cmd.CombinedOutput()
 	if !bytes.Contains(out, []byte("No files")) {
-		t.Fatalf("Child didn't error out as expected")
+		t.Fatal("Child didn't error out as expected")
 	}
 }
 
@@ -80,6 +83,6 @@ func TestActivationNoFiles(t *testing.T) {
 
 	out, _ := cmd.CombinedOutput()
 	if !bytes.Contains(out, []byte("No files")) {
-		t.Fatalf("Child didn't error out as expected")
+		t.Fatal("Child didn't error out as expected")
 	}
 }

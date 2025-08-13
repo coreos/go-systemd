@@ -16,6 +16,7 @@ package dbus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -52,12 +53,15 @@ func findFixture(target string, t *testing.T) string {
 }
 
 func setupUnit(target string, conn *Conn, t *testing.T) {
+	t.Helper()
 	// Blindly stop the unit in case it is running
-	conn.StopUnit(target, "replace", nil)
+	_, _ = conn.StopUnit(target, "replace", nil)
 
 	// Blindly remove the symlink in case it exists
 	targetRun := filepath.Join("/run/systemd/system/", target)
-	os.Remove(targetRun)
+	if err := os.Remove(targetRun); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
 }
 
 func linkUnit(target string, conn *Conn, t *testing.T) {
@@ -456,7 +460,6 @@ func TestGetUnitByPID(t *testing.T) {
 	defer conn.Close()
 
 	path, err := conn.GetUnitByPID(context.Background(), 1)
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -472,7 +475,6 @@ func TestGetUnitNameByPID(t *testing.T) {
 	defer conn.Close()
 
 	name, err := conn.GetUnitNameByPID(context.Background(), 1)
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -491,7 +493,6 @@ func TestListUnitsByNames(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitsByNames([]string{target1, target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -522,7 +523,6 @@ func TestListUnitsByPatterns(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitsByPatterns([]string{}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -550,7 +550,6 @@ func TestListUnitsFiltered(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitsFiltered([]string{"active"})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -564,7 +563,6 @@ func TestListUnitsFiltered(t *testing.T) {
 	}
 
 	units, err = conn.ListUnitsFiltered([]string{"inactive"})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +583,6 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitFilesByPatterns([]string{"static"}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -599,7 +596,6 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	}
 
 	units, err = conn.ListUnitFilesByPatterns([]string{"disabled"}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,7 +617,6 @@ func TestListUnitFiles(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitFiles()
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1355,26 +1350,38 @@ func checkTransientUnitConflicts(t *testing.T, trTarget TrUnitProp, trDep TrUnit
 	return nil
 }
 
-// Ensure that putting running programs into scopes works
-func TestStartStopTransientScope(t *testing.T) {
-	conn := setupConn(t)
-	defer conn.Close()
-
+func runSleep(t *testing.T) uint32 {
 	cmd := exec.Command("/bin/sleep", "400")
 	err := cmd.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cmd.Process.Kill()
 
+	t.Cleanup(func() {
+		err := cmd.Process.Kill()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = cmd.Wait()
+	})
+
+	return uint32(cmd.Process.Pid)
+}
+
+// Ensure that putting running programs into scopes works
+func TestStartStopTransientScope(t *testing.T) {
+	conn := setupConn(t)
+	defer conn.Close()
+
+	pid := runSleep(t)
 	props := []Property{
-		PropPids(uint32(cmd.Process.Pid)),
+		PropPids(pid),
 	}
-	target := fmt.Sprintf("testing-transient-%d.scope", cmd.Process.Pid)
+	target := fmt.Sprintf("testing-transient-%d.scope", pid)
 
 	// Start the unit
 	reschan := make(chan string)
-	_, err = conn.StartTransientUnit(target, "replace", props, reschan)
+	_, err := conn.StartTransientUnit(target, "replace", props, reschan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1455,7 +1462,7 @@ waitevent:
 			if !ok {
 				continue waitevent
 			}
-			if tch == nil || (tch != nil && tch.Name == target && tch.ActiveState != "active") {
+			if tch == nil || (tch.Name == target && tch.ActiveState != "active") {
 				break waitevent
 			}
 		case err = <-errChan:
@@ -1603,7 +1610,6 @@ func TestMaskUnmask(t *testing.T) {
 	if uChanges[0].Destination != "" {
 		t.Fatalf("Change destination should be empty, %+v", uChanges[0])
 	}
-
 }
 
 // Test a global Reload
@@ -1687,7 +1693,9 @@ func TestFreezer(t *testing.T) {
 		t.Fatalf("unit is not frozen after calling ThawUnit(), FreezerState=%s", v)
 	}
 
-	runStopUnit(t, conn, TrUnitProp{target, nil})
+	if err := runStopUnit(t, conn, TrUnitProp{target, nil}); err != nil {
+		t.Fatal("StopUnit:", err)
+	}
 }
 
 func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
@@ -1725,7 +1733,7 @@ func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
 			t.Fatal(err)
 		}
 		path := prop.Value.Value().(string)
-		err = os.Mkdir(filepath.Join("/sys/fs/cgroup", path, subcgroup), 0777)
+		err = os.Mkdir(filepath.Join("/sys/fs/cgroup", path, subcgroup), 0o777)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1733,17 +1741,7 @@ func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
 	}
 
 	// Start a test process that we can attach.
-	cmd := exec.Command("/bin/sleep", "400")
-	err = cmd.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		cmd.Process.Kill()
-		cmd.Wait()
-	}()
-
-	pid := uint32(cmd.Process.Pid)
+	pid := runSleep(t)
 
 	// Test attaching the process to the unit.
 	ctx := context.Background()

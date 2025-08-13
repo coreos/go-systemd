@@ -16,29 +16,22 @@ package daemon
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
 )
 
-// TestSdNotify
 func TestSdNotify(t *testing.T) {
-
-	testDir, e := ioutil.TempDir("/tmp/", "test-")
-	if e != nil {
-		panic(e)
-	}
-	defer os.RemoveAll(testDir)
+	testDir := t.TempDir()
 
 	notifySocket := testDir + "/notify-socket.sock"
 	laddr := net.UnixAddr{
 		Name: notifySocket,
 		Net:  "unixgram",
 	}
-	_, e = net.ListenUnixgram("unixgram", &laddr)
-	if e != nil {
-		panic(e)
+	_, err := net.ListenUnixgram("unixgram", &laddr)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -57,10 +50,7 @@ func TestSdNotify(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		must(os.Unsetenv("NOTIFY_SOCKET"))
-		if tt.envSocket != "" {
-			must(os.Setenv("NOTIFY_SOCKET", tt.envSocket))
-		}
+		t.Setenv("NOTIFY_SOCKET", tt.envSocket)
 		sent, err := SdNotify(tt.unsetEnv, fmt.Sprintf("TestSdNotify test message #%d", i))
 
 		if sent != tt.wsent {

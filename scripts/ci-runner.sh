@@ -45,7 +45,8 @@ if dpkg --version; then
     apt-get -qq install -y -o Dpkg::Use-Pty=0 \
 	sudo build-essential curl git dbus libsystemd-dev libpam-systemd systemd-container
 else # Assuming Fedora
-    dnf install -qy sudo curl gcc git dbus systemd-devel systemd-container
+    dnf install -qy --setopt=install_weak_deps=False --setopt=tsflags=nodocs \
+	sudo curl gcc git-core dbus systemd-devel systemd-container
 fi
 # Fixup git.
 git config --global --add safe.directory /src
@@ -83,28 +84,6 @@ function run_tests {
     sudo rm -rf ./test_bins
 }
 
-function go_fmt {
-    for pkg in ${PACKAGES}; do
-        echo "  - ${pkg}"
-        fmtRes=$(gofmt -l "./${pkg}")
-        if [ -n "${fmtRes}" ]; then
-            echo -e "gofmt checking failed:\n${fmtRes}"
-            exit 255
-        fi
-    done
-}
-
-function go_vet {
-    for pkg in ${PACKAGES}; do
-        echo "  - ${pkg}"
-        vetRes=$(go vet "./${pkg}")
-        if [ -n "${vetRes}" ]; then
-            echo -e "govet checking failed:\n${vetRes}"
-            exit 254
-        fi
-    done
-}
-
 function license_check {
     licRes=$(for file in $(find . -type f -iname '*.go' ! -path './vendor/*'); do
   	             head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" || echo -e "  ${file}"
@@ -137,16 +116,6 @@ case "$subcommand" in
     "run_tests" )
         echo "Running tests..."
         run_tests
-        ;;
-
-    "go_fmt" )
-        echo "Checking gofmt..."
-        go_fmt
-        ;;
-
-    "go_vet" )
-        echo "Checking govet..."
-        go_vet
         ;;
 
     "license_check" )

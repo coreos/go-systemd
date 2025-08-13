@@ -21,12 +21,6 @@ import (
 	"time"
 )
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func TestSdWatchdogEnabled(t *testing.T) {
 	mypid := strconv.Itoa(os.Getpid())
 	tests := []struct {
@@ -57,16 +51,8 @@ func TestSdWatchdogEnabled(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		if tt.usec != "" {
-			must(os.Setenv("WATCHDOG_USEC", tt.usec))
-		} else {
-			must(os.Unsetenv("WATCHDOG_USEC"))
-		}
-		if tt.pid != "" {
-			must(os.Setenv("WATCHDOG_PID", tt.pid))
-		} else {
-			must(os.Unsetenv("WATCHDOG_PID"))
-		}
+		t.Setenv("WATCHDOG_USEC", tt.usec)
+		t.Setenv("WATCHDOG_PID", tt.pid)
 
 		delay, err := SdWatchdogEnabled(tt.unsetEnv)
 

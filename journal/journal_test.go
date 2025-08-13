@@ -16,7 +16,7 @@ package journal
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -46,15 +46,14 @@ func TestValidVarName(t *testing.T) {
 
 	for _, tt := range validTestCases {
 		if err := validVarName(tt); err != nil {
-			t.Fatalf("\"%s\" should be a valid variable", tt)
+			t.Fatalf("%q should be a valid variable", tt)
 		}
 	}
 	for _, tt := range invalidTestCases {
 		if err := validVarName(tt); err == nil {
-			t.Fatalf("\"%s\" should be an invalid variable", tt)
+			t.Fatalf("%q should be an invalid variable", tt)
 		}
 	}
-
 }
 
 func TestJournalSend(t *testing.T) {
@@ -68,7 +67,7 @@ func TestJournalSend(t *testing.T) {
 	// a value slightly larger than default limit,
 	// see `SO_SNDBUF` in socket(7)
 	largeValue := hugeValue
-	if wmem, err := ioutil.ReadFile("/proc/sys/net/core/wmem_default"); err == nil {
+	if wmem, err := os.ReadFile("/proc/sys/net/core/wmem_default"); err == nil {
 		wmemStr := strings.TrimSpace(string(wmem))
 		if v, err := strconv.Atoi(wmemStr); err == nil {
 			largeValue = v + 1

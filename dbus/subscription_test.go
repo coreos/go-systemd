@@ -22,7 +22,6 @@ import (
 // TestSubscribe exercises the basics of subscription
 func TestSubscribe(t *testing.T) {
 	conn, err := New()
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +42,6 @@ func TestSubscribeUnit(t *testing.T) {
 	target := "subscribe-events.service"
 
 	conn, err := New()
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,10 +101,10 @@ func TestSubStateSubscription(t *testing.T) {
 	target := "subscribe-events.service"
 
 	conn, err := New()
-	defer conn.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer conn.Close()
 
 	updateCh := make(chan *SubStateUpdate, 256)
 	errCh := make(chan error, 256)
@@ -145,10 +143,10 @@ func TestPropertiesSubscription(t *testing.T) {
 	target := "subscribe-events.service"
 
 	conn, err := New()
-	defer conn.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer conn.Close()
 
 	err = conn.Subscribe()
 	if err != nil {

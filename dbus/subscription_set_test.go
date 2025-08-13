@@ -24,7 +24,6 @@ func TestSubscriptionSetUnit(t *testing.T) {
 	target := "subscribe-events-set.service"
 
 	conn, err := New()
-
 	if err != nil {
 		t.Fatal(err)
 	}

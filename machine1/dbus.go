@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Integration with the systemd machined API.  See http://www.freedesktop.org/wiki/Software/systemd/machined/
+// Package machine1 provides integration with the systemd machined API.
+// See http://www.freedesktop.org/wiki/Software/systemd/machined/.
 package machine1
 
 import (
@@ -58,7 +59,7 @@ type ImageStatus struct {
 	JobPath    dbus.ObjectPath // The job object path
 }
 
-// New() establishes a connection to the system bus and authenticates.
+// New establishes a connection to the system bus and authenticates.
 func New() (*Conn, error) {
 	c := new(Conn)
 
@@ -98,7 +99,7 @@ func (c *Conn) initConnection() error {
 	return nil
 }
 
-func (c *Conn) getPath(method string, args ...interface{}) (dbus.ObjectPath, error) {
+func (c *Conn) getPath(method string, args ...any) (dbus.ObjectPath, error) {
 	result := c.object.Call(fmt.Sprintf("%s.%s", dbusInterface, method), 0, args...)
 	if result.Err != nil {
 		return "", result.Err
@@ -148,7 +149,7 @@ func (c *Conn) GetMachineAddresses(name string) (dbus.ObjectPath, error) {
 }
 
 // DescribeMachine gets the properties of a machine
-func (c *Conn) DescribeMachine(name string) (machineProps map[string]interface{}, err error) {
+func (c *Conn) DescribeMachine(name string) (machineProps map[string]any, err error) {
 	var dbusProps map[string]dbus.Variant
 	path, pathErr := c.GetMachine(name)
 	if pathErr != nil {
@@ -159,7 +160,7 @@ func (c *Conn) DescribeMachine(name string) (machineProps map[string]interface{}
 	if err != nil {
 		return nil, err
 	}
-	machineProps = make(map[string]interface{}, len(dbusProps))
+	machineProps = make(map[string]any, len(dbusProps))
 	for key, val := range dbusProps {
 		machineProps[key] = val.Value()
 	}
@@ -186,7 +187,7 @@ func (c *Conn) RegisterMachineWithNetwork(name string, id []byte, service string
 	return c.object.Call(dbusInterface+".RegisterMachineWithNetwork", 0, name, id, service, class, uint32(pid), root_directory, ifindices).Err
 }
 
-func machineFromInterfaces(machine []interface{}) (*MachineStatus, error) {
+func machineFromInterfaces(machine []any) (*MachineStatus, error) {
 	if len(machine) < 4 {
 		return nil, fmt.Errorf("invalid number of machine fields: %d", len(machine))
 	}
@@ -213,7 +214,7 @@ func machineFromInterfaces(machine []interface{}) (*MachineStatus, error) {
 
 // ListMachines returns an array of all currently running machines.
 func (c *Conn) ListMachines() ([]MachineStatus, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	if err := c.object.Call(dbusInterface+".ListMachines", 0).Store(&result); err != nil {
 		return nil, err
 	}
@@ -230,7 +231,7 @@ func (c *Conn) ListMachines() ([]MachineStatus, error) {
 	return machs, nil
 }
 
-func imageFromInterfaces(image []interface{}) (*ImageStatus, error) {
+func imageFromInterfaces(image []any) (*ImageStatus, error) {
 	if len(image) < 7 {
 		return nil, fmt.Errorf("invalid number of image fields: %d", len(image))
 	}
@@ -269,7 +270,7 @@ func imageFromInterfaces(image []interface{}) (*ImageStatus, error) {
 
 // ListImages returns an array of all currently available images.
 func (c *Conn) ListImages() ([]ImageStatus, error) {
-	result := make([][]interface{}, 0)
+	result := make([][]any, 0)
 	if err := c.object.Call(dbusInterface+".ListImages", 0).Store(&result); err != nil {
 		return nil, err
 	}

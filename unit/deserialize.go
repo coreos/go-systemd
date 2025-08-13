@@ -38,10 +38,8 @@ const (
 	SYSTEMD_NEWLINE = "\r\n"
 )
 
-var (
-	// ErrLineTooLong gets returned when a line is too long for systemd to handle.
-	ErrLineTooLong = fmt.Errorf("line too long (max %d bytes)", SYSTEMD_LINE_MAX)
-)
+// ErrLineTooLong gets returned when a line is too long for systemd to handle.
+var ErrLineTooLong = fmt.Errorf("line too long (max %d bytes)", SYSTEMD_LINE_MAX)
 
 // DeserializeOptions parses a systemd unit file into a list of UnitOptions
 func DeserializeOptions(f io.Reader) (opts []*UnitOption, err error) {
@@ -79,7 +77,6 @@ type lexData struct {
 
 // deserializeAll deserializes into UnitSections and UnitOptions.
 func deserializeAll(f io.Reader) ([]*UnitSection, []*UnitOption, error) {
-
 	lexer, lexchan, errchan := newLexer(f)
 
 	go lexer.lex()
@@ -92,8 +89,8 @@ func deserializeAll(f io.Reader) ([]*UnitSection, []*UnitOption, error) {
 		case optionKind:
 			if ld.Option != nil {
 				// add to options
-				opt := ld.Option
-				options = append(options, &(*opt))
+				opt := *ld.Option
+				options = append(options, &opt)
 
 				// sanity check. "should not happen" as sectionKind is first in code flow.
 				if len(sections) == 0 {
@@ -255,7 +252,7 @@ func (l *lexer) lexNextSectionOrOptionFunc(section string) lexStep {
 			return l.ignoreLineFunc(l.lexNextSectionOrOptionFunc(section)), nil
 		}
 
-		l.buf.UnreadRune()
+		_ = l.buf.UnreadRune() // This can't fail as we just called ReadRune.
 		return l.lexOptionNameFunc(section), nil
 	}
 }
@@ -287,29 +284,23 @@ func (l *lexer) lexOptionNameFunc(section string) lexStep {
 
 func (l *lexer) lexOptionValueFunc(section, name string, partial bytes.Buffer) lexStep {
 	return func() (lexStep, error) {
-		for {
-			line, eof, err := l.toEOL()
-			if err != nil {
-				return nil, err
-			}
+		line, eof, err := l.toEOL()
+		if err != nil {
+			return nil, err
+		}
 
-			if len(bytes.TrimSpace(line)) == 0 {
-				break
-			}
-
+		if len(bytes.TrimSpace(line)) != 0 {
 			partial.Write(line)
 
 			// lack of continuation means this value has been exhausted
-			idx := bytes.LastIndex(line, []byte{'\\'})
-			if idx == -1 || idx != (len(line)-1) {
-				break
-			}
+			if bytes.HasSuffix(line, []byte{'\\'}) {
+				// line ends with backslash, continue parsing
+				if !eof {
+					partial.WriteRune('\n')
+				}
 
-			if !eof {
-				partial.WriteRune('\n')
+				return l.lexOptionValueFunc(section, name, partial), nil
 			}
-
-			return l.lexOptionValueFunc(section, name, partial), nil
 		}
 
 		val := partial.String()

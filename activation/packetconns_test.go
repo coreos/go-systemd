@@ -29,11 +29,11 @@ func TestPacketConns(t *testing.T) {
 
 	u1, err := net.ListenUDP("udp", &net.UDPAddr{Port: 9999})
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	u2, err := net.ListenUDP("udp", &net.UDPAddr{Port: 1234})
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	f1, _ := u1.File()
@@ -46,15 +46,19 @@ func TestPacketConns(t *testing.T) {
 
 	r1, err := net.Dial("udp", "127.0.0.1:9999")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
-	r1.Write([]byte("Hi"))
+	if _, err := r1.Write([]byte("Hi")); err != nil {
+		t.Fatal(err)
+	}
 
 	r2, err := net.Dial("udp", "127.0.0.1:1234")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
-	r2.Write([]byte("Hi"))
+	if _, err := r2.Write([]byte("Hi")); err != nil {
+		t.Fatal(err)
+	}
 
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LISTEN_FDS=2", "LISTEN_FDNAMES=fd1:fd2", "FIX_LISTEN_PID=1")
@@ -64,6 +68,6 @@ func TestPacketConns(t *testing.T) {
 		t.Fatalf("Cmd output '%s', err: '%s'\n", out, err)
 	}
 
-	correctStringWrittenNet(t, r1, "Hello world")
-	correctStringWrittenNet(t, r2, "Goodbye world")
+	correctStringWritten(t, r1, "Hello world")
+	correctStringWritten(t, r2, "Goodbye world")
 }
