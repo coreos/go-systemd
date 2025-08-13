@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build !windows
-// +build !windows
 
 // Package activation implements primitives for systemd socket activation.
 package activation
