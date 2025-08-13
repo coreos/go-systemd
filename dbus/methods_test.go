@@ -460,7 +460,6 @@ func TestGetUnitByPID(t *testing.T) {
 	defer conn.Close()
 
 	path, err := conn.GetUnitByPID(context.Background(), 1)
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -476,7 +475,6 @@ func TestGetUnitNameByPID(t *testing.T) {
 	defer conn.Close()
 
 	name, err := conn.GetUnitNameByPID(context.Background(), 1)
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -495,7 +493,6 @@ func TestListUnitsByNames(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitsByNames([]string{target1, target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -526,7 +523,6 @@ func TestListUnitsByPatterns(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitsByPatterns([]string{}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -554,7 +550,6 @@ func TestListUnitsFiltered(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitsFiltered([]string{"active"})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -568,7 +563,6 @@ func TestListUnitsFiltered(t *testing.T) {
 	}
 
 	units, err = conn.ListUnitsFiltered([]string{"inactive"})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -589,7 +583,6 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitFilesByPatterns([]string{"static"}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -603,7 +596,6 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	}
 
 	units, err = conn.ListUnitFilesByPatterns([]string{"disabled"}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -625,7 +617,6 @@ func TestListUnitFiles(t *testing.T) {
 	defer conn.Close()
 
 	units, err := conn.ListUnitFiles()
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1619,7 +1610,6 @@ func TestMaskUnmask(t *testing.T) {
 	if uChanges[0].Destination != "" {
 		t.Fatalf("Change destination should be empty, %+v", uChanges[0])
 	}
-
 }
 
 // Test a global Reload
@@ -1743,7 +1733,7 @@ func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
 			t.Fatal(err)
 		}
 		path := prop.Value.Value().(string)
-		err = os.Mkdir(filepath.Join("/sys/fs/cgroup", path, subcgroup), 0777)
+		err = os.Mkdir(filepath.Join("/sys/fs/cgroup", path, subcgroup), 0o777)
 		if err != nil {
 			t.Fatal(err)
 		}

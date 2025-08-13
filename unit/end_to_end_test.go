@@ -31,7 +31,8 @@ ExecStart=/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"
 `,
 			`[Service]
 ExecStart=/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"
-`},
+`,
+		},
 		{
 			`[Unit]
 Description= Unnecessarily wrapped \
@@ -66,7 +67,8 @@ Description=Bar
 `,
 			`[Unit]
 Description=Bar
-`},
+`,
+		},
 	}
 	for i, tt := range tests {
 		ds, err := Deserialize(bytes.NewBufferString(tt.in))

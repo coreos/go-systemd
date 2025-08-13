@@ -54,7 +54,6 @@ func TestValidVarName(t *testing.T) {
 			t.Fatalf("%q should be an invalid variable", tt)
 		}
 	}
-
 }
 
 func TestJournalSend(t *testing.T) {

@@ -67,7 +67,7 @@ func TestExportTar(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = os.MkdirAll("tmp/", os.ModeDir|0755)
+	err = os.MkdirAll("tmp/", os.ModeDir|0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestExportRaw(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = os.MkdirAll("tmp/", os.ModeDir|0755)
+	err = os.MkdirAll("tmp/", os.ModeDir|0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,6 +114,7 @@ func TestPullTar(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestPullRaw(t *testing.T) {
 	conn, err := New()
 	if err != nil {

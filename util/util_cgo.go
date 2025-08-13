@@ -54,6 +54,7 @@ package util
 //   return (getsid(0) == getpid());
 // }
 import "C"
+
 import (
 	"fmt"
 	"syscall"

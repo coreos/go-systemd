@@ -22,7 +22,6 @@ import (
 // TestSubscribe exercises the basics of subscription
 func TestSubscribe(t *testing.T) {
 	conn, err := New()
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +42,6 @@ func TestSubscribeUnit(t *testing.T) {
 	target := "subscribe-events.service"
 
 	conn, err := New()
-
 	if err != nil {
 		t.Fatal(err)
 	}
