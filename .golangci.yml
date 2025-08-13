@@ -1,0 +1,19 @@
+version: "2"
+
+formatters:
+  enable:
+    - gofumpt
+
+linters:
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - -ST1003 # https://staticcheck.dev/docs/checks/#ST1003 Should not use underscores in Go names.
+        - -ST1005 # https://staticcheck.dev/docs/checks/#ST1005 Error strings should not be capitalized.
+    govet:
+      enable:
+        - nilness
+  exclusions:
+    presets:
+      - std-error-handling
