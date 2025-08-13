@@ -1355,26 +1355,38 @@ func checkTransientUnitConflicts(t *testing.T, trTarget TrUnitProp, trDep TrUnit
 	return nil
 }
 
-// Ensure that putting running programs into scopes works
-func TestStartStopTransientScope(t *testing.T) {
-	conn := setupConn(t)
-	defer conn.Close()
-
+func runSleep(t *testing.T) uint32 {
 	cmd := exec.Command("/bin/sleep", "400")
 	err := cmd.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cmd.Process.Kill()
 
+	t.Cleanup(func() {
+		err := cmd.Process.Kill()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = cmd.Wait()
+	})
+
+	return uint32(cmd.Process.Pid)
+}
+
+// Ensure that putting running programs into scopes works
+func TestStartStopTransientScope(t *testing.T) {
+	conn := setupConn(t)
+	defer conn.Close()
+
+	pid := runSleep(t)
 	props := []Property{
-		PropPids(uint32(cmd.Process.Pid)),
+		PropPids(pid),
 	}
-	target := fmt.Sprintf("testing-transient-%d.scope", cmd.Process.Pid)
+	target := fmt.Sprintf("testing-transient-%d.scope", pid)
 
 	// Start the unit
 	reschan := make(chan string)
-	_, err = conn.StartTransientUnit(target, "replace", props, reschan)
+	_, err := conn.StartTransientUnit(target, "replace", props, reschan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1733,17 +1745,7 @@ func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
 	}
 
 	// Start a test process that we can attach.
-	cmd := exec.Command("/bin/sleep", "400")
-	err = cmd.Start()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		cmd.Process.Kill()
-		cmd.Wait()
-	}()
-
-	pid := uint32(cmd.Process.Pid)
+	pid := runSleep(t)
 
 	// Test attaching the process to the unit.
 	ctx := context.Background()
