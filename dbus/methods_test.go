@@ -16,6 +16,7 @@ package dbus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -52,12 +53,15 @@ func findFixture(target string, t *testing.T) string {
 }
 
 func setupUnit(target string, conn *Conn, t *testing.T) {
+	t.Helper()
 	// Blindly stop the unit in case it is running
-	conn.StopUnit(target, "replace", nil)
+	_, _ = conn.StopUnit(target, "replace", nil)
 
 	// Blindly remove the symlink in case it exists
 	targetRun := filepath.Join("/run/systemd/system/", target)
-	os.Remove(targetRun)
+	if err := os.Remove(targetRun); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
 }
 
 func linkUnit(target string, conn *Conn, t *testing.T) {
