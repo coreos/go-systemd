@@ -19,3 +19,22 @@ import "os"
 func Files(unsetEnv bool) []*os.File {
 	return nil
 }
+
+// FilesWithNames maps fd names to a set of os.File pointers.
+func FilesWithNames() map[string][]*os.File {
+	files := Files(true)
+	filesWithNames := map[string][]*os.File{}
+
+	for _, f := range files {
+		current, ok := filesWithNames[f.Name()]
+
+		if !ok {
+			current = []*os.File{}
+			filesWithNames[f.Name()] = current
+		}
+
+		filesWithNames[f.Name()] = append(current, f)
+	}
+
+	return filesWithNames
+}
