@@ -38,10 +38,8 @@ const (
 	SYSTEMD_NEWLINE = "\r\n"
 )
 
-var (
-	// ErrLineTooLong gets returned when a line is too long for systemd to handle.
-	ErrLineTooLong = fmt.Errorf("line too long (max %d bytes)", SYSTEMD_LINE_MAX)
-)
+// ErrLineTooLong gets returned when a line is too long for systemd to handle.
+var ErrLineTooLong = fmt.Errorf("line too long (max %d bytes)", SYSTEMD_LINE_MAX)
 
 // DeserializeOptions parses a systemd unit file into a list of UnitOptions
 func DeserializeOptions(f io.Reader) (opts []*UnitOption, err error) {
@@ -79,7 +77,6 @@ type lexData struct {
 
 // deserializeAll deserializes into UnitSections and UnitOptions.
 func deserializeAll(f io.Reader) ([]*UnitSection, []*UnitOption, error) {
-
 	lexer, lexchan, errchan := newLexer(f)
 
 	go lexer.lex()
@@ -255,7 +252,7 @@ func (l *lexer) lexNextSectionOrOptionFunc(section string) lexStep {
 			return l.ignoreLineFunc(l.lexNextSectionOrOptionFunc(section)), nil
 		}
 
-		l.buf.UnreadRune()
+		_ = l.buf.UnreadRune() // This can't fail as we just called ReadRune.
 		return l.lexOptionNameFunc(section), nil
 	}
 }

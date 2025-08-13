@@ -135,7 +135,7 @@ func ExampleStderrIsJournalStream() {
 
 	if ok {
 		// use journal native protocol
-		journal.Send("this is a message logged through the native protocol", journal.PriInfo, nil)
+		_ = journal.Send("this is a message logged through the native protocol", journal.PriInfo, nil)
 	} else {
 		// use stderr
 		fmt.Fprintln(os.Stderr, "this is a message logged through stderr")

@@ -126,7 +126,10 @@ func TestJournalWait(t *testing.T) {
 		t.Errorf("Wait did not wait 300ms. Actually waited %s", duration.String())
 	}
 
-	journal.Send("test message", journal.PriInfo, map[string]string{"TEST": "TestJournalWait " + id})
+	err := journal.Send("test message", journal.PriInfo, map[string]string{"TEST": "TestJournalWait " + id})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for ret := -1; ret != SD_JOURNAL_APPEND; {
 		t1 = time.Now()
 		ret = j.Wait(time.Millisecond * 300)

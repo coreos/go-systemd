@@ -193,7 +193,7 @@ func appendVariable(w io.Writer, name, value string) {
 		 * - the data, followed by a newline
 		 */
 		fmt.Fprintln(w, name)
-		binary.Write(w, binary.LittleEndian, uint64(len(value)))
+		_ = binary.Write(w, binary.LittleEndian, uint64(len(value)))
 		fmt.Fprintln(w, value)
 	} else {
 		/* just write the variable and value all on one line */
