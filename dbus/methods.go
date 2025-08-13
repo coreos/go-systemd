@@ -24,15 +24,15 @@ import (
 	"github.com/godbus/dbus/v5"
 )
 
-// Who can be used to specify which process to kill in the unit via the KillUnitWithTarget API
+// Who specifies which process to send a signal to via the [KillUnitWithTarget].
 type Who string
 
 const (
-	// All sends the signal to all processes in the unit
+	// All sends the signal to all processes in the unit.
 	All Who = "all"
-	// Main sends the signal to the main process of the unit
+	// Main sends the signal to the main process of the unit.
 	Main Who = "main"
-	// Control sends the signal to the control process of the unit
+	// Control sends the signal to the control process of the unit.
 	Control Who = "control"
 )
 
@@ -196,19 +196,21 @@ func (c *Conn) StartTransientUnitContext(ctx context.Context, name string, mode 
 	return c.startJob(ctx, ch, "org.freedesktop.systemd1.Manager.StartTransientUnit", name, mode, properties, make([]PropertyCollection, 0))
 }
 
-// Deprecated: use KillUnitContext instead.
+// Deprecated: use [KillUnitWithTarget] instead.
 func (c *Conn) KillUnit(name string, signal int32) {
 	c.KillUnitContext(context.Background(), name, signal)
 }
 
 // KillUnitContext takes the unit name and a UNIX signal number to send.
 // All of the unit's processes are killed.
+//
+// Deprecated: use [KillUnitWithTarget] instead, with target argument set to [All].
 func (c *Conn) KillUnitContext(ctx context.Context, name string, signal int32) {
-	c.KillUnitWithTarget(ctx, name, All, signal)
+	_ = c.KillUnitWithTarget(ctx, name, All, signal)
 }
 
-// KillUnitWithTarget is like KillUnitContext, but allows you to specify which
-// process in the unit to send the signal to.
+// KillUnitWithTarget sends a signal to the specified unit.
+// The target argument can be one of [All], [Main], or [Control].
 func (c *Conn) KillUnitWithTarget(ctx context.Context, name string, target Who, signal int32) error {
 	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.KillUnit", 0, name, string(target), signal).Store()
 }
