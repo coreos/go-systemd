@@ -1699,7 +1699,9 @@ func TestFreezer(t *testing.T) {
 		t.Fatalf("unit is not frozen after calling ThawUnit(), FreezerState=%s", v)
 	}
 
-	runStopUnit(t, conn, TrUnitProp{target, nil})
+	if err := runStopUnit(t, conn, TrUnitProp{target, nil}); err != nil {
+		t.Fatal("StopUnit:", err)
+	}
 }
 
 func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
