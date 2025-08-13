@@ -45,7 +45,8 @@ if dpkg --version; then
     apt-get -qq install -y -o Dpkg::Use-Pty=0 \
 	sudo build-essential curl git dbus libsystemd-dev libpam-systemd systemd-container
 else # Assuming Fedora
-    dnf install -qy sudo curl gcc git dbus systemd-devel systemd-container
+    dnf install -qy --setopt=install_weak_deps=False --setopt=tsflags=nodocs \
+	sudo curl gcc git-core dbus systemd-devel systemd-container
 fi
 # Fixup git.
 git config --global --add safe.directory /src
