@@ -126,6 +126,14 @@ func TestMachine(t *testing.T) {
 	}
 
 	for _, v := range machineNames {
+		props, err := conn.DescribeMachine(v)
+		if err != nil {
+			t.Fatal("failed to get machine properties")
+		}
+		t.Logf("machine %s properties: %v", v, props)
+		if len(props) == 0 {
+			t.Fatalf("no machine properties found for %s", v)
+		}
 		tErr := conn.TerminateMachine(v)
 		if tErr != nil {
 			t.Fatal(tErr)
