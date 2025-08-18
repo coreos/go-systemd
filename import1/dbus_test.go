@@ -67,11 +67,7 @@ func TestExportTar(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = os.MkdirAll("tmp/", os.ModeDir|0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, err := os.Create("tmp/image-export.tar.xz")
+	f, err := os.Create(t.TempDir() + "image-export.tar.xz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,11 +84,7 @@ func TestExportRaw(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = os.MkdirAll("tmp/", os.ModeDir|0o755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, err := os.Create("tmp/image-export.raw.xz")
+	f, err := os.Create(t.TempDir() + "image-export.raw.xz")
 	if err != nil {
 		t.Fatal(err)
 	}
