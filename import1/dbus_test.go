@@ -18,14 +18,35 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
 	importPrefix = "importd-test-"
 )
+
+func cleanupImport(t *testing.T, name string) {
+	t.Cleanup(func() {
+		var (
+			out []byte
+			err error
+			dur = 500 * time.Millisecond
+		)
+		for range 5 {
+			time.Sleep(dur)
+			out, err = exec.Command("machinectl", "remove", name).CombinedOutput()
+			if err == nil {
+				return
+			}
+			dur *= 2
+		}
+		t.Fatalf("machinectl remove %s failed: %v\noutput: %s", name, err, out)
+	})
+}
 
 func TestImportTar(t *testing.T) {
 	conn, err := New()
@@ -33,12 +54,10 @@ func TestImportTar(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f, err := os.Open(findFixture("image.tar.xz", t))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = conn.ImportTar(f, importPrefix+"ImportTar", true, true)
+	f := openFixture(t, "image.tar.xz")
+	name := importPrefix + "ImportTar"
+	cleanupImport(t, name)
+	_, err = conn.ImportTar(f, name, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,12 +69,10 @@ func TestImportRaw(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f, err := os.Open(findFixture("image.raw.xz", t))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = conn.ImportRaw(f, importPrefix+"ImportRaw", true, true)
+	f := openFixture(t, "image.raw.xz")
+	name := importPrefix + "ImportRaw"
+	cleanupImport(t, name)
+	_, err = conn.ImportRaw(f, name, true, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,12 +167,18 @@ func TestListAndCancelTransfers(t *testing.T) {
 	}
 }
 
-func findFixture(target string, t *testing.T) string {
+func openFixture(t *testing.T, target string) *os.File {
 	abs, err := filepath.Abs("../fixtures/" + target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return abs
+
+	f, err := os.Open(abs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return f
 }
 
 func init() {
