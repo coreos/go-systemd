@@ -54,14 +54,27 @@ const (
 // (false, err) - notification supported, but failure happened (e.g. error connecting to NOTIFY_SOCKET or while sending data)
 // (true, nil) - notification supported, data has been sent
 func SdNotify(unsetEnvironment bool, state string) (bool, error) {
-	socketAddr := &net.UnixAddr{
-		Name: os.Getenv("NOTIFY_SOCKET"),
-		Net:  "unixgram",
-	}
+	notifySocket := os.Getenv("NOTIFY_SOCKET")
 
 	// NOTIFY_SOCKET not set
-	if socketAddr.Name == "" {
+	if notifySocket == "" {
 		return false, nil
+	}
+
+	// socket type not supported. We only support unix domain sockets
+	// but NOTIFY_SOCKET can also use vsock
+	if notifySocket[0] != '@' && notifySocket[0] != '/' {
+		return false, nil
+	}
+
+	// abstract unix socket. Start with a 0-byte
+	if notifySocket[0] == '@' {
+		notifySocket = "\x00" + notifySocket[1:]
+	}
+
+	socketAddr := &net.UnixAddr{
+		Name: notifySocket,
+		Net:  "unixgram",
 	}
 
 	if unsetEnvironment {
