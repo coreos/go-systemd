@@ -21,7 +21,7 @@ jobs:
         run: sudo apt-get install libsystemd-dev
       - uses: actions/checkout@v5
       - name: Setup go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - name: Go build (source)
@@ -36,7 +36,7 @@ jobs:
           sudo apt-get -qq update
           sudo apt-get -qq install libsystemd-dev
       - uses: actions/checkout@v5
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
       - uses: golangci/golangci-lint-action@v8
