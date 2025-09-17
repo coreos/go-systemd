@@ -17,6 +17,7 @@ package login1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -186,7 +187,7 @@ func (c *Conn) GetActiveSession() (dbus.ObjectPath, error) {
 // GetSessionUser may be used to get the user of specific session
 func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 	if len(sessionPath) == 0 {
-		return nil, fmt.Errorf("empty sessionPath")
+		return nil, errors.New("empty sessionPath")
 	}
 
 	activeSessionObj := c.conn.Object(dbusDest, sessionPath)
@@ -224,7 +225,7 @@ func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 // GetSessionDisplay may be used to get the display for specific session
 func (c *Conn) GetSessionDisplay(sessionPath dbus.ObjectPath) (string, error) {
 	if len(sessionPath) == 0 {
-		return "", fmt.Errorf("empty sessionPath")
+		return "", errors.New("empty sessionPath")
 	}
 	sessionObj := c.conn.Object(dbusDest, sessionPath)
 	display, err := sessionObj.GetProperty(dbusDest + ".Session.Display")

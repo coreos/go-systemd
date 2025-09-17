@@ -94,8 +94,7 @@ func deserializeAll(f io.Reader) ([]*UnitSection, []*UnitOption, error) {
 
 				// sanity check. "should not happen" as sectionKind is first in code flow.
 				if len(sections) == 0 {
-					return nil, nil, fmt.Errorf(
-						"Unit file misparse: option before section")
+					return nil, nil, errors.New("unit file misparse: option before section")
 				}
 
 				// add to newest section entries.

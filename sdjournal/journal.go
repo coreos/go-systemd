@@ -796,7 +796,7 @@ func (j *Journal) GetEntry() (*JournalEntry, error) {
 		msg := C.GoStringN((*C.char)(d), C.int(l))
 		kv := strings.SplitN(msg, "=", 2)
 		if len(kv) < 2 {
-			return nil, fmt.Errorf("failed to parse field")
+			return nil, errors.New("failed to parse field")
 		}
 
 		entry.Fields[kv[0]] = kv[1]
@@ -1102,7 +1102,7 @@ func (j *Journal) GetUniqueValues(field string) ([]string, error) {
 		msg := C.GoStringN((*C.char)(d), C.int(l))
 		kv := strings.SplitN(msg, "=", 2)
 		if len(kv) < 2 {
-			return nil, fmt.Errorf("failed to parse field")
+			return nil, errors.New("failed to parse field")
 		}
 
 		result = append(result, kv[1])
