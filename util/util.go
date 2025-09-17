@@ -81,7 +81,7 @@ func IsRunningSystemd() bool {
 func GetMachineID() (string, error) {
 	machineID, err := os.ReadFile("/etc/machine-id")
 	if err != nil {
-		return "", fmt.Errorf("failed to read /etc/machine-id: %v", err)
+		return "", err
 	}
 	return strings.TrimSpace(string(machineID)), nil
 }
