@@ -187,29 +187,28 @@ func (c *Conn) RegisterMachineWithNetwork(name string, id []byte, service string
 	return c.object.Call(dbusInterface+".RegisterMachineWithNetwork", 0, name, id, service, class, uint32(pid), root_directory, ifindices).Err
 }
 
-func machineFromInterfaces(machine []any) (*MachineStatus, error) {
+func machineFromInterfaces(machine []any) *MachineStatus {
 	if len(machine) < 4 {
-		return nil, fmt.Errorf("invalid number of machine fields: %d", len(machine))
+		return nil
 	}
 	name, ok := machine[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast machine field 0 to string")
+		return nil
 	}
 	class, ok := machine[1].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast class field 1 to string")
+		return nil
 	}
 	service, ok := machine[2].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast service field 2 to string")
+		return nil
 	}
 	jobpath, ok := machine[3].(dbus.ObjectPath)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast jobpath field 3 to ObjectPath")
+		return nil
 	}
 
-	ret := MachineStatus{Name: name, Class: class, Service: service, JobPath: jobpath}
-	return &ret, nil
+	return &MachineStatus{Name: name, Class: class, Service: service, JobPath: jobpath}
 }
 
 // ListMachines returns an array of all currently running machines.
@@ -221,9 +220,9 @@ func (c *Conn) ListMachines() ([]MachineStatus, error) {
 
 	machs := []MachineStatus{}
 	for _, i := range result {
-		machine, err := machineFromInterfaces(i)
-		if err != nil {
-			return nil, err
+		machine := machineFromInterfaces(i)
+		if machine == nil {
+			return nil, fmt.Errorf("ListMachines: can't parse response %+v", i)
 		}
 		machs = append(machs, *machine)
 	}
@@ -231,41 +230,40 @@ func (c *Conn) ListMachines() ([]MachineStatus, error) {
 	return machs, nil
 }
 
-func imageFromInterfaces(image []any) (*ImageStatus, error) {
+func imageFromInterfaces(image []any) *ImageStatus {
 	if len(image) < 7 {
-		return nil, fmt.Errorf("invalid number of image fields: %d", len(image))
+		return nil
 	}
 	name, ok := image[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast image field 0 to string")
+		return nil
 	}
 	imagetype, ok := image[1].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast imagetype field 1 to string")
+		return nil
 	}
 	readonly, ok := image[2].(bool)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast readonly field 2 to bool")
+		return nil
 	}
 	createtime, ok := image[3].(uint64)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast createtime field 3 to uint64")
+		return nil
 	}
 	modifytime, ok := image[4].(uint64)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast modifytime field 4 to uint64")
+		return nil
 	}
 	diskusage, ok := image[5].(uint64)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast diskusage field 5 to uint64")
+		return nil
 	}
 	jobpath, ok := image[6].(dbus.ObjectPath)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast jobpath field 6 to ObjectPath")
+		return nil
 	}
 
-	ret := ImageStatus{Name: name, ImageType: imagetype, Readonly: readonly, CreateTime: createtime, ModifyTime: modifytime, DiskUsage: diskusage, JobPath: jobpath}
-	return &ret, nil
+	return &ImageStatus{Name: name, ImageType: imagetype, Readonly: readonly, CreateTime: createtime, ModifyTime: modifytime, DiskUsage: diskusage, JobPath: jobpath}
 }
 
 // ListImages returns an array of all currently available images.
@@ -277,9 +275,9 @@ func (c *Conn) ListImages() ([]ImageStatus, error) {
 
 	images := []ImageStatus{}
 	for _, i := range result {
-		image, err := imageFromInterfaces(i)
-		if err != nil {
-			return nil, err
+		image := imageFromInterfaces(i)
+		if image == nil {
+			return nil, fmt.Errorf("ListImages: can't parse response %+v", i)
 		}
 		images = append(images, *image)
 	}
