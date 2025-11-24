@@ -19,7 +19,7 @@ jobs:
       - run: sudo apt-get -qq update
       - name: Install libsystemd-dev
         run: sudo apt-get install libsystemd-dev
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup go
         uses: actions/setup-go@v6
         with:
@@ -35,7 +35,7 @@ jobs:
         run: |
           sudo apt-get -qq update
           sudo apt-get -qq install libsystemd-dev
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version: stable
