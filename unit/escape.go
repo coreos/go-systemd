@@ -57,7 +57,7 @@ func escape(unescaped string, isPath bool) string {
 		if c == '/' {
 			e = append(e, '-')
 		} else if start && c == '.' || strings.IndexByte(allowed, c) == -1 {
-			e = append(e, []byte(fmt.Sprintf(`\x%x`, c))...)
+			e = fmt.Appendf(e, `\x%x`, c)
 		} else {
 			e = append(e, c)
 		}
