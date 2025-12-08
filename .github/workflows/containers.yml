@@ -20,7 +20,7 @@ jobs:
         baseimage: ['debian:bullseye', 'debian:trixie', 'ubuntu:20.04', 'ubuntu:24.04', 'fedora']
         go: [1.23, 1.24, 1.25]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Run tests in container
         run: ./scripts/ci-runner.sh run_in_ct ${{ matrix.baseimage }} ${{ matrix.go }}
 
