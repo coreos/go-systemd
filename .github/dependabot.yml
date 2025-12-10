@@ -1,6 +1,10 @@
 # Maintained in https://github.com/coreos/repo-templates
 # Do not edit downstream.
 
+# Updates are grouped together by ecosystem in a single PR. An update can be
+# removed from a combined update PR via comments to dependabot:
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/managing-pull-requests-for-dependency-updates#managing-dependabot-pull-requests-for-grouped-updates-with-comment-commands
+
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -9,6 +13,10 @@ updates:
       interval: "weekly"
     labels: ["skip-notes"]
     open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - "*"
   - package-ecosystem: gomod
     directory: /
     schedule:
@@ -17,9 +25,6 @@ updates:
     labels:
       - area/dependencies
 
-    # Group all updates together in a single PR. We can remove some
-    # updates from a combined update PR via comments to dependabot:
-    # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/managing-pull-requests-for-dependency-updates#managing-dependabot-pull-requests-for-grouped-updates-with-comment-commands
     groups:
       build:
         patterns:
