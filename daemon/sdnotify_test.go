@@ -34,6 +34,14 @@ func TestSdNotify(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	abstractLAddr := net.UnixAddr{
+		Name: "\x00" + notifySocket,
+	}
+	_, e = net.ListenUnixgram("unixgram", &abstractLAddr)
+	if e != nil {
+		panic(e)
+	}
+
 	tests := []struct {
 		unsetEnv  bool
 		envSocket string
@@ -43,10 +51,14 @@ func TestSdNotify(t *testing.T) {
 	}{
 		// (true, nil) - notification supported, data has been sent
 		{false, notifySocket, true, false},
+		{false, "@" + notifySocket, true, false},
+
 		// (false, err) - notification supported, but failure happened
 		{true, testDir + "/missing.sock", false, true},
 		// (false, nil) - notification not supported
 		{true, "", false, false},
+
+		// (true, nil) - notification supported, data has been sent
 	}
 
 	for i, tt := range tests {
