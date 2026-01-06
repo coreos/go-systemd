@@ -21,12 +21,9 @@ import (
 
 // TestSubscribe exercises the basics of subscription
 func TestSubscribe(t *testing.T) {
-	conn, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	conn := setupConn(t)
 
-	err = conn.Subscribe()
+	err := conn.Subscribe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,12 +38,9 @@ func TestSubscribe(t *testing.T) {
 func TestSubscribeUnit(t *testing.T) {
 	target := "subscribe-events.service"
 
-	conn, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
+	conn := setupConn(t)
 
-	err = conn.Subscribe()
+	err := conn.Subscribe()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,11 +94,7 @@ success:
 func TestSubStateSubscription(t *testing.T) {
 	target := "subscribe-events.service"
 
-	conn, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
+	conn := setupConn(t)
 
 	updateCh := make(chan *SubStateUpdate, 256)
 	errCh := make(chan error, 256)
@@ -114,7 +104,7 @@ func TestSubStateSubscription(t *testing.T) {
 	linkUnit(target, conn, t)
 
 	reschan := make(chan string)
-	_, err = conn.StartUnit(target, "replace", reschan)
+	_, err := conn.StartUnit(target, "replace", reschan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,13 +132,9 @@ func TestSubStateSubscription(t *testing.T) {
 func TestPropertiesSubscription(t *testing.T) {
 	target := "subscribe-events.service"
 
-	conn, err := New()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
+	conn := setupConn(t)
 
-	err = conn.Subscribe()
+	err := conn.Subscribe()
 	if err != nil {
 		t.Fatal(err)
 	}

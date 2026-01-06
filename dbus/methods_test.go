@@ -36,10 +36,14 @@ type TrUnitProp struct {
 }
 
 func setupConn(t *testing.T) *Conn {
+	// TODO: change to NewWithContext(t.Context()) once we switch to go1.24.
 	conn, err := New()
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		conn.Close()
+	})
 
 	return conn
 }
@@ -154,7 +158,6 @@ func isJobStatusEmpty(job JobStatus) bool {
 func TestStartStopUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -209,7 +212,6 @@ func TestStartStopUnit(t *testing.T) {
 func TestRestartUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -295,7 +297,6 @@ func TestRestartUnit(t *testing.T) {
 func TestReloadUnit(t *testing.T) {
 	target := "reload.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	err := conn.Subscribe()
 	if err != nil {
@@ -380,7 +381,6 @@ waitevent:
 func TestReloadOrRestartUnit(t *testing.T) {
 	target := "reload.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -457,7 +457,6 @@ func TestReloadOrRestartUnit(t *testing.T) {
 // Ensure that GetUnitByPID works.
 func TestGetUnitByPID(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	path, err := conn.GetUnitByPID(context.Background(), 1)
 	if err != nil {
@@ -472,7 +471,6 @@ func TestGetUnitByPID(t *testing.T) {
 // Ensure that GetUnitNameByPID works.
 func TestGetUnitNameByPID(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	name, err := conn.GetUnitNameByPID(context.Background(), 1)
 	if err != nil {
@@ -490,7 +488,6 @@ func TestListUnitsByNames(t *testing.T) {
 	target2 := "unexisting.service"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitsByNames([]string{target1, target2})
 	if err != nil {
@@ -520,7 +517,6 @@ func TestListUnitsByPatterns(t *testing.T) {
 	target2 := "unexisting.service"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitsByPatterns([]string{}, []string{"systemd-journald*", target2})
 	if err != nil {
@@ -547,7 +543,6 @@ func TestListUnitsFiltered(t *testing.T) {
 	target := "systemd-journald.service"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitsFiltered([]string{"active"})
 	if err != nil {
@@ -580,7 +575,6 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	target2 := "exit.target"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitFilesByPatterns([]string{"static"}, []string{"systemd-journald*", target2})
 	if err != nil {
@@ -614,7 +608,6 @@ func TestListUnitFiles(t *testing.T) {
 	target2 := "exit.target"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitFiles()
 	if err != nil {
@@ -642,7 +635,6 @@ func TestListUnitFiles(t *testing.T) {
 func TestEnableDisableUnit(t *testing.T) {
 	target := "enable-disable.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	abs := findFixture(target, t)
@@ -734,7 +726,6 @@ func TestListJobs(t *testing.T) {
 // TestSystemState tests if system state is one of the valid states
 func TestSystemState(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	prop, err := conn.SystemState()
 	if err != nil {
@@ -767,7 +758,6 @@ func TestSystemState(t *testing.T) {
 // systems and ensures that one of its properties is valid.
 func TestGetUnitProperties(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	unit := "-.mount"
 
@@ -798,7 +788,6 @@ func TestGetUnitProperties(t *testing.T) {
 // as a fail will manifest as GetUnitProperties hanging indefinitely.
 func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	unit := "//invalid#$^/"
 
@@ -817,7 +806,6 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 // on all systemd systems and ensures that one of its property is valid.
 func TestGetServiceProperty(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	service := "systemd-udevd.service"
 
@@ -840,7 +828,6 @@ func TestGetServiceProperty(t *testing.T) {
 // property was set.
 func TestSetUnitProperties(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	const (
 		unit      = "-.mount"
@@ -1016,7 +1003,6 @@ func TestStartStopTransientUnitAll(t *testing.T) {
 // Ensure that basic transient unit starting and stopping works.
 func checkTransientUnit(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1047,7 +1033,6 @@ func checkTransientUnit(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) err
 
 func checkTransientUnitOneshot(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1079,7 +1064,6 @@ func checkTransientUnitOneshot(t *testing.T, trTarget TrUnitProp, trDep TrUnitPr
 // Ensure that transient unit with Requires starting and stopping works.
 func checkTransientUnitRequires(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1128,7 +1112,6 @@ func checkTransientUnitRequires(t *testing.T, trTarget TrUnitProp, trDep TrUnitP
 // Ensure that transient unit with RequiresOverridable starting and stopping works.
 func checkTransientUnitRequiresOv(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1178,7 +1161,6 @@ func checkTransientUnitRequiresOv(t *testing.T, trTarget TrUnitProp, trDep TrUni
 // It's expected for target unit to fail, as its child is not started at all.
 func checkTransientUnitRequisite(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1198,7 +1180,6 @@ func checkTransientUnitRequisite(t *testing.T, trTarget TrUnitProp, trDep TrUnit
 // It's expected for target unit to fail, as its child is not started at all.
 func checkTransientUnitRequisiteOv(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1218,7 +1199,6 @@ func checkTransientUnitRequisiteOv(t *testing.T, trTarget TrUnitProp, trDep TrUn
 // It's expected for target to successfully start, even when its child is not started.
 func checkTransientUnitWants(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1251,7 +1231,6 @@ func checkTransientUnitWants(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp
 // Stopping its child should result in stopping target unit.
 func checkTransientUnitBindsTo(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1295,7 +1274,6 @@ func checkTransientUnitBindsTo(t *testing.T, trTarget TrUnitProp, trDep TrUnitPr
 // Ensure that transient unit with Conflicts starting and stopping works.
 func checkTransientUnitConflicts(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1375,7 +1353,6 @@ func runSleep(t *testing.T) uint32 {
 // Ensure that putting running programs into scopes works
 func TestStartStopTransientScope(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	pid := runSleep(t)
 	props := []Property{
@@ -1418,7 +1395,6 @@ func TestStartStopTransientScope(t *testing.T) {
 func TestKillUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	err := conn.Subscribe()
 	if err != nil {
@@ -1481,7 +1457,6 @@ waitevent:
 func TestResetFailedUnit(t *testing.T) {
 	target := "start-failed.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -1535,7 +1510,6 @@ func TestResetFailedUnit(t *testing.T) {
 func TestConnJobListener(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -1567,7 +1541,6 @@ func TestConnJobListener(t *testing.T) {
 func TestMaskUnmask(t *testing.T) {
 	target := "mask-unmask.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	abs := findFixture(target, t)
@@ -1619,7 +1592,6 @@ func TestMaskUnmask(t *testing.T) {
 // Test a global Reload
 func TestReload(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	err := conn.Reload()
 	if err != nil {
@@ -1647,7 +1619,6 @@ func TestUnitName(t *testing.T) {
 func TestFreezer(t *testing.T) {
 	target := "freeze.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -1705,7 +1676,6 @@ func TestFreezer(t *testing.T) {
 func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
 	target := "attach-processes.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
