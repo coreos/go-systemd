@@ -842,9 +842,13 @@ func TestSetUnitProperties(t *testing.T) {
 	conn := setupConn(t)
 	defer conn.Close()
 
-	unit := "-.mount"
+	const (
+		unit      = "-.mount"
+		propName  = "TasksMax"
+		propValue = uint64(98765)
+	)
 
-	if err := conn.SetUnitProperties(unit, true, Property{"CPUShares", dbus.MakeVariant(uint64(1023))}); err != nil {
+	if err := conn.SetUnitProperties(unit, true, Property{propName, dbus.MakeVariant(propValue)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -853,9 +857,9 @@ func TestSetUnitProperties(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	value, _ := info["CPUShares"].(uint64)
-	if value != 1023 {
-		t.Fatal("CPUShares of unit is not 1023:", value)
+	value, _ := info[propName].(uint64)
+	if value != propValue {
+		t.Fatalf("Expected %s=%d, got %d", propName, propValue, value)
 	}
 }
 
