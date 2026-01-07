@@ -64,6 +64,11 @@ func New() (*Conn, error) {
 	return c, nil
 }
 
+// Close the underlying dbus connection
+func (c *Conn) Close() error {
+	return c.conn.Close()
+}
+
 // Connected returns whether conn is connected
 func (c *Conn) Connected() bool {
 	return c.conn.Connected()
