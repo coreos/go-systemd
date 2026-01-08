@@ -1765,11 +1765,16 @@ func TestListUnitProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer runStopUnit(t, conn, TrUnitProp{target, nil})
+	defer func() {
+		err := runStopUnit(t, conn, TrUnitProp{target, nil})
+		if err != nil {
+			t.Error("StopUnit:", err)
+		}
+	}()
 
 	job := <-reschan
 	if job != "done" {
-		t.Fatal("Job is not done:", job)
+		t.Fatal("Job is not done, status:", job)
 	}
 
 	processes, err := conn.GetUnitProcesses(ctx, target)
