@@ -17,6 +17,7 @@ package login1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -111,58 +112,52 @@ type User struct {
 	Path dbus.ObjectPath
 }
 
-func (s Session) toInterface() []interface{} {
-	return []interface{}{s.ID, s.UID, s.User, s.Seat, s.Path}
-}
-
-func sessionFromInterfaces(session []interface{}) (*Session, error) {
+func sessionFromInterfaces(session []any) *Session {
 	if len(session) < 5 {
-		return nil, fmt.Errorf("invalid number of session fields: %d", len(session))
+		return nil
 	}
 	id, ok := session[0].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast session field 0 to string")
+		return nil
 	}
 	uid, ok := session[1].(uint32)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast session field 1 to uint32")
+		return nil
 	}
 	user, ok := session[2].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast session field 2 to string")
+		return nil
 	}
 	seat, ok := session[3].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast session field 2 to string")
+		return nil
 	}
 	path, ok := session[4].(dbus.ObjectPath)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast session field 4 to ObjectPath")
+		return nil
 	}
 
-	ret := Session{ID: id, UID: uid, User: user, Seat: seat, Path: path}
-	return &ret, nil
+	return &Session{ID: id, UID: uid, User: user, Seat: seat, Path: path}
 }
 
-func userFromInterfaces(user []interface{}) (*User, error) {
+func userFromInterfaces(user []any) *User {
 	if len(user) < 3 {
-		return nil, fmt.Errorf("invalid number of user fields: %d", len(user))
+		return nil
 	}
 	uid, ok := user[0].(uint32)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast user field 0 to uint32")
+		return nil
 	}
 	name, ok := user[1].(string)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast session field 1 to string")
+		return nil
 	}
 	path, ok := user[2].(dbus.ObjectPath)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast user field 2 to ObjectPath")
+		return nil
 	}
 
-	ret := User{UID: uid, Name: name, Path: path}
-	return &ret, nil
+	return &User{UID: uid, Name: name, Path: path}
 }
 
 // GetActiveSession may be used to get the session object path for the current active session
@@ -177,14 +172,14 @@ func (c *Conn) GetActiveSession() (dbus.ObjectPath, error) {
 	if err != nil {
 		return "", err
 	}
-	activeSessionMap, ok := activeSession.Value().([]interface{})
+	activeSessionMap, ok := activeSession.Value().([]any)
 	if !ok || len(activeSessionMap) < 2 {
-		return "", fmt.Errorf("failed to typecast active session map")
+		return "", fmt.Errorf("GetActiveSession: can't parse response %+v", activeSession)
 	}
 
 	activeSessionPath, ok := activeSessionMap[1].(dbus.ObjectPath)
 	if !ok {
-		return "", fmt.Errorf("failed to typecast dbus active session Path")
+		return "", fmt.Errorf("GetActiveSession: can't parse response %+v", activeSessionMap)
 	}
 	return activeSessionPath, nil
 }
@@ -192,7 +187,7 @@ func (c *Conn) GetActiveSession() (dbus.ObjectPath, error) {
 // GetSessionUser may be used to get the user of specific session
 func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 	if len(sessionPath) == 0 {
-		return nil, fmt.Errorf("empty sessionPath")
+		return nil, errors.New("empty sessionPath")
 	}
 
 	activeSessionObj := c.conn.Object(dbusDest, sessionPath)
@@ -205,21 +200,21 @@ func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbusUser, ok := sessionUser.Value().([]interface{})
+	dbusUser, ok := sessionUser.Value().([]any)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast dbus session user")
+		return nil, fmt.Errorf("GetSessionUser: can't parse response %+v", sessionUser)
 	}
 
 	if len(dbusUser) < 2 {
-		return nil, fmt.Errorf("invalid number of user fields: %d", len(dbusUser))
+		return nil, fmt.Errorf("GetSessionUser: can't parse response %+v", dbusUser)
 	}
 	uid, ok := dbusUser[0].(uint32)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast user field 0 to uint32")
+		return nil, fmt.Errorf("GetSessionUser: can't parse response %+v", dbusUser)
 	}
 	path, ok := dbusUser[1].(dbus.ObjectPath)
 	if !ok {
-		return nil, fmt.Errorf("failed to typecast user field 1 to ObjectPath")
+		return nil, fmt.Errorf("GetSessionUser: can't parse response %+v", dbusUser)
 	}
 
 	user := User{UID: uid, Name: strings.Trim(sessionUserName.String(), "\""), Path: path}
@@ -230,7 +225,7 @@ func (c *Conn) GetSessionUser(sessionPath dbus.ObjectPath) (*User, error) {
 // GetSessionDisplay may be used to get the display for specific session
 func (c *Conn) GetSessionDisplay(sessionPath dbus.ObjectPath) (string, error) {
 	if len(sessionPath) == 0 {
-		return "", fmt.Errorf("empty sessionPath")
+		return "", errors.New("empty sessionPath")
 	}
 	sessionObj := c.conn.Object(dbusDest, sessionPath)
 	display, err := sessionObj.GetProperty(dbusDest + ".Session.Display")
@@ -243,14 +238,14 @@ func (c *Conn) GetSessionDisplay(sessionPath dbus.ObjectPath) (string, error) {
 
 // GetSession may be used to get the session object path for the session with the specified ID.
 func (c *Conn) GetSession(id string) (dbus.ObjectPath, error) {
-	var out interface{}
+	var out any
 	if err := c.object.Call(dbusManagerInterface+".GetSession", 0, id).Store(&out); err != nil {
 		return "", err
 	}
 
 	ret, ok := out.(dbus.ObjectPath)
 	if !ok {
-		return "", fmt.Errorf("failed to typecast session to ObjectPath")
+		return "", fmt.Errorf("GetSession: can't parse response %+v", out)
 	}
 
 	return ret, nil
@@ -263,16 +258,16 @@ func (c *Conn) ListSessions() ([]Session, error) {
 
 // ListSessionsContext returns an array with all current sessions.
 func (c *Conn) ListSessionsContext(ctx context.Context) ([]Session, error) {
-	out := [][]interface{}{}
+	out := [][]any{}
 	if err := c.object.CallWithContext(ctx, dbusManagerInterface+".ListSessions", 0).Store(&out); err != nil {
 		return nil, err
 	}
 
 	ret := []Session{}
 	for _, el := range out {
-		session, err := sessionFromInterfaces(el)
-		if err != nil {
-			return nil, err
+		session := sessionFromInterfaces(el)
+		if session == nil {
+			return nil, fmt.Errorf("ListSessions: can't parse response %+v", el)
 		}
 		ret = append(ret, *session)
 	}
@@ -286,16 +281,16 @@ func (c *Conn) ListUsers() ([]User, error) {
 
 // ListUsersContext returns an array with all currently logged-in users.
 func (c *Conn) ListUsersContext(ctx context.Context) ([]User, error) {
-	out := [][]interface{}{}
+	out := [][]any{}
 	if err := c.object.CallWithContext(ctx, dbusManagerInterface+".ListUsers", 0).Store(&out); err != nil {
 		return nil, err
 	}
 
 	ret := []User{}
 	for _, el := range out {
-		user, err := userFromInterfaces(el)
-		if err != nil {
-			return nil, err
+		user := userFromInterfaces(el)
+		if user == nil {
+			return nil, fmt.Errorf("ListUsers: can't parse response %+v", el)
 		}
 		ret = append(ret, *user)
 	}

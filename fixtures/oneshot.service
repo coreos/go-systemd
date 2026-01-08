@@ -1,7 +1,6 @@
 [Unit]
-Description=start stop test
+Description=list jobs test
 
 [Service]
-ExecStart=/bin/sh sleep 400
-ExecStopPost=/bin/sh sleep 1000
 Type=oneshot
+ExecStart=/bin/sleep 30

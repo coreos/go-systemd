@@ -21,8 +21,8 @@ import (
 func TestNeedsEscape(t *testing.T) {
 	// Anything not 0-9a-zA-Z should always be escaped
 	for want, vals := range map[bool][]byte{
-		false: []byte{'a', 'b', 'z', 'A', 'Q', '1', '4', '9'},
-		true:  []byte{'#', '%', '$', '!', '.', '_', '-', '%', '\\'},
+		false: {'a', 'b', 'z', 'A', 'Q', '1', '4', '9'},
+		true:  {'#', '%', '$', '!', '.', '_', '-', '%', '\\'},
 	} {
 		for i := 1; i < 10; i++ {
 			for _, b := range vals {
@@ -36,8 +36,8 @@ func TestNeedsEscape(t *testing.T) {
 
 	// 0-9 in position 0 should be escaped
 	for want, vals := range map[bool][]byte{
-		false: []byte{'A', 'a', 'e', 'x', 'Q', 'Z'},
-		true:  []byte{'0', '4', '5', '9'},
+		false: {'A', 'a', 'e', 'x', 'Q', 'Z'},
+		true:  {'0', '4', '5', '9'},
 	} {
 		for _, b := range vals {
 			got := needsEscape(0, b)
@@ -46,7 +46,6 @@ func TestNeedsEscape(t *testing.T) {
 			}
 		}
 	}
-
 }
 
 func TestPathBusEscape(t *testing.T) {
@@ -64,7 +63,6 @@ func TestPathBusEscape(t *testing.T) {
 			t.Errorf("bad result for PathBusEscape(%s): got %q, want %q", in, got, want)
 		}
 	}
-
 }
 
 func TestPathBusUnescape(t *testing.T) {
@@ -83,14 +81,5 @@ func TestPathBusUnescape(t *testing.T) {
 		if got != want {
 			t.Errorf("bad result for pathBusUnescape(%s): got %q, want %q", in, got, want)
 		}
-	}
-}
-
-// TestNew ensures that New() works without errors.
-func TestNew(t *testing.T) {
-	_, err := New()
-
-	if err != nil {
-		t.Fatal(err)
 	}
 }

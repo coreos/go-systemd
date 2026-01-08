@@ -16,6 +16,7 @@ package dbus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,10 +37,14 @@ type TrUnitProp struct {
 }
 
 func setupConn(t *testing.T) *Conn {
+	// TODO: change to NewWithContext(t.Context()) once we switch to go1.24.
 	conn, err := New()
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		conn.Close()
+	})
 
 	return conn
 }
@@ -53,12 +58,15 @@ func findFixture(target string, t *testing.T) string {
 }
 
 func setupUnit(target string, conn *Conn, t *testing.T) {
+	t.Helper()
 	// Blindly stop the unit in case it is running
-	conn.StopUnit(target, "replace", nil)
+	_, _ = conn.StopUnit(target, "replace", nil)
 
 	// Blindly remove the symlink in case it exists
 	targetRun := filepath.Join("/run/systemd/system/", target)
-	os.Remove(targetRun)
+	if err := os.Remove(targetRun); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
 }
 
 func linkUnit(target string, conn *Conn, t *testing.T) {
@@ -151,7 +159,6 @@ func isJobStatusEmpty(job JobStatus) bool {
 func TestStartStopUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -206,7 +213,6 @@ func TestStartStopUnit(t *testing.T) {
 func TestRestartUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -292,7 +298,6 @@ func TestRestartUnit(t *testing.T) {
 func TestReloadUnit(t *testing.T) {
 	target := "reload.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	err := conn.Subscribe()
 	if err != nil {
@@ -377,7 +382,6 @@ waitevent:
 func TestReloadOrRestartUnit(t *testing.T) {
 	target := "reload.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -454,10 +458,8 @@ func TestReloadOrRestartUnit(t *testing.T) {
 // Ensure that GetUnitByPID works.
 func TestGetUnitByPID(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	path, err := conn.GetUnitByPID(context.Background(), 1)
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -470,10 +472,8 @@ func TestGetUnitByPID(t *testing.T) {
 // Ensure that GetUnitNameByPID works.
 func TestGetUnitNameByPID(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	name, err := conn.GetUnitNameByPID(context.Background(), 1)
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -489,10 +489,8 @@ func TestListUnitsByNames(t *testing.T) {
 	target2 := "unexisting.service"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitsByNames([]string{target1, target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -520,10 +518,8 @@ func TestListUnitsByPatterns(t *testing.T) {
 	target2 := "unexisting.service"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitsByPatterns([]string{}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -548,10 +544,8 @@ func TestListUnitsFiltered(t *testing.T) {
 	target := "systemd-journald.service"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitsFiltered([]string{"active"})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -565,7 +559,6 @@ func TestListUnitsFiltered(t *testing.T) {
 	}
 
 	units, err = conn.ListUnitsFiltered([]string{"inactive"})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -583,10 +576,8 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	target2 := "exit.target"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitFilesByPatterns([]string{"static"}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Skip(err)
 	}
@@ -600,7 +591,6 @@ func TestListUnitFilesByPatterns(t *testing.T) {
 	}
 
 	units, err = conn.ListUnitFilesByPatterns([]string{"disabled"}, []string{"systemd-journald*", target2})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -619,10 +609,8 @@ func TestListUnitFiles(t *testing.T) {
 	target2 := "exit.target"
 
 	conn := setupConn(t)
-	defer conn.Close()
 
 	units, err := conn.ListUnitFiles()
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,7 +636,6 @@ func TestListUnitFiles(t *testing.T) {
 func TestEnableDisableUnit(t *testing.T) {
 	target := "enable-disable.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	abs := findFixture(target, t)
@@ -740,7 +727,6 @@ func TestListJobs(t *testing.T) {
 // TestSystemState tests if system state is one of the valid states
 func TestSystemState(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	prop, err := conn.SystemState()
 	if err != nil {
@@ -773,7 +759,6 @@ func TestSystemState(t *testing.T) {
 // systems and ensures that one of its properties is valid.
 func TestGetUnitProperties(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	unit := "-.mount"
 
@@ -804,7 +789,6 @@ func TestGetUnitProperties(t *testing.T) {
 // as a fail will manifest as GetUnitProperties hanging indefinitely.
 func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	unit := "//invalid#$^/"
 
@@ -823,7 +807,6 @@ func TestGetUnitPropertiesRejectsInvalidName(t *testing.T) {
 // on all systemd systems and ensures that one of its property is valid.
 func TestGetServiceProperty(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	service := "systemd-udevd.service"
 
@@ -846,11 +829,14 @@ func TestGetServiceProperty(t *testing.T) {
 // property was set.
 func TestSetUnitProperties(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
-	unit := "-.mount"
+	const (
+		unit      = "-.mount"
+		propName  = "TasksMax"
+		propValue = uint64(98765)
+	)
 
-	if err := conn.SetUnitProperties(unit, true, Property{"CPUShares", dbus.MakeVariant(uint64(1023))}); err != nil {
+	if err := conn.SetUnitProperties(unit, true, Property{propName, dbus.MakeVariant(propValue)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -859,9 +845,9 @@ func TestSetUnitProperties(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	value, _ := info["CPUShares"].(uint64)
-	if value != 1023 {
-		t.Fatal("CPUShares of unit is not 1023:", value)
+	value, _ := info[propName].(uint64)
+	if value != propValue {
+		t.Fatalf("Expected %s=%d, got %d", propName, propValue, value)
 	}
 }
 
@@ -1018,7 +1004,6 @@ func TestStartStopTransientUnitAll(t *testing.T) {
 // Ensure that basic transient unit starting and stopping works.
 func checkTransientUnit(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1049,7 +1034,6 @@ func checkTransientUnit(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) err
 
 func checkTransientUnitOneshot(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1081,7 +1065,6 @@ func checkTransientUnitOneshot(t *testing.T, trTarget TrUnitProp, trDep TrUnitPr
 // Ensure that transient unit with Requires starting and stopping works.
 func checkTransientUnitRequires(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1130,7 +1113,6 @@ func checkTransientUnitRequires(t *testing.T, trTarget TrUnitProp, trDep TrUnitP
 // Ensure that transient unit with RequiresOverridable starting and stopping works.
 func checkTransientUnitRequiresOv(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1180,7 +1162,6 @@ func checkTransientUnitRequiresOv(t *testing.T, trTarget TrUnitProp, trDep TrUni
 // It's expected for target unit to fail, as its child is not started at all.
 func checkTransientUnitRequisite(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1200,7 +1181,6 @@ func checkTransientUnitRequisite(t *testing.T, trTarget TrUnitProp, trDep TrUnit
 // It's expected for target unit to fail, as its child is not started at all.
 func checkTransientUnitRequisiteOv(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1220,7 +1200,6 @@ func checkTransientUnitRequisiteOv(t *testing.T, trTarget TrUnitProp, trDep TrUn
 // It's expected for target to successfully start, even when its child is not started.
 func checkTransientUnitWants(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the target unit
 	err := runStartTrUnit(t, conn, trTarget)
@@ -1253,7 +1232,6 @@ func checkTransientUnitWants(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp
 // Stopping its child should result in stopping target unit.
 func checkTransientUnitBindsTo(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1297,7 +1275,6 @@ func checkTransientUnitBindsTo(t *testing.T, trTarget TrUnitProp, trDep TrUnitPr
 // Ensure that transient unit with Conflicts starting and stopping works.
 func checkTransientUnitConflicts(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	// Start the dependent unit
 	err := runStartTrUnit(t, conn, trDep)
@@ -1356,26 +1333,37 @@ func checkTransientUnitConflicts(t *testing.T, trTarget TrUnitProp, trDep TrUnit
 	return nil
 }
 
-// Ensure that putting running programs into scopes works
-func TestStartStopTransientScope(t *testing.T) {
-	conn := setupConn(t)
-	defer conn.Close()
-
+func runSleep(t *testing.T) uint32 {
 	cmd := exec.Command("/bin/sleep", "400")
 	err := cmd.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cmd.Process.Kill()
 
+	t.Cleanup(func() {
+		err := cmd.Process.Kill()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = cmd.Wait()
+	})
+
+	return uint32(cmd.Process.Pid)
+}
+
+// Ensure that putting running programs into scopes works
+func TestStartStopTransientScope(t *testing.T) {
+	conn := setupConn(t)
+
+	pid := runSleep(t)
 	props := []Property{
-		PropPids(uint32(cmd.Process.Pid)),
+		PropPids(pid),
 	}
-	target := fmt.Sprintf("testing-transient-%d.scope", cmd.Process.Pid)
+	target := fmt.Sprintf("testing-transient-%d.scope", pid)
 
 	// Start the unit
 	reschan := make(chan string)
-	_, err = conn.StartTransientUnit(target, "replace", props, reschan)
+	_, err := conn.StartTransientUnit(target, "replace", props, reschan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1408,7 +1396,6 @@ func TestStartStopTransientScope(t *testing.T) {
 func TestKillUnit(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	err := conn.Subscribe()
 	if err != nil {
@@ -1456,7 +1443,7 @@ waitevent:
 			if !ok {
 				continue waitevent
 			}
-			if tch == nil || (tch != nil && tch.Name == target && tch.ActiveState != "active") {
+			if tch == nil || (tch.Name == target && tch.ActiveState != "active") {
 				break waitevent
 			}
 		case err = <-errChan:
@@ -1471,7 +1458,6 @@ waitevent:
 func TestResetFailedUnit(t *testing.T) {
 	target := "start-failed.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -1525,7 +1511,6 @@ func TestResetFailedUnit(t *testing.T) {
 func TestConnJobListener(t *testing.T) {
 	target := "start-stop.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -1557,7 +1542,6 @@ func TestConnJobListener(t *testing.T) {
 func TestMaskUnmask(t *testing.T) {
 	target := "mask-unmask.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	abs := findFixture(target, t)
@@ -1604,13 +1588,11 @@ func TestMaskUnmask(t *testing.T) {
 	if uChanges[0].Destination != "" {
 		t.Fatalf("Change destination should be empty, %+v", uChanges[0])
 	}
-
 }
 
 // Test a global Reload
 func TestReload(t *testing.T) {
 	conn := setupConn(t)
-	defer conn.Close()
 
 	err := conn.Reload()
 	if err != nil {
@@ -1638,7 +1620,6 @@ func TestUnitName(t *testing.T) {
 func TestFreezer(t *testing.T) {
 	target := "freeze.service"
 	conn := setupConn(t)
-	defer conn.Close()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)
@@ -1688,7 +1669,86 @@ func TestFreezer(t *testing.T) {
 		t.Fatalf("unit is not frozen after calling ThawUnit(), FreezerState=%s", v)
 	}
 
-	runStopUnit(t, conn, TrUnitProp{target, nil})
+	if err := runStopUnit(t, conn, TrUnitProp{target, nil}); err != nil {
+		t.Fatal("StopUnit:", err)
+	}
+}
+
+func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
+	target := "attach-processes.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	// Start the unit first.
+	reschan := make(chan string)
+	_, err := conn.StartUnit(target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Job is not done:", job)
+	}
+
+	// Cleanup.
+	defer func() {
+		_, err = conn.StopUnit(target, "replace", reschan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		<-reschan
+	}()
+
+	if subcgroup != "" {
+		// Pre-create a sub-cgroup.
+		prop, err := conn.GetServiceProperty(target, "ControlGroup")
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := prop.Value.Value().(string)
+		err = os.Mkdir(filepath.Join("/sys/fs/cgroup", path, subcgroup), 0o777)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	}
+
+	// Start a test process that we can attach.
+	pid := runSleep(t)
+
+	// Test attaching the process to the unit.
+	ctx := context.Background()
+	err = conn.AttachProcessesToUnit(ctx, target, subcgroup, []uint32{pid})
+	if err != nil {
+		// AttachProcessesToUnit might not be supported on all systemd versions.
+		e, ok := err.(dbus.Error)
+		if ok && (e.Name == "org.freedesktop.DBus.Error.UnknownMethod" ||
+			e.Name == "org.freedesktop.DBus.Error.NotSupported") {
+			t.SkipNow()
+		}
+		t.Fatalf("failed to attach process %d to unit %s: %s", pid, target, err)
+	}
+
+	// Verify the process was attached by getting the unit it belongs to.
+	attachedPath, err := conn.GetUnitByPID(ctx, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attachedUnit := unitName(attachedPath)
+	if attachedUnit != target {
+		t.Fatalf("process was not attached to correct unit: got %s, want %s", attachedUnit, target)
+	}
+}
+
+func TestAttachProcessesToUnit(t *testing.T) {
+	testAttachProcessesToUnit(t, "")
+}
+
+func TestAttachProcessesToUnitWithSubcgroup(t *testing.T) {
+	testAttachProcessesToUnit(t, "/test-subcgroup")
 }
 
 func TestListUnitProcesses(t *testing.T) {

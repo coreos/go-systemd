@@ -16,7 +16,7 @@ package unit
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"testing"
 )
 
@@ -31,7 +31,8 @@ ExecStart=/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"
 `,
 			`[Service]
 ExecStart=/bin/bash -c "while true; do echo \"ping\"; sleep 1; done"
-`},
+`,
+		},
 		{
 			`[Unit]
 Description= Unnecessarily wrapped \
@@ -66,7 +67,8 @@ Description=Bar
 `,
 			`[Unit]
 Description=Bar
-`},
+`,
+		},
 	}
 	for i, tt := range tests {
 		ds, err := Deserialize(bytes.NewBufferString(tt.in))
@@ -74,7 +76,7 @@ Description=Bar
 			t.Errorf("case %d: unexpected error parsing unit: %v", i, err)
 			continue
 		}
-		out, err := ioutil.ReadAll(Serialize(ds))
+		out, err := io.ReadAll(Serialize(ds))
 		if err != nil {
 			t.Errorf("case %d: unexpected error serializing unit: %v", i, err)
 			continue
