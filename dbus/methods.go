@@ -905,6 +905,7 @@ func (c *Conn) GetUnitProcesses(ctx context.Context, unit string) ([]Process, er
 	}
 
 	return process, nil
+}
   
 // AttachProcessesToUnit moves existing processes, identified by pids, into an existing systemd unit.
 func (c *Conn) AttachProcessesToUnit(ctx context.Context, unit, subcgroup string, pids []uint32) error {
