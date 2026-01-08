@@ -1752,7 +1752,7 @@ func TestAttachProcessesToUnitWithSubcgroup(t *testing.T) {
 
 func TestListUnitProcesses(t *testing.T) {
 	ctx := context.Background()
-	target := "testing-list-unit-processes.service"
+	target := "list-me.service"
 
 	conn := setupConn(t)
 	defer conn.Close()
@@ -1770,13 +1770,6 @@ func TestListUnitProcesses(t *testing.T) {
 	job := <-reschan
 	if job != "done" {
 		t.Fatal("Job is not done:", job)
-	}
-
-	pid := runSleep(t)
-
-	err = conn.AttachProcessesToUnit(ctx, target, "", []uint32{pid})
-	if err != nil {
-		t.Fatal(err)
 	}
 
 	processes, err := conn.GetUnitProcesses(ctx, target)
