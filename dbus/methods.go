@@ -864,14 +864,19 @@ func (c *Conn) ThawUnit(ctx context.Context, unit string) error {
 }
 
 type Process struct {
-	Path    string // Where this process exists in the unit/cgroup hierarchy
-	PID     uint64 // The numeric process ID (PID)
-	Command string // The process command and arguments as a string
+	// Path is where the process exists in the unit/cgroup hierarchy.  
+	Path    string
+    // PID is the numeric process ID.
+	PID     uint64
+	// Command is the process command and arguments.
+	Command string
 }
 
-// GetUnitProcesses returns an array with all currently running processes in a unit *including* its child units.
+// GetUnitProcesses returns an array with all currently running processes in a unit, including its child units.
 func (c *Conn) GetUnitProcesses(ctx context.Context, unit string) ([]Process, error) {
-	result := make([][]interface{}, 0)
+	// switch to storeSlice[Process] once available
+	result := make([][]any, 0)
+	
 	if err := c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.GetUnitProcesses", 0, unit).Store(&result); err != nil {
 		return nil, err
 	}
