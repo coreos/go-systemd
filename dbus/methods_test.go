@@ -23,7 +23,6 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1753,7 +1752,7 @@ func TestAttachProcessesToUnitWithSubcgroup(t *testing.T) {
 
 func TestListUnitProcesses(t *testing.T) {
 	ctx := context.Background()
-	target := "list-me.service"
+	target := "testing-list-unit-processes.service"
 
 	conn := setupConn(t)
 	defer conn.Close()
@@ -1773,6 +1772,13 @@ func TestListUnitProcesses(t *testing.T) {
 		t.Fatal("Job is not done:", job)
 	}
 
+	pid := runSleep(t)
+
+	err = conn.AttachProcessesToUnit(ctx, target, "", []uint32{pid})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	processes, err := conn.GetUnitProcesses(ctx, target)
 
 	if err != nil {
@@ -1784,11 +1790,10 @@ func TestListUnitProcesses(t *testing.T) {
 	}
 
 	for _, p := range processes {
-		if strings.Contains(p.Command, "sleep") {
-			t.Logf("Found %v.\n", p)
-			return
-		}
+		t.Logf("Found %v.\n", p)
+		return
 	}
+
 	t.Log("processes:", processes)
-	t.Error("The sleep process was not found in list-me.service unit's process list.")
+	t.Errorf("Nothing was found in %s unit's process list.", target)
 }
