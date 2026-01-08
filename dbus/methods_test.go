@@ -1778,7 +1778,6 @@ func TestListUnitProcesses(t *testing.T) {
 	}
 
 	processes, err := conn.GetUnitProcesses(ctx, target)
-
 	if err != nil {
 		e, ok := err.(dbus.Error)
 		if ok && (e.Name == "org.freedesktop.DBus.Error.UnknownMethod" || e.Name == "org.freedesktop.DBus.Error.NotSupported") {
