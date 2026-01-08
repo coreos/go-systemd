@@ -874,7 +874,7 @@ func (c *Conn) ThawUnit(ctx context.Context, unit string) error {
 type Process struct {
 	// Path is where the process exists in the unit/cgroup hierarchy.  
 	Path    string
-  // PID is the numeric process ID.
+	// PID is the numeric process ID.
 	PID     uint64
 	// Command is the process command and arguments.
 	Command string
