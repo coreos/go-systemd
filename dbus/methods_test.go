@@ -1749,3 +1749,48 @@ func TestAttachProcessesToUnit(t *testing.T) {
 func TestAttachProcessesToUnitWithSubcgroup(t *testing.T) {
 	testAttachProcessesToUnit(t, "/test-subcgroup")
 }
+
+func TestListUnitProcesses(t *testing.T) {
+	ctx := context.Background()
+	target := "list-me.service"
+
+	conn := setupConn(t)
+	defer conn.Close()
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err := conn.StartUnitContext(ctx, target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		err := runStopUnit(t, conn, TrUnitProp{target, nil})
+		if err != nil {
+			t.Error("StopUnit:", err)
+		}
+	}()
+
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Job is not done, status:", job)
+	}
+
+	processes, err := conn.GetUnitProcesses(ctx, target)
+	if err != nil {
+		e, ok := err.(dbus.Error)
+		if ok && (e.Name == "org.freedesktop.DBus.Error.UnknownMethod" || e.Name == "org.freedesktop.DBus.Error.NotSupported") {
+			t.SkipNow()
+		}
+		t.Fatalf("failed to list processes of %s: %s", target, err)
+	}
+
+	for _, p := range processes {
+		t.Logf("Found %v.\n", p)
+		return
+	}
+
+	t.Log("processes:", processes)
+	t.Errorf("Nothing was found in %s unit's process list.", target)
+}
