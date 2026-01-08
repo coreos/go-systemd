@@ -194,7 +194,13 @@ func (c *Conn) StartTransientUnit(name string, mode string, properties []Propert
 // unique. mode is the same as in StartUnitContext, properties contains properties
 // of the unit.
 func (c *Conn) StartTransientUnitContext(ctx context.Context, name string, mode string, properties []Property, ch chan<- string) (int, error) {
-	return c.startJob(ctx, ch, "org.freedesktop.systemd1.Manager.StartTransientUnit", name, mode, properties, make([]PropertyCollection, 0))
+	return c.StartTransientUnitAux(ctx, name, mode, properties, make([]PropertyCollection, 0), ch)
+}
+
+// StartTransientUnitAux is the same as StartTransientUnitContext but allows passing
+// auxiliary units in the aux parameter.
+func (c *Conn) StartTransientUnitAux(ctx context.Context, name string, mode string, properties []Property, aux []PropertyCollection, ch chan<- string) (int, error) {
+	return c.startJob(ctx, ch, "org.freedesktop.systemd1.Manager.StartTransientUnit", name, mode, properties, aux)
 }
 
 // Deprecated: use [KillUnitWithTarget] instead.
