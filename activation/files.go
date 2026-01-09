@@ -22,14 +22,7 @@ func FilesWithNames() map[string][]*os.File {
 	filesWithNames := map[string][]*os.File{}
 
 	for _, f := range files {
-		current, ok := filesWithNames[f.Name()]
-
-		if !ok {
-			current = []*os.File{}
-			filesWithNames[f.Name()] = current
-		}
-
-		filesWithNames[f.Name()] = append(current, f)
+		filesWithNames[f.Name()] = append(filesWithNames[f.Name()], f)
 	}
 
 	return filesWithNames
