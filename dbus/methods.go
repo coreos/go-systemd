@@ -44,9 +44,11 @@ func (c *Conn) jobComplete(signal *dbus.Signal) {
 
 	_ = dbus.Store(signal.Body, &id, &job, &unit, &result)
 	c.jobListener.Lock()
-	out, ok := c.jobListener.jobs[job]
+	outs, ok := c.jobListener.jobs[job]
 	if ok {
-		out <- result
+		for _, out := range outs {
+			out <- result
+		}
 		delete(c.jobListener.jobs, job)
 	}
 	c.jobListener.Unlock()
@@ -65,7 +67,10 @@ func (c *Conn) startJob(ctx context.Context, ch chan<- string, job string, args 
 	}
 
 	if ch != nil {
-		c.jobListener.jobs[p] = ch
+		if _, ok := c.jobListener.jobs[p]; !ok {
+			c.jobListener.jobs[p] = make([]chan<- string, 0, 1)
+		}
+		c.jobListener.jobs[p] = append(c.jobListener.jobs[p], ch)
 	}
 
 	// ignore error since 0 is fine if conversion fails
