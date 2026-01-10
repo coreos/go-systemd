@@ -39,10 +39,13 @@ type Property struct {
 	Value dbus.Variant
 }
 
-type PropertyCollection struct {
+type AuxiliaryUnit struct {
 	Name       string
 	Properties []Property
 }
+
+// Deprecated: use AuxiliaryUnit instead.
+type PropertyCollection = AuxiliaryUnit
 
 type execStart struct {
 	Path             string   // the binary path to execute
