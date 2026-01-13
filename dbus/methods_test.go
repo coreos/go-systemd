@@ -1749,3 +1749,49 @@ func TestAttachProcessesToUnit(t *testing.T) {
 func TestAttachProcessesToUnitWithSubcgroup(t *testing.T) {
 	testAttachProcessesToUnit(t, "/test-subcgroup")
 }
+
+func TestStopUnitReentrant(t *testing.T) {
+	target := "start-stop.service"
+	conn := setupConn(t)
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	jobSize := len(conn.jobListener.jobs)
+
+	reschan := make(chan string)
+	// Buffered channels are important for multiple calls to the same job,
+	// so the order of when we pull them out doesn't need to matter.
+	reschan2 := make(chan string, 1)
+	reschan3 := make(chan string, 1)
+	errChan := make(chan error, 2)
+	_, err := conn.StartUnit(target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	<-reschan
+
+	go func() {
+		_, err := conn.StopUnit(target, "replace", reschan2)
+		errChan <- err
+	}()
+	go func() {
+		_, err := conn.StopUnit(target, "replace", reschan3)
+		errChan <- err
+	}()
+
+	<-reschan2
+	<-reschan3
+
+	for range 2 {
+		if err := <-errChan; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	currentJobSize := len(conn.jobListener.jobs)
+	if jobSize != currentJobSize {
+		t.Fatal("JobListener jobs leaked")
+	}
+}
