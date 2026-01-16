@@ -128,6 +128,28 @@ func runStartTrUnit(t *testing.T, conn *Conn, trTarget TrUnitProp) error {
 	return nil
 }
 
+func runStartTrUnitWithAux(t *testing.T, conn *Conn, trTarget TrUnitProp, trAux TrUnitProp) error {
+	reschan := make(chan string)
+	_, err := conn.StartTransientUnitAux(
+		context.TODO(), // Switch to t.Context once go < 1.24 is not supported.
+		trTarget.name,
+		"replace",
+		trTarget.props,
+		[]PropertyCollection{{Name: trAux.name, Properties: trAux.props}},
+		reschan,
+	)
+	if err != nil {
+		return err
+	}
+
+	job := <-reschan
+	if job != "done" {
+		return fmt.Errorf("Job is not done: %s", job)
+	}
+
+	return nil
+}
+
 func runStopUnit(t *testing.T, conn *Conn, trTarget TrUnitProp) error {
 	reschan := make(chan string)
 	_, err := conn.StopUnit(trTarget.name, "replace", reschan)
@@ -850,6 +872,11 @@ func TestSetUnitProperties(t *testing.T) {
 	}
 }
 
+type TrUnitSocketListenProp struct {
+	Type    string
+	Address string
+}
+
 // Ensure that oneshot transient unit starting and stopping works.
 func TestStartStopTransientUnitAll(t *testing.T) {
 	testCases := []struct {
@@ -990,6 +1017,29 @@ func TestStartStopTransientUnitAll(t *testing.T) {
 				},
 			},
 			checkFunc: checkTransientUnitConflicts,
+		},
+		{
+			trTarget: TrUnitProp{
+				name: "testing-aux-unit.socket",
+				props: []Property{
+					{
+						Name: "Listen",
+						Value: dbus.MakeVariant([]TrUnitSocketListenProp{
+							{
+								Type:    "Stream",
+								Address: path.Join(t.TempDir(), "go-systemd-test.sock"),
+							},
+						}),
+					},
+				},
+			},
+			trDep: TrUnitProp{
+				name: "testing-aux-unit.service",
+				props: []Property{
+					PropExecStart([]string{"/bin/sleep", "400"}, false),
+				},
+			},
+			checkFunc: checkTransientUnitAux,
 		},
 	}
 
@@ -1327,6 +1377,47 @@ func checkTransientUnitConflicts(t *testing.T, trTarget TrUnitProp, trDep TrUnit
 		if unit != nil {
 			return fmt.Errorf("Test unit %s found in list, should be stopped", trDep.name)
 		}
+	}
+
+	return nil
+}
+
+func checkTransientUnitAux(t *testing.T, trTarget TrUnitProp, trDep TrUnitProp) error {
+	conn := setupConn(t)
+
+	// Start the target unit with dep as auxiliary unit
+	err := runStartTrUnitWithAux(t, conn, trTarget, trDep)
+	if err != nil {
+		return err
+	}
+
+	target := getUnitStatusSingle(conn, trTarget.name)
+	if target == nil || target.ActiveState != "active" {
+		return fmt.Errorf("Test unit %s not active, should be active", trTarget.name)
+	}
+
+	aux := getUnitStatusSingle(conn, trDep.name)
+	if aux == nil {
+		return fmt.Errorf("Test unit %s not found", trDep.name)
+	}
+
+	if aux.ActiveState == "active" {
+		return fmt.Errorf("Test unit %s active, should be inactive", trDep.name)
+	}
+
+	err = runStopUnit(t, conn, trTarget)
+	if err != nil {
+		return err
+	}
+
+	target = getUnitStatusSingle(conn, trTarget.name)
+	if target != nil {
+		return fmt.Errorf("Test unit %s found in list, should be stopped", trTarget.name)
+	}
+
+	aux = getUnitStatusSingle(conn, trDep.name)
+	if aux != nil {
+		return fmt.Errorf("Test unit %s found in list, should be stopped", trTarget.name)
 	}
 
 	return nil
