@@ -17,11 +17,11 @@
 // systemd journal wrapped around the sd-journal C API.
 //
 // All public read methods map closely to the sd-journal API functions. See the
-// sd-journal.h documentation[1] for information about each function.
+// [sd-journal.h documentation] for information about each function.
 //
-// To write to the journal, see the pure-Go "journal" package
+// To write to the journal, see the pure-Go "journal" package.
 //
-// [1] http://www.freedesktop.org/software/systemd/man/sd-journal.html
+// [sd-journal.h documentation]: http://www.freedesktop.org/software/systemd/man/sd-journal.html
 package sdjournal
 
 // #include <systemd/sd-journal.h>

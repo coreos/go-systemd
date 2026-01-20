@@ -24,7 +24,7 @@ import (
 	"github.com/godbus/dbus/v5"
 )
 
-// Who specifies which process to send a signal to via the [KillUnitWithTarget].
+// Who specifies which process to send a signal to via the [Conn.KillUnitWithTarget].
 type Who string
 
 const (
@@ -196,7 +196,7 @@ func (c *Conn) StartTransientUnitContext(ctx context.Context, name string, mode 
 	return c.startJob(ctx, ch, "org.freedesktop.systemd1.Manager.StartTransientUnit", name, mode, properties, make([]PropertyCollection, 0))
 }
 
-// Deprecated: use [KillUnitWithTarget] instead.
+// Deprecated: use [Conn.KillUnitWithTarget] instead.
 func (c *Conn) KillUnit(name string, signal int32) {
 	c.KillUnitContext(context.Background(), name, signal)
 }
@@ -204,7 +204,7 @@ func (c *Conn) KillUnit(name string, signal int32) {
 // KillUnitContext takes the unit name and a UNIX signal number to send.
 // All of the unit's processes are killed.
 //
-// Deprecated: use [KillUnitWithTarget] instead, with target argument set to [All].
+// Deprecated: use [Conn.KillUnitWithTarget] instead, with target argument set to [All].
 func (c *Conn) KillUnitContext(ctx context.Context, name string, signal int32) {
 	_ = c.KillUnitWithTarget(ctx, name, All, signal)
 }
@@ -859,7 +859,7 @@ func (c *Conn) listJobsInternal(ctx context.Context) ([]JobStatus, error) {
 }
 
 // FreezeUnit freezes the cgroup associated with the unit.
-// Note that FreezeUnit and [ThawUnit] are only supported on systems running with cgroup v2.
+// Note that FreezeUnit and [Conn.ThawUnit] are only supported on systems running with cgroup v2.
 func (c *Conn) FreezeUnit(ctx context.Context, unit string) error {
 	return c.sysobj.CallWithContext(ctx, "org.freedesktop.systemd1.Manager.FreezeUnit", 0, unit).Store()
 }

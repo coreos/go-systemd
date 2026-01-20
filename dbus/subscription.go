@@ -111,7 +111,7 @@ func (c *Conn) SubscribeUnitsCustom(interval time.Duration, buffer int, isChange
 	return c.SubscribeUnitsCustomContext(context.Background(), interval, buffer, isChanged, filterUnit)
 }
 
-// SubscribeUnitsCustomContext is like [SubscribeUnitsContext] but lets you specify the buffer
+// SubscribeUnitsCustomContext is like [Conn.SubscribeUnitsContext] but lets you specify the buffer
 // size of the channels, the comparison function for detecting changes and a filter
 // function for cutting down on the noise that your channel receives.
 func (c *Conn) SubscribeUnitsCustomContext(ctx context.Context, interval time.Duration, buffer int, isChanged func(*UnitStatus, *UnitStatus) bool, filterUnit func(string) bool) (<-chan map[string]*UnitStatus, <-chan error) {
