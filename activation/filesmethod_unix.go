@@ -19,21 +19,9 @@ package activation
 
 import (
 	"os"
+	"strconv"
 	"syscall"
 )
-
-type ErrorDevNullSetup struct {
-	fd  int
-	err error
-}
-
-func (e ErrorDevNullSetup) Error() string {
-	return "setting up %d fd to /dev/null: " + e.err.Error()
-}
-
-func (e ErrorDevNullSetup) Unwrap() error {
-	return e.err
-}
 
 func (m Method) Apply(f *os.File) error {
 	saveFd := int(f.Fd()) // get the idx before being closed.
@@ -42,9 +30,9 @@ func (m Method) Apply(f *os.File) error {
 	case ConsumeFiles:
 		return f.Close()
 	case ReserveFiles:
-		devNull, err := os.OpenFile(os.DevNull, os.O_RDWR, 0755)
+		devNull, err := os.OpenFile(os.DevNull, os.O_RDWR, 0o666)
 		if err != nil {
-			return ErrorDevNullSetup{err: err, fd: saveFd}
+			return errorDevNullSetup{err: err, fd: saveFd}
 		}
 
 		nullFd := int(devNull.Fd())
@@ -57,7 +45,7 @@ func (m Method) Apply(f *os.File) error {
 			if err := syscall.Dup3(nullFd, saveFd, syscall.O_CLOEXEC); err != nil {
 				devNull.Close() // on an error tidy up.
 
-				return ErrorDevNullSetup{err: err, fd: saveFd}
+				return errorDevNullSetup{err: err, fd: saveFd}
 			}
 		}
 	case ConserveFiles:
@@ -65,4 +53,17 @@ func (m Method) Apply(f *os.File) error {
 	}
 
 	return nil
+}
+
+type errorDevNullSetup struct {
+	fd  int
+	err error
+}
+
+func (e errorDevNullSetup) Error() string {
+	return "setting up " + strconv.Itoa(e.fd) + " fd to /dev/null: " + e.err.Error()
+}
+
+func (e errorDevNullSetup) Unwrap() error {
+	return e.err
 }
