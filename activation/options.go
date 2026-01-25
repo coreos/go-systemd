@@ -5,6 +5,13 @@ type options struct {
 	method   Method
 }
 
+// apply applies option functions to the options struct.
+func (o *options) apply(opts ...option) {
+	for _, opt := range opts {
+		opt(o)
+	}
+}
+
 type option func(*options)
 
 // UnsetEnv controls if the LISTEN_PID, LISTEN_FDS & LISTEN_FDNAMES environment
@@ -24,17 +31,4 @@ func UseMethod(m Method) option {
 	return func(o *options) {
 		o.method = m
 	}
-}
-
-// Options takes some [option]s and produces a stuct containing the flags and settings.
-func Options(opts ...option) *options {
-	o := &options{
-		unsetEnv: true,
-	}
-
-	for _, opt := range opts {
-		opt(o)
-	}
-
-	return o
 }

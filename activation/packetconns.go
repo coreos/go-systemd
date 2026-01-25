@@ -24,19 +24,29 @@ import (
 // The order of the file descriptors is preserved in the returned slice.
 // Nil values are used to fill any gaps. For example if systemd were to return file descriptors
 // corresponding with "udp, tcp, udp", then the slice would contain {net.PacketConn, nil, net.PacketConn}
-func PacketConns(opts ...option) ([]net.PacketConn, error) {
-	o := Options(opts...)
+func PacketConns() ([]net.PacketConn, error) {
+	return PacketConnsWithOptions(UnsetEnv(true))
+}
 
-	files := Files(true)
+// PacketConnsWithOptions returns a slice containing a net.PacketConn for each matching socket type
+// passed to this process.
+//
+//   - The socket activation file descriptors are consumed and closed by default. This
+//     can be changed by passing in the [UseMethod] option. See [Method] for more details.
+//   - Unsetting the corresponding environment variables is the default behavior. This
+//     can be changed by passing in the [UnsetEnv] option.
+func PacketConnsWithOptions(opts ...option) ([]net.PacketConn, error) {
+	o := options{unsetEnv: true}
+	o.apply(opts...)
+
+	files := Files(o.unsetEnv)
 	conns := make([]net.PacketConn, len(files))
 
 	for i, f := range files {
 		if pc, err := net.FilePacketConn(f); err == nil {
 			conns[i] = pc
 
-			if err := o.method.Apply(f); err != nil {
-
-			}
+			o.method.Apply(f)
 		}
 	}
 	return conns, nil
