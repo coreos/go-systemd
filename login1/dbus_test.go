@@ -245,9 +245,162 @@ func Test_Creating_new_connection_with_custom_connection(t *testing.T) {
 	})
 }
 
+func Test_Subscribing_to_signals(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("subscribes_to", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("login1_interface", func(t *testing.T) {
+			t.Parallel()
+
+			addMatchCalled := false
+
+			connectionWithInterfaceCheck := &mockConnection{
+				AddMatchSignalContextF: func(ctx context.Context, options ...dbus.MatchOption) error {
+					addMatchCalled = true
+					if len(options) < 2 {
+						t.Fatalf("Expected at least 2 match options (interface and member)")
+					}
+					return nil
+				},
+			}
+
+			conn, err := login1.NewWithConnection(connectionWithInterfaceCheck)
+			if err != nil {
+				t.Fatalf("Unexpected error creating connection: %v", err)
+			}
+
+			if _, err := conn.SubscribeWithContext(ctx, "SessionNew"); err != nil {
+				t.Fatalf("Unexpected error subscribing to signals: %v", err)
+			}
+
+			if !addMatchCalled {
+				t.Fatalf("Expected AddMatchSignalContext to be called")
+			}
+		})
+
+		t.Run("for_all_given_members", func(t *testing.T) {
+			t.Parallel()
+
+			callCount := 0
+
+			connectionWithMemberCheck := &mockConnection{
+				AddMatchSignalContextF: func(ctx context.Context, options ...dbus.MatchOption) error {
+					callCount++
+					return nil
+				},
+			}
+
+			conn, err := login1.NewWithConnection(connectionWithMemberCheck)
+			if err != nil {
+				t.Fatalf("Unexpected error creating connection: %v", err)
+			}
+
+			expectedMembers := []string{"SessionNew", "SessionRemoved", "UserNew"}
+			if _, err := conn.SubscribeWithContext(ctx, expectedMembers...); err != nil {
+				t.Fatalf("Unexpected error subscribing to signals: %v", err)
+			}
+
+			if callCount != len(expectedMembers) {
+				t.Fatalf("Expected AddMatchSignalContext to be called %d times, got %d", len(expectedMembers), callCount)
+			}
+		})
+	})
+
+	t.Run("passes_received_signals_to_channel", func(t *testing.T) {
+		t.Parallel()
+
+		signalChannelProvided := false
+
+		connectionWithSignalCheck := &mockConnection{
+			SignalF: func(ch chan<- *dbus.Signal) {
+				signalChannelProvided = ch != nil
+				// Send a test signal to verify the channel works
+				go func() {
+					ch <- &dbus.Signal{
+						Sender: "org.freedesktop.login1",
+						Path:   "/org/freedesktop/login1",
+						Name:   "org.freedesktop.login1.Manager.SessionNew",
+						Body:   []any{"session1", dbus.ObjectPath("/org/freedesktop/login1/session/session1")},
+					}
+				}()
+			},
+		}
+
+		conn, err := login1.NewWithConnection(connectionWithSignalCheck)
+		if err != nil {
+			t.Fatalf("Unexpected error creating connection: %v", err)
+		}
+
+		ch, err := conn.SubscribeWithContext(ctx, "SessionNew")
+		if err != nil {
+			t.Fatalf("Unexpected error subscribing to signals: %v", err)
+		}
+
+		if ch == nil {
+			t.Fatalf("Expected signal channel to be returned")
+		}
+
+		if !signalChannelProvided {
+			t.Fatalf("Expected signal channel to be passed to connection")
+		}
+
+		// Verify we can receive signals through the channel
+		ctx, cancel := context.WithTimeout(ctx, time.Second*3)
+		defer cancel()
+
+		select {
+		case sig := <-ch:
+			if sig == nil {
+				t.Fatalf("Received nil signal")
+			}
+			if sig.Name != "org.freedesktop.login1.Manager.SessionNew" {
+				t.Fatalf("Expected signal name %q, got %q", "org.freedesktop.login1.Manager.SessionNew", sig.Name)
+			}
+		case <-ctx.Done():
+			t.Fatalf("Timeout waiting for signal")
+		}
+	})
+
+	t.Run("returns_error_when_adding_match_signal_fails", func(t *testing.T) {
+		t.Parallel()
+
+		expectedError := fmt.Errorf("failed to add match")
+
+		connectionWithError := &mockConnection{
+			AddMatchSignalContextF: func(ctx context.Context, options ...dbus.MatchOption) error {
+				return expectedError
+			},
+		}
+
+		conn, err := login1.NewWithConnection(connectionWithError)
+		if err != nil {
+			t.Fatalf("Unexpected error creating connection: %v", err)
+		}
+
+		_, err = conn.SubscribeWithContext(ctx, "SessionNew")
+		if err == nil {
+			t.Fatalf("Expected error when adding match signal fails")
+		}
+	})
+}
+
 // mockConnection is a test helper for mocking dbus.Conn.
 type mockConnection struct {
-	ObjectF func(string, dbus.ObjectPath) dbus.BusObject
+	ObjectF                func(string, dbus.ObjectPath) dbus.BusObject
+	AddMatchSignalContextF func(context.Context, ...dbus.MatchOption) error
+	SignalF                func(chan<- *dbus.Signal)
+}
+
+// AddMatchSignalContext ...
+func (m *mockConnection) AddMatchSignalContext(ctx context.Context, options ...dbus.MatchOption) error {
+	if m.AddMatchSignalContextF != nil {
+		return m.AddMatchSignalContextF(ctx, options...)
+	}
+	return nil
 }
 
 // Auth ...
@@ -261,7 +414,11 @@ func (m *mockConnection) Hello() error {
 }
 
 // Signal ...
-func (m *mockConnection) Signal(ch chan<- *dbus.Signal) {}
+func (m *mockConnection) Signal(ch chan<- *dbus.Signal) {
+	if m.SignalF != nil {
+		m.SignalF(ch)
+	}
+}
 
 // Object ...
 func (m *mockConnection) Object(dest string, path dbus.ObjectPath) dbus.BusObject {
@@ -274,11 +431,6 @@ func (m *mockConnection) Object(dest string, path dbus.ObjectPath) dbus.BusObjec
 
 // Close ...
 func (m *mockConnection) Close() error {
-	return nil
-}
-
-// BusObject ...
-func (m *mockConnection) BusObject() dbus.BusObject {
 	return nil
 }
 
