@@ -46,9 +46,7 @@ type Connection interface {
 	Object(string, dbus.ObjectPath) dbus.BusObject
 	Signal(ch chan<- *dbus.Signal)
 	Connected() bool
-	// TODO: This should be replaced with AddMatchSignal.
-	// See https://github.com/coreos/go-systemd/issues/388 for details.
-	BusObject() dbus.BusObject
+	AddMatchSignalContext(ctx context.Context, options ...dbus.MatchOption) error
 }
 
 // connectionManager explicitly wraps dependencies on established D-Bus connection.
@@ -394,14 +392,23 @@ func (c *Conn) Inhibit(what, who, why, mode string) (*os.File, error) {
 	return os.NewFile(uintptr(fd), "inhibit"), nil
 }
 
-// Subscribe to signals on the logind dbus
-func (c *Conn) Subscribe(members ...string) chan *dbus.Signal {
+// SubscribeWithContext subscribes to signals on the logind dbus. If adding match signals fails, an error is returned.
+func (c *Conn) SubscribeWithContext(ctx context.Context, members ...string) (chan *dbus.Signal, error) {
 	for _, member := range members {
-		c.conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
-			fmt.Sprintf("type='signal',interface='org.freedesktop.login1.Manager',member='%s'", member))
+		if err := c.conn.AddMatchSignalContext(ctx, dbus.WithMatchInterface(dbusManagerInterface), dbus.WithMatchMember(member)); err != nil {
+			return nil, fmt.Errorf("adding match for signal %s: %w", member, err)
+		}
 	}
 	ch := make(chan *dbus.Signal, 10)
 	c.conn.Signal(ch)
+	return ch, nil
+}
+
+// Subscribe subscribes to signals on the logind dbus. If adding match signals fails, errors are ignored.
+//
+// Deprecated: use SubscribeWithContext instead.
+func (c *Conn) Subscribe(members ...string) chan *dbus.Signal {
+	ch, _ := c.SubscribeWithContext(context.Background(), members...)
 	return ch
 }
 
