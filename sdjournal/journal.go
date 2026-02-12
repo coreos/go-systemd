@@ -373,6 +373,14 @@ const (
 	SD_JOURNAL_FIELD_CURSOR              = "__CURSOR"
 	SD_JOURNAL_FIELD_REALTIME_TIMESTAMP  = "__REALTIME_TIMESTAMP"
 	SD_JOURNAL_FIELD_MONOTONIC_TIMESTAMP = "__MONOTONIC_TIMESTAMP"
+
+	// Journal Flags
+	SD_JOURNAL_FLAG_LOCAL_ONLY                = int(C.SD_JOURNAL_LOCAL_ONLY)
+	SD_JOURNAL_FLAG_RUNTIME_ONLY              = int(C.SD_JOURNAL_RUNTIME_ONLY)
+	SD_JOURNAL_FLAG_SYSTEM                    = int(C.SD_JOURNAL_SYSTEM)
+	SD_JOURNAL_FLAG_CURRENT_USER              = int(C.SD_JOURNAL_CURRENT_USER)
+	SD_JOURNAL_FLAG_ALL_NAMESPACES            = int(C.SD_JOURNAL_ALL_NAMESPACES)
+	SD_JOURNAL_FLAG_INCLUDE_DEFAULT_NAMESPACE = int(C.SD_JOURNAL_INCLUDE_DEFAULT_NAMESPACE)
 )
 
 // Journal event constants
@@ -421,6 +429,12 @@ func (m *Match) String() string {
 
 // NewJournal returns a new Journal instance pointing to the local journal
 func NewJournal() (j *Journal, err error) {
+	return NewJournalWithFlags(SD_JOURNAL_FLAG_LOCAL_ONLY)
+}
+
+// NewJournalWithFlags return a new Journal instance pointing to the local journal
+// with a list of flags indicating the scope and type of entries that will be accessed.
+func NewJournalWithFlags(flags int) (j *Journal, err error) {
 	j = &Journal{}
 
 	sd_journal_open, err := getFunction("sd_journal_open")
@@ -428,7 +442,7 @@ func NewJournal() (j *Journal, err error) {
 		return nil, err
 	}
 
-	r := C.my_sd_journal_open(sd_journal_open, &j.cjournal, C.SD_JOURNAL_LOCAL_ONLY)
+	r := C.my_sd_journal_open(sd_journal_open, &j.cjournal, C.int(flags))
 
 	if r < 0 {
 		return nil, fmt.Errorf("failed to open journal: %w", syscall.Errno(-r))
