@@ -15,6 +15,7 @@
 package dbus
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -148,6 +149,53 @@ func TestPropertiesSubscription(t *testing.T) {
 
 	reschan := make(chan string)
 	_, err = conn.StartUnit(target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Couldn't start", target)
+	}
+
+	for {
+		select {
+		case update := <-updateCh:
+			if update.UnitName == target {
+				subState, ok := update.Changed["SubState"].Value().(string)
+				if ok && subState == "running" {
+					return // success
+				}
+			}
+		case err := <-errCh:
+			t.Fatal(err)
+		case <-time.After(10 * time.Second):
+			t.Fatal("Reached timeout")
+		}
+	}
+}
+
+// TestUnitPropertiesSubscription exercises the basics of a unit property change event subscription.
+func TestUnitPropertiesSubscription(t *testing.T) {
+	target := "subscribe-properties-unit.service"
+
+	conn := setupConn(t)
+
+	err := conn.SubscribeUnit(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testCtx := context.Background()
+	updateCh := make(chan *PropertiesUpdate, 256)
+	errCh := make(chan error, 256)
+	conn.SetUnitPropertiesSubscriber(testCtx, target, updateCh, errCh)
+
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	reschan := make(chan string)
+	_, err = conn.StartUnitContext(testCtx, target, "replace", reschan)
 	if err != nil {
 		t.Fatal(err)
 	}

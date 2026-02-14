@@ -15,6 +15,7 @@
 package dbus
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -75,4 +76,60 @@ func TestSubscriptionSetUnit(t *testing.T) {
 
 success:
 	return
+}
+
+// TestSubscriptionSetAddedUnit exercises the basics of properties change subscription
+func TestSubscriptionPropertiesSubscriber(t *testing.T) {
+	target := "subscribe-properties-set.service"
+
+	conn := setupConn(t)
+
+	testCtx := context.Background()
+	subSet := conn.NewSubscriptionSet()
+
+	updateCh := make(chan *PropertiesUpdate, 256)
+	errCh := make(chan error, 256)
+	subSet.SetPropertiesSubscriber(testCtx, updateCh, errCh)
+
+	subSet.Add(target)
+	setupUnit(target, conn, t)
+	linkUnit(target, conn, t)
+
+	err := conn.SubscribeUnit(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reschan := make(chan string)
+	_, err = conn.StartUnitContext(testCtx, target, "replace", reschan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	job := <-reschan
+	if job != "done" {
+		t.Fatal("Couldn't start", target)
+	}
+
+	timeout := make(chan bool, 1)
+	go func() {
+		time.Sleep(3 * time.Second)
+		close(timeout)
+	}()
+
+	for {
+		select {
+		case update := <-updateCh:
+			if update.UnitName == target {
+				subState, ok := update.Changed["SubState"].Value().(string)
+				if ok && subState == "running" {
+					return // success
+				}
+			}
+		case err := <-errCh:
+			t.Fatal(err)
+		case <-time.After(10 * time.Second):
+			t.Fatal("Reached timeout")
+		}
+	}
 }
