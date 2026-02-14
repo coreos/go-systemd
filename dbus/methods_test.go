@@ -1493,9 +1493,9 @@ func TestKillUnit(t *testing.T) {
 	}
 
 	subSet := conn.NewSubscriptionSet()
-	evChan, errChan := subSet.Subscribe()
-
 	subSet.Add(target)
+
+	evChan, errChan := subSet.Subscribe()
 
 	setupUnit(target, conn, t)
 	linkUnit(target, conn, t)

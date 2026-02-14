@@ -106,6 +106,17 @@ type Conn struct {
 		cleanIgnore int64
 	}
 	propertiesSubscriber struct {
+		subscriptionSets []struct {
+			set      *SubscriptionSet
+			updateCh chan<- *PropertiesUpdate
+			errCh    chan<- error
+		}
+
+		unitSubscriptions map[string]struct {
+			updateCh chan<- *PropertiesUpdate
+			errCh    chan<- error
+		}
+
 		updateCh chan<- *PropertiesUpdate
 		errCh    chan<- error
 		sync.Mutex

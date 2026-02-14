@@ -16,7 +16,10 @@ package dbus
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
+	"unicode"
 )
 
 // SubscriptionSet returns a subscription set which is like conn.Subscribe but
@@ -33,7 +36,6 @@ func (s *SubscriptionSet) filter(unit string) bool {
 // SubscribeContext starts listening for dbus events for all of the units in the set.
 // Returns channels identical to conn.SubscribeUnits.
 func (s *SubscriptionSet) SubscribeContext(ctx context.Context) (<-chan map[string]*UnitStatus, <-chan error) {
-	// TODO: Make fully evented by using systemd 209 with properties changed values
 	return s.conn.SubscribeUnitsCustomContext(ctx, time.Second, 0,
 		mismatchUnitStatus,
 		func(unit string) bool { return s.filter(unit) },
@@ -48,6 +50,99 @@ func (s *SubscriptionSet) Subscribe() (<-chan map[string]*UnitStatus, <-chan err
 // NewSubscriptionSet returns a new subscription set.
 func (c *Conn) NewSubscriptionSet() *SubscriptionSet {
 	return &SubscriptionSet{newSet(), c}
+}
+
+// SetPropertiesSubscriber works the same as [Conn.SetPropertiesSubscriber] but will send updates
+// only for the units that are part of [SubscriptionSet].
+func (s *SubscriptionSet) SetPropertiesSubscriber(ctx context.Context, propertiesChangedCh chan<- *PropertiesUpdate, errorCh chan<- error) {
+	for unit := range s.data {
+		s.conn.addMatchUnitPropertiesChanged(unit)
+	}
+
+	s.conn.propertiesSubscriber.Lock()
+	defer s.conn.propertiesSubscriber.Unlock()
+	s.conn.propertiesSubscriber.subscriptionSets = append(s.conn.propertiesSubscriber.subscriptionSets, struct {
+		set      *SubscriptionSet
+		updateCh chan<- *PropertiesUpdate
+		errCh    chan<- error
+	}{set: s, updateCh: propertiesChangedCh, errCh: errorCh})
+
+	go func() {
+		<-ctx.Done()
+
+		s.conn.propertiesSubscriber.Lock()
+		defer s.conn.propertiesSubscriber.Unlock()
+		for idx, setWithChannel := range s.conn.propertiesSubscriber.subscriptionSets {
+			if s == setWithChannel.set {
+				s.conn.propertiesSubscriber.subscriptionSets = append(s.conn.propertiesSubscriber.subscriptionSets[:idx], s.conn.propertiesSubscriber.subscriptionSets[idx+1:]...)
+				close(setWithChannel.updateCh)
+				close(setWithChannel.errCh)
+
+				for unit := range s.data {
+					if !s.conn.unitReferenced(unit) {
+						s.conn.removeMatchUnitPropertiesChanged(unit)
+					}
+				}
+				break
+			}
+		}
+	}()
+}
+
+func (s *SubscriptionSet) Add(value string) {
+	s.set.Add(value)
+	s.conn.addMatchUnitPropertiesChanged(value)
+}
+
+func (s *SubscriptionSet) Remove(value string) {
+	s.set.Remove(value)
+
+	s.conn.propertiesSubscriber.Lock()
+	defer s.conn.propertiesSubscriber.Unlock()
+	if !s.conn.unitReferenced(value) {
+		s.conn.removeMatchUnitPropertiesChanged(value)
+	}
+}
+
+func (c *Conn) addMatchUnitPropertiesChanged(unit string) {
+	c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		fmt.Sprintf("type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='/org/freedesktop/systemd1/unit/%s'", escapeUnitNameForDBus(unit)))
+}
+
+func (c *Conn) removeMatchUnitPropertiesChanged(unit string) {
+	c.sigconn.BusObject().Call("org.freedesktop.DBus.RemoveMatch", 0,
+		fmt.Sprintf("type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged',path='/org/freedesktop/systemd1/unit/%s'", escapeUnitNameForDBus(unit)))
+}
+
+func (c *Conn) unitReferenced(unit string) bool {
+	for _, s := range c.propertiesSubscriber.subscriptionSets {
+		_, ok := s.set.data[unit]
+		if ok {
+			return true
+		}
+	}
+
+	if c.propertiesSubscriber.unitSubscriptions == nil {
+		return false
+	}
+
+	_, ok := c.propertiesSubscriber.unitSubscriptions[unit]
+	if ok {
+		return true
+	}
+	return false
+}
+
+func escapeUnitNameForDBus(unit string) string {
+	var escaped strings.Builder
+	for _, r := range unit {
+		if (unicode.IsLetter(r) || unicode.IsDigit(r)) && r < 128 {
+			escaped.WriteRune(r)
+		} else {
+			escaped.WriteString(fmt.Sprintf("_%02x", r))
+		}
+	}
+	return escaped.String()
 }
 
 // mismatchUnitStatus returns true if the provided UnitStatus objects
