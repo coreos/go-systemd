@@ -102,7 +102,7 @@ func TestConn_GetSessionPropertiesContext(t *testing.T) {
 
 	for _, s := range sessions {
 		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second*3)
 			defer cancel()
 
 			props, err := c.GetSessionPropertiesContext(ctx, s.Path)
@@ -129,7 +129,7 @@ func TestConn_GetSessionPropertyContext(t *testing.T) {
 
 	for _, s := range sessions {
 		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second*3)
 			defer cancel()
 
 			_, err := c.GetSessionPropertyContext(ctx, s.Path, "Remote")
@@ -153,7 +153,7 @@ func TestConn_GetUserPropertiesContext(t *testing.T) {
 
 	for _, u := range users {
 		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second*3)
 			defer cancel()
 
 			props, err := c.GetUserPropertiesContext(ctx, u.Path)
@@ -180,7 +180,7 @@ func TestConn_GetUserPropertyContext(t *testing.T) {
 
 	for _, u := range users {
 		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second*3)
 			defer cancel()
 
 			_, err := c.GetUserPropertyContext(ctx, u.Path, "State")

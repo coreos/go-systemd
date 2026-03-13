@@ -17,7 +17,6 @@ limitations under the License.
 package machine1
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -34,7 +33,7 @@ const (
 	machinePrefix = "machined-test-"
 )
 
-func mustCreateTestProcess(machineName string) (pid int) {
+func mustCreateTestProcess(t *testing.T, machineName string) (pid int) {
 	testServiceName := machineName + ".service"
 	systemdRun, err := exec.LookPath("systemd-run")
 	if err != nil {
@@ -49,12 +48,12 @@ func mustCreateTestProcess(machineName string) (pid int) {
 	if err != nil {
 		panic(fmt.Errorf("systemd-run failed: %q", out))
 	}
-	dbusConn, err := sd_dbus.NewWithContext(context.TODO()) // Switch to t.Context once go < 1.24 is not supported.
+	dbusConn, err := sd_dbus.NewWithContext(t.Context())
 	if err != nil {
 		panic(err.Error())
 	}
 	defer dbusConn.Close()
-	mainPIDProperty, err := dbusConn.GetServicePropertyContext(context.TODO(), testServiceName, "MainPID") // Switch to t.Context once go < 1.24 is not supported.
+	mainPIDProperty, err := dbusConn.GetServicePropertyContext(t.Context(), testServiceName, "MainPID")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -70,10 +69,10 @@ func TestMachine(t *testing.T) {
 		machinePrefix + "create-with-network-" + generateRandomLabel(8),
 	}
 	leaders := []int{
-		mustCreateTestProcess(machineNames[0]),
-		mustCreateTestProcess(machineNames[1]),
-		mustCreateTestProcess(machineNames[2]),
-		mustCreateTestProcess(machineNames[3]),
+		mustCreateTestProcess(t, machineNames[0]),
+		mustCreateTestProcess(t, machineNames[1]),
+		mustCreateTestProcess(t, machineNames[2]),
+		mustCreateTestProcess(t, machineNames[3]),
 	}
 
 	conn, newErr := New()
