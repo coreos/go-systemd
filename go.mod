@@ -1,6 +1,6 @@
 module github.com/coreos/go-systemd/v22
 
-go 1.23
+go 1.24
 
 require (
 	github.com/godbus/dbus/v5 v5.1.0
