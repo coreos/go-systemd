@@ -14,6 +14,8 @@
 
 package unit
 
+import "strings"
+
 // UnitEntry is a single line entry in a Unit file.
 type UnitEntry struct {
 	Name  string
@@ -34,11 +36,12 @@ func (u *UnitEntry) String() string {
 
 // String implements the stringify interface for UnitSection
 func (s *UnitSection) String() string {
-	result := "{Section: " + s.Section
+	var result strings.Builder
+	result.WriteString("{Section: " + s.Section)
 	for _, e := range s.Entries {
-		result += e.String()
+		result.WriteString(e.String())
 	}
 
-	result += "}"
-	return result
+	result.WriteString("}")
+	return result.String()
 }
