@@ -15,7 +15,6 @@
 package dbus
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -36,8 +35,7 @@ type TrUnitProp struct {
 }
 
 func setupConn(t *testing.T) *Conn {
-	// TODO: change to NewWithContext(t.Context()) once we switch to go1.24.
-	conn, err := New()
+	conn, err := NewWithContext(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +129,7 @@ func runStartTrUnit(t *testing.T, conn *Conn, trTarget TrUnitProp) error {
 func runStartTrUnitWithAux(t *testing.T, conn *Conn, trTarget TrUnitProp, trAux TrUnitProp) error {
 	reschan := make(chan string)
 	_, err := conn.StartTransientUnitAux(
-		context.TODO(), // Switch to t.Context once go < 1.24 is not supported.
+		t.Context(),
 		trTarget.name,
 		"replace",
 		trTarget.props,
@@ -480,7 +478,7 @@ func TestReloadOrRestartUnit(t *testing.T) {
 func TestGetUnitByPID(t *testing.T) {
 	conn := setupConn(t)
 
-	path, err := conn.GetUnitByPID(context.Background(), 1)
+	path, err := conn.GetUnitByPID(t.Context(), 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -494,7 +492,7 @@ func TestGetUnitByPID(t *testing.T) {
 func TestGetUnitNameByPID(t *testing.T) {
 	conn := setupConn(t)
 
-	name, err := conn.GetUnitNameByPID(context.Background(), 1)
+	name, err := conn.GetUnitNameByPID(t.Context(), 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1725,7 +1723,7 @@ func TestFreezer(t *testing.T) {
 		t.Fatal("Job is not done:", job)
 	}
 
-	if err := conn.FreezeUnit(context.Background(), target); err != nil {
+	if err := conn.FreezeUnit(t.Context(), target); err != nil {
 		// Don't fail the test if freezing units is not implemented at all (on older systemd versions) or
 		// not supported (on systems running with cgroup v1).
 		e, ok := err.(dbus.Error)
@@ -1745,7 +1743,7 @@ func TestFreezer(t *testing.T) {
 		t.Fatalf("unit is not frozen after calling FreezeUnit(), FreezerState=%s", v)
 	}
 
-	if err := conn.ThawUnit(context.Background(), target); err != nil {
+	if err := conn.ThawUnit(t.Context(), target); err != nil {
 		t.Fatalf("failed to thaw unit %s: %s", target, err)
 	}
 
@@ -1809,7 +1807,7 @@ func testAttachProcessesToUnit(t *testing.T, subcgroup string) {
 	pid := runSleep(t)
 
 	// Test attaching the process to the unit.
-	ctx := context.Background()
+	ctx := t.Context()
 	err = conn.AttachProcessesToUnit(ctx, target, subcgroup, []uint32{pid})
 	if err != nil {
 		// AttachProcessesToUnit might not be supported on all systemd versions.
