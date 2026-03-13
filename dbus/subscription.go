@@ -120,6 +120,8 @@ func (c *Conn) SubscribeUnitsCustomContext(ctx context.Context, interval time.Du
 	errChan := make(chan error, buffer)
 
 	go func() {
+		defer close(statusChan)
+		defer close(errChan)
 		for {
 			timerChan := time.After(interval)
 
@@ -150,18 +152,24 @@ func (c *Conn) SubscribeUnitsCustomContext(ctx context.Context, interval time.Du
 				old = cur
 
 				if len(changed) != 0 {
-					statusChan <- changed
+					select {
+					case statusChan <- changed:
+					case <-ctx.Done():
+						return
+					}
 				}
 			} else {
-				errChan <- err
+				select {
+				case errChan <- err:
+				case <-ctx.Done():
+					return
+				}
 			}
 
 			select {
 			case <-timerChan:
 				continue
 			case <-ctx.Done():
-				close(statusChan)
-				close(errChan)
 				return
 			}
 		}
