@@ -65,10 +65,8 @@ EOF
     docker run --shm-size=2gb -d --cidfile="$cidfile" --privileged -v "${PWD}:/src" "$name" /sbin/init --system
     cid=$(cat "$cidfile")
     rm -f "$cidfile"
-    docker exec --privileged "$cid" /bin/bash -e -c 'cd /src; ./scripts/ci-runner.sh build_tests'
-    # Wait a bit for the whole system to settle.
-    sleep 10s
-    docker exec --privileged "$cid" /bin/bash -e -c 'cd /src; ./scripts/ci-runner.sh run_tests'
+    # Wait for systemd to finish, then build and run tests.
+    docker exec --privileged "$cid" /bin/bash -e -c 'cd /src; ./scripts/ci-runner.sh wait_systemd build_tests run_tests'
     # Cleanup.
     docker kill "$cid"
 }
@@ -94,31 +92,47 @@ function license_check {
     fi
 }
 
-export GO15VENDOREXPERIMENT=1
-
-subcommand="$1"
-case "$subcommand" in
+while [ $# -gt 0 ]; do
+    case "$1" in
+    "wait_systemd" )
+	shift
+        echo "Waiting for systemd DBus socket..."
+	while [ ! -S /run/dbus/system_bus_socket ]; do
+	    sleep 0.2
+	done
+	echo "Waiting for systemd to finish startup..."
+	# Wait for systemd to finish startup.
+	systemctl is-system-running --wait || true
+	;;
     "build_source" )
+	shift
         echo "Building source..."
         build_source
         ;;
 
     "build_tests" )
+	shift
         echo "Building tests..."
         build_tests
         ;;
 
     "run_in_ct" )
 	shift
-	run_in_ct "$@"
+	IMAGE=$1
+	shift
+	GOVER=$1
+	shift
+	run_in_ct "$IMAGE" "$GOVER"
 	;;
 
     "run_tests" )
+	shift
         echo "Running tests..."
         run_tests
         ;;
 
     "license_check" )
+	shift
         echo "Checking licenses..."
         license_check
         ;;
@@ -127,4 +141,5 @@ case "$subcommand" in
         echo "Error: unrecognized subcommand (hint: try with 'run_tests')."
         exit 1
     ;;
-esac
+    esac
+done
