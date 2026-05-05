@@ -17,6 +17,7 @@ package dbus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -46,6 +47,18 @@ func (c *Conn) Unsubscribe() error {
 	return c.sigobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
 }
 
+func (c *Conn) SubscribeUnit(unit string) error {
+	return c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		fmt.Sprintf("type='signal',interface='org.freedesktop.DBus.Properties',"+
+			"member='PropertiesChanged',path='/org/freedesktop/systemd1/unit/%s'", PathBusEscape(unit))).Store()
+}
+
+func (c *Conn) UnsubscribeUnit(unit string) error {
+	return c.sigconn.BusObject().Call("org.freedesktop.DBus.RemoveMatch", 0,
+		fmt.Sprintf("type='signal',interface='org.freedesktop.DBus.Properties',"+
+			"member='PropertiesChanged',path='/org/freedesktop/systemd1/unit/%s'", PathBusEscape(unit))).Store()
+}
+
 func (c *Conn) dispatch() {
 	ch := make(chan *dbus.Signal, signalBuffer)
 
@@ -63,7 +76,9 @@ func (c *Conn) dispatch() {
 			}
 
 			if c.subStateSubscriber.updateCh == nil &&
-				c.propertiesSubscriber.updateCh == nil {
+				c.propertiesSubscriber.updateCh == nil &&
+				len(c.propertiesSubscriber.subscriptionSets) == 0 &&
+				len(c.propertiesSubscriber.unitSubscriptions) == 0 {
 				continue
 			}
 
@@ -77,7 +92,6 @@ func (c *Conn) dispatch() {
 			case "org.freedesktop.DBus.Properties.PropertiesChanged":
 				if signal.Body[0].(string) == "org.freedesktop.systemd1.Unit" {
 					unitPath = signal.Path
-
 					if len(signal.Body) >= 2 {
 						if changed, ok := signal.Body[1].(map[string]dbus.Variant); ok {
 							c.sendPropertiesUpdate(unitPath, changed)
@@ -333,24 +347,76 @@ func (c *Conn) SetPropertiesSubscriber(updateCh chan<- *PropertiesUpdate, errCh 
 	c.propertiesSubscriber.errCh = errCh
 }
 
+// SetUnitPropertiesSubscriber works similar to [Conn.SetPropertiesSubscriber],
+// but an explicit [Conn.SubscribeUnit] call needs to be made.
+// When the unit properties change is no longer needed to track, the call
+// to [Conn.UnsubscribeUnit] should be made.
+func (c *Conn) SetUnitPropertiesSubscriber(ctx context.Context, unit string, updateCh chan<- *PropertiesUpdate, errCh chan<- error) {
+	c.propertiesSubscriber.Lock()
+	defer c.propertiesSubscriber.Unlock()
+
+	if c.propertiesSubscriber.unitSubscriptions == nil {
+		c.propertiesSubscriber.unitSubscriptions = make(map[string]struct {
+			updateCh chan<- *PropertiesUpdate
+			errCh    chan<- error
+		})
+	}
+
+	c.propertiesSubscriber.unitSubscriptions[unit] = struct {
+		updateCh chan<- *PropertiesUpdate
+		errCh    chan<- error
+	}{
+		updateCh: updateCh,
+		errCh:    errCh,
+	}
+
+	go func() {
+		<-ctx.Done()
+
+		c.propertiesSubscriber.Lock()
+		defer c.propertiesSubscriber.Unlock()
+
+		chans, ok := c.propertiesSubscriber.unitSubscriptions[unit]
+		if !ok {
+			delete(c.propertiesSubscriber.unitSubscriptions, unit)
+			close(chans.updateCh)
+			close(chans.errCh)
+		}
+	}()
+}
+
 // we don't need to worry about shouldIgnore() here because
 // sendPropertiesUpdate doesn't call GetProperties()
 func (c *Conn) sendPropertiesUpdate(unitPath dbus.ObjectPath, changedProps map[string]dbus.Variant) {
 	c.propertiesSubscriber.Lock()
 	defer c.propertiesSubscriber.Unlock()
 
+	update := &PropertiesUpdate{unitName(unitPath), changedProps}
+	for _, subscriptionSet := range c.propertiesSubscriber.subscriptionSets {
+		if subscriptionSet.set.Contains(unitName(unitPath)) {
+			handleUpdate(update, subscriptionSet.updateCh, subscriptionSet.errCh)
+		}
+	}
+
+	for unit, unitUpdateChans := range c.propertiesSubscriber.unitSubscriptions {
+		if unit == unitName(unitPath) {
+			handleUpdate(update, unitUpdateChans.updateCh, unitUpdateChans.errCh)
+		}
+	}
+
 	if c.propertiesSubscriber.updateCh == nil {
 		return
 	}
+	handleUpdate(update, c.propertiesSubscriber.updateCh, c.propertiesSubscriber.errCh)
+}
 
-	update := &PropertiesUpdate{unitName(unitPath), changedProps}
-
+func handleUpdate(update *PropertiesUpdate, updateCh chan<- *PropertiesUpdate, errCh chan<- error) {
 	select {
-	case c.propertiesSubscriber.updateCh <- update:
+	case updateCh <- update:
 	default:
 		msg := "update channel is full"
 		select {
-		case c.propertiesSubscriber.errCh <- errors.New(msg):
+		case errCh <- errors.New(msg):
 		default:
 			log.Printf("full error channel while reporting: %s\n", msg)
 		}

@@ -33,7 +33,6 @@ func (s *SubscriptionSet) filter(unit string) bool {
 // SubscribeContext starts listening for dbus events for all of the units in the set.
 // Returns channels identical to conn.SubscribeUnits.
 func (s *SubscriptionSet) SubscribeContext(ctx context.Context) (<-chan map[string]*UnitStatus, <-chan error) {
-	// TODO: Make fully evented by using systemd 209 with properties changed values
 	return s.conn.SubscribeUnitsCustomContext(ctx, time.Second, 0,
 		mismatchUnitStatus,
 		func(unit string) bool { return s.filter(unit) },
@@ -48,6 +47,36 @@ func (s *SubscriptionSet) Subscribe() (<-chan map[string]*UnitStatus, <-chan err
 // NewSubscriptionSet returns a new subscription set.
 func (c *Conn) NewSubscriptionSet() *SubscriptionSet {
 	return &SubscriptionSet{newSet(), c}
+}
+
+// SetPropertiesSubscriber works the same as [Conn.SetPropertiesSubscriber] but
+// will send updates only for the units that are part of [SubscriptionSet]. It
+// is a caller's responsibility to call [Conn.SubscribeUnit]
+// and [Conn.UnsubscribeUnit] when new units are added or
+// removed from the SubscriptionSet.
+func (s *SubscriptionSet) SetPropertiesSubscriber(ctx context.Context, propertiesChangedCh chan<- *PropertiesUpdate, errorCh chan<- error) {
+	s.conn.propertiesSubscriber.Lock()
+	defer s.conn.propertiesSubscriber.Unlock()
+	s.conn.propertiesSubscriber.subscriptionSets = append(s.conn.propertiesSubscriber.subscriptionSets, struct {
+		set      *SubscriptionSet
+		updateCh chan<- *PropertiesUpdate
+		errCh    chan<- error
+	}{set: s, updateCh: propertiesChangedCh, errCh: errorCh})
+
+	go func() {
+		<-ctx.Done()
+
+		s.conn.propertiesSubscriber.Lock()
+		defer s.conn.propertiesSubscriber.Unlock()
+		for idx, setWithChannel := range s.conn.propertiesSubscriber.subscriptionSets {
+			if s == setWithChannel.set {
+				s.conn.propertiesSubscriber.subscriptionSets = append(s.conn.propertiesSubscriber.subscriptionSets[:idx], s.conn.propertiesSubscriber.subscriptionSets[idx+1:]...)
+				close(setWithChannel.updateCh)
+				close(setWithChannel.errCh)
+				break
+			}
+		}
+	}()
 }
 
 // mismatchUnitStatus returns true if the provided UnitStatus objects
