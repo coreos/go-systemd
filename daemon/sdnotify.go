@@ -54,6 +54,18 @@ const (
 // (false, err) - notification supported, but failure happened (e.g. error connecting to NOTIFY_SOCKET or while sending data)
 // (true, nil) - notification supported, data has been sent
 func SdNotify(unsetEnvironment bool, state string) (bool, error) {
+	return SdNotifyWithFiles(unsetEnvironment, state)
+}
+
+// SdNotifyWithFiles is like [SdNotify], but additionally passes the given open
+// files to the service manager. It is typically used together with "FDSTORE=1"
+// to hand file descriptors over for safe-keeping across a restart.
+//
+// The files remain owned by the caller; they may be closed as soon as this
+// function returns, if necessary.
+//
+// The return values are the same as for [SdNotify].
+func SdNotifyWithFiles(unsetEnvironment bool, state string, files ...*os.File) (bool, error) {
 	socketAddr := &net.UnixAddr{
 		Name: os.Getenv("NOTIFY_SOCKET"),
 		Net:  "unixgram",
@@ -70,14 +82,16 @@ func SdNotify(unsetEnvironment bool, state string) (bool, error) {
 		}
 	}
 
-	conn, err := net.DialUnix(socketAddr.Net, nil, socketAddr)
-	// Error connecting to NOTIFY_SOCKET
+	// Use an unconnected socket instead of [net.DialUnix] because
+	// [net.UnixConn.WriteMsgUnix] needs datagram sockets to be
+	// unconnected.
+	conn, err := net.ListenUnixgram("unixgram", &net.UnixAddr{})
 	if err != nil {
 		return false, err
 	}
 	defer conn.Close()
 
-	if _, err = conn.Write([]byte(state)); err != nil {
+	if err := writeState(conn, socketAddr, state, files); err != nil {
 		return false, err
 	}
 	return true, nil
