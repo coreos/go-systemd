@@ -17,9 +17,12 @@
 package daemon
 
 import (
+	"context"
+	"errors"
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -124,5 +127,69 @@ func TestSdNotifyWithFiles(t *testing.T) {
 			// "%#v" for os.fileStat is ugly, but decipherable
 			t.Errorf("file %d: wrong file descriptor received; got %#v, want %#v", i, gotStat, wantStat)
 		}
+	}
+}
+
+func TestSdNotifyBarrier(t *testing.T) {
+	tests := []struct {
+		name    string
+		timeout bool
+	}{
+		{name: "OK", timeout: false},
+		{name: "Timeout", timeout: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testDir := t.TempDir()
+
+			notifySocket := testDir + "/notify-socket.sock"
+			laddr := net.UnixAddr{
+				Name: notifySocket,
+				Net:  "unixgram",
+			}
+			conn, err := net.ListenUnixgram("unixgram", &laddr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer conn.Close()
+
+			t.Setenv("NOTIFY_SOCKET", notifySocket)
+
+			ctx, cancel := context.WithCancel(t.Context())
+
+			var t1, t2 time.Time
+
+			go func() {
+				_, files := recvNotifyFiles(t, conn)
+				if tt.timeout {
+					// simulate timeout for the SdNotifyBarrier call
+					cancel()
+					<-t.Context().Done()
+				} else {
+					t1 = time.Now()
+					files[0].Close()
+				}
+			}()
+
+			sent, err := SdNotifyBarrier(ctx, false)
+			if !sent {
+				t.Fatal("SdNotifyBarrier should've sent a message")
+			}
+			t2 = time.Now()
+
+			if tt.timeout {
+				if !errors.Is(err, context.Canceled) {
+					t.Errorf("unexpected error %v", err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error %v", err)
+				}
+				if t1.After(t2) {
+					t.Error("SdNotifyWithFiles returned before service manager closed the file")
+				}
+			}
+		})
 	}
 }

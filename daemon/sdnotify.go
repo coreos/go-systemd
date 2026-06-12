@@ -22,8 +22,11 @@
 package daemon
 
 import (
+	"context"
+	"io"
 	"net"
 	"os"
+	"time"
 )
 
 const (
@@ -44,6 +47,8 @@ const (
 	// timestamp for the service.
 	SdNotifyWatchdog = "WATCHDOG=1"
 )
+
+var aLongTimeAgo = time.Unix(1, 0)
 
 // SdNotify sends a message to the init daemon. It is common to ignore the error.
 // If `unsetEnvironment` is true, the environment variable `NOTIFY_SOCKET`
@@ -95,4 +100,56 @@ func SdNotifyWithFiles(unsetEnvironment bool, state string, files ...*os.File) (
 		return false, err
 	}
 	return true, nil
+}
+
+// SdNotifyBarrier blocks until all notifications sent before it have been
+// processed by the service manager. This is the equivalent of libsystemd's
+// sd_notify_barrier(3).
+//
+// It works by sending a "BARRIER=1" message together with the write end of a
+// freshly created pipe. The service manager closes its copy of that descriptor
+// once it has handled every preceding notification, at which point our read end
+// observes EOF and the barrier is lifted.
+//
+// It returns one of the following:
+// (false, nil) - notification not supported (i.e. NOTIFY_SOCKET is unset)
+// (false, err) - notification supported, but failure happened (e.g. error connecting to NOTIFY_SOCKET, while sending data)
+// (true, err) - notification supported and sent, but barrier hasn't been reached
+// (true, nil) - notification supported and sent, and the barrier has been reached
+func SdNotifyBarrier(ctx context.Context, unsetEnvironment bool) (bool, error) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		return false, err
+	}
+	defer r.Close()
+
+	// Send the barrier along with the write end of the pipe. We close our copy
+	// of the write end immediately afterwards (whatever the outcome), so that
+	// the service manager holds the only remaining reference to it.
+	sent, err := SdNotifyWithFiles(unsetEnvironment, "BARRIER=1", w)
+	w.Close()
+	if err != nil || !sent {
+		return sent, err
+	}
+
+	err = waitForClose(ctx, r)
+	return true, err
+}
+
+func waitForClose(ctx context.Context, r *os.File) error {
+	// interrupt read on context cancelation
+	stop := context.AfterFunc(ctx, func() {
+		// error should never happen: deadlines are supported for pipes
+		_ = r.SetReadDeadline(aLongTimeAgo)
+	})
+	defer stop()
+
+	_, err := io.Copy(io.Discard, r)
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+		return err
+	}
+	return nil
 }
