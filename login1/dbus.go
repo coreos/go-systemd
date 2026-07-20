@@ -36,8 +36,33 @@ const (
 
 // Conn is a connection to systemds dbus endpoint.
 type Conn struct {
-	conn   *dbus.Conn
-	object dbus.BusObject
+	conn        Connection
+	connManager connectionManager
+	object      Caller
+}
+
+// Connection describes functionality required from a given D-Bus connection.
+type Connection interface {
+	Object(string, dbus.ObjectPath) dbus.BusObject
+	Signal(ch chan<- *dbus.Signal)
+	Connected() bool
+	AddMatchSignalContext(ctx context.Context, options ...dbus.MatchOption) error
+}
+
+// connectionManager explicitly wraps dependencies on established D-Bus connection.
+type connectionManager interface {
+	Hello() error
+	Auth(authMethods []dbus.Auth) error
+	Close() error
+
+	Connection
+}
+
+// Caller describes required functionality from D-Bus object.
+type Caller interface {
+	// TODO: This method should eventually be removed, as it provides no context support.
+	Call(method string, flags dbus.Flags, args ...any) *dbus.Call
+	CallWithContext(ctx context.Context, method string, flags dbus.Flags, args ...any) *dbus.Call
 }
 
 // New establishes a connection to the system bus and authenticates.
@@ -51,14 +76,26 @@ func New() (*Conn, error) {
 	return c, nil
 }
 
+// NewWithConnection creates new login1 client using given D-Bus connection.
+func NewWithConnection(connection Connection) (*Conn, error) {
+	if connection == nil {
+		return nil, errors.New("no connection given")
+	}
+
+	return &Conn{
+		conn:   connection,
+		object: connection.Object(dbusDest, dbusPath),
+	}, nil
+}
+
 // Close closes the dbus connection
 func (c *Conn) Close() {
 	if c == nil {
 		return
 	}
 
-	if c.conn != nil {
-		c.conn.Close()
+	if c.conn != nil && c.connManager != nil {
+		c.connManager.Close()
 	}
 }
 
@@ -69,7 +106,7 @@ func (c *Conn) Connected() bool {
 
 func (c *Conn) initConnection() error {
 	var err error
-	c.conn, err = dbus.SystemBusPrivate()
+	c.connManager, err = dbus.SystemBusPrivate()
 	if err != nil {
 		return err
 	}
@@ -79,18 +116,19 @@ func (c *Conn) initConnection() error {
 	// libc)
 	methods := []dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Getuid()))}
 
-	err = c.conn.Auth(methods)
+	err = c.connManager.Auth(methods)
 	if err != nil {
-		c.conn.Close()
+		c.connManager.Close()
 		return err
 	}
 
-	err = c.conn.Hello()
+	err = c.connManager.Hello()
 	if err != nil {
-		c.conn.Close()
+		c.connManager.Close()
 		return err
 	}
 
+	c.conn = c.connManager
 	c.object = c.conn.Object("org.freedesktop.login1", dbus.ObjectPath(dbusPath))
 
 	return nil
@@ -354,14 +392,23 @@ func (c *Conn) Inhibit(what, who, why, mode string) (*os.File, error) {
 	return os.NewFile(uintptr(fd), "inhibit"), nil
 }
 
-// Subscribe to signals on the logind dbus
-func (c *Conn) Subscribe(members ...string) chan *dbus.Signal {
+// SubscribeWithContext subscribes to signals on the logind dbus. If adding match signals fails, an error is returned.
+func (c *Conn) SubscribeWithContext(ctx context.Context, members ...string) (chan *dbus.Signal, error) {
 	for _, member := range members {
-		c.conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
-			fmt.Sprintf("type='signal',interface='org.freedesktop.login1.Manager',member='%s'", member))
+		if err := c.conn.AddMatchSignalContext(ctx, dbus.WithMatchInterface(dbusManagerInterface), dbus.WithMatchMember(member)); err != nil {
+			return nil, fmt.Errorf("adding match for signal %s: %w", member, err)
+		}
 	}
 	ch := make(chan *dbus.Signal, 10)
 	c.conn.Signal(ch)
+	return ch, nil
+}
+
+// Subscribe subscribes to signals on the logind dbus. If adding match signals fails, errors are ignored.
+//
+// Deprecated: use SubscribeWithContext instead.
+func (c *Conn) Subscribe(members ...string) chan *dbus.Signal {
+	ch, _ := c.SubscribeWithContext(context.Background(), members...)
 	return ch
 }
 
