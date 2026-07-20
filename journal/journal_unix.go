@@ -243,6 +243,7 @@ func tempFd() (*os.File, error) {
 	}
 	err = syscall.Unlink(file.Name())
 	if err != nil {
+		file.Close()
 		return nil, err
 	}
 	return file, nil
