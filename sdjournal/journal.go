@@ -39,6 +39,15 @@ package sdjournal
 // }
 //
 // int
+// my_sd_journal_open_namespace(void *f, sd_journal **ret, const char *namespace, int flags)
+// {
+//   int (*sd_journal_open_namespace)(sd_journal **, const char *, int);
+//
+//   sd_journal_open_namespace = f;
+//   return sd_journal_open_namespace(ret, namespace, flags);
+// }
+//
+// int
 // my_sd_journal_open_directory(void *f, sd_journal **ret, const char *path, int flags)
 // {
 //   int (*sd_journal_open_directory)(sd_journal **, const char *, int);
@@ -432,6 +441,27 @@ func NewJournal() (j *Journal, err error) {
 
 	if r < 0 {
 		return nil, fmt.Errorf("failed to open journal: %w", syscall.Errno(-r))
+	}
+
+	return j, nil
+}
+
+// NewJournal returns a new Journal instance pointing to the local journal in a given namespace
+func NewJournalInNamespace(namespace string) (j *Journal, err error) {
+	j = &Journal{}
+
+	sd_journal_open_namespace, err := getFunction("sd_journal_open_namespace")
+	if err != nil {
+		return nil, err
+	}
+
+	n := C.CString(namespace)
+	defer C.free(unsafe.Pointer(n))
+
+	r := C.my_sd_journal_open_namespace(sd_journal_open_namespace, &j.cjournal, n, C.SD_JOURNAL_LOCAL_ONLY)
+
+	if r < 0 {
+		return nil, fmt.Errorf("failed to open journal in namespace %q: %s", namespace, syscall.Errno(-r).Error())
 	}
 
 	return j, nil
