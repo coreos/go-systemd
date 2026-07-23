@@ -16,7 +16,23 @@
 
 package daemon
 
+import (
+	"errors"
+	"net"
+	"os"
+)
+
 // SdNotifyMonotonicUsec returns the empty string on unsupported platforms.
 func SdNotifyMonotonicUsec() string {
 	return ""
+}
+
+// writeState sends the notification state. Passing files is not supported on
+// this platform, so a non-empty files slice results in an error.
+func writeState(conn *net.UnixConn, addr *net.UnixAddr, state string, files []*os.File) error {
+	if len(files) > 0 {
+		return errors.New("daemon: passing files over NOTIFY_SOCKET is not supported on this platform")
+	}
+	_, err := conn.WriteToUnix([]byte(state), addr)
+	return err
 }

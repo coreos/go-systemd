@@ -17,10 +17,37 @@
 package daemon
 
 import (
+	"net"
+	"os"
+	"runtime"
 	"strconv"
 
 	"golang.org/x/sys/unix"
 )
+
+// writeState sends the notification state, optionally accompanied by the given
+// open files as an SCM_RIGHTS ancillary message.
+func writeState(conn *net.UnixConn, addr *net.UnixAddr, state string, files []*os.File) error {
+	if len(files) == 0 {
+		_, err := conn.WriteToUnix([]byte(state), addr)
+		return err
+	}
+
+	fds := make([]int, len(files))
+	for i, f := range files {
+		fds[i] = int(f.Fd())
+	}
+	oob := unix.UnixRights(fds...)
+
+	_, _, err := conn.WriteMsgUnix([]byte(state), oob, addr)
+
+	// File descriptors that reference files are stored inside oob []byte,
+	// so explicitly mark files alive to prevent GC from closing them
+	// early.
+	runtime.KeepAlive(files)
+
+	return err
+}
 
 // SdNotifyMonotonicUsec returns a MONOTONIC_USEC=... assignment for the current time
 // with a trailing newline included. This is typically used with [SdNotifyReloading].
