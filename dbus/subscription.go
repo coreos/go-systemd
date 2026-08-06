@@ -17,6 +17,7 @@ package dbus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -46,6 +47,18 @@ func (c *Conn) Unsubscribe() error {
 	return c.sigobj.Call("org.freedesktop.systemd1.Manager.Unsubscribe", 0).Store()
 }
 
+func (c *Conn) SubscribeUnit(unit string) error {
+	return c.sigconn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
+		fmt.Sprintf("type='signal',interface='org.freedesktop.DBus.Properties',"+
+			"member='PropertiesChanged',path='/org/freedesktop/systemd1/unit/%s'", PathBusEscape(unit))).Store()
+}
+
+func (c *Conn) UnsubscribeUnit(unit string) error {
+	return c.sigconn.BusObject().Call("org.freedesktop.DBus.RemoveMatch", 0,
+		fmt.Sprintf("type='signal',interface='org.freedesktop.DBus.Properties',"+
+			"member='PropertiesChanged',path='/org/freedesktop/systemd1/unit/%s'", PathBusEscape(unit))).Store()
+}
+
 func (c *Conn) dispatch() {
 	ch := make(chan *dbus.Signal, signalBuffer)
 
@@ -63,7 +76,8 @@ func (c *Conn) dispatch() {
 			}
 
 			if c.subStateSubscriber.updateCh == nil &&
-				c.propertiesSubscriber.updateCh == nil {
+				c.propertiesSubscriber.updateCh == nil &&
+				len(c.propertiesSubscriber.setSubscriber) == 0 {
 				continue
 			}
 
@@ -77,7 +91,6 @@ func (c *Conn) dispatch() {
 			case "org.freedesktop.DBus.Properties.PropertiesChanged":
 				if signal.Body[0].(string) == "org.freedesktop.systemd1.Unit" {
 					unitPath = signal.Path
-
 					if len(signal.Body) >= 2 {
 						if changed, ok := signal.Body[1].(map[string]dbus.Variant); ok {
 							c.sendPropertiesUpdate(unitPath, changed)
@@ -339,18 +352,36 @@ func (c *Conn) sendPropertiesUpdate(unitPath dbus.ObjectPath, changedProps map[s
 	c.propertiesSubscriber.Lock()
 	defer c.propertiesSubscriber.Unlock()
 
+	// remove inactive set subscribers
+	var activeSetSubscribers []*setPropertiesSubscriber
+	update := &PropertiesUpdate{unitName(unitPath), changedProps}
+	for _, setSubscriber := range c.propertiesSubscriber.setSubscriber {
+		select {
+		case <-setSubscriber.cancel:
+			close(setSubscriber.updateCh)
+			close(setSubscriber.errCh)
+		default:
+			if setSubscriber.set.Contains(unitName(unitPath)) {
+				handleUpdate(update, setSubscriber.updateCh, setSubscriber.errCh)
+			}
+			activeSetSubscribers = append(activeSetSubscribers, setSubscriber)
+		}
+	}
+	c.propertiesSubscriber.setSubscriber = activeSetSubscribers
+
 	if c.propertiesSubscriber.updateCh == nil {
 		return
 	}
+	handleUpdate(update, c.propertiesSubscriber.updateCh, c.propertiesSubscriber.errCh)
+}
 
-	update := &PropertiesUpdate{unitName(unitPath), changedProps}
-
+func handleUpdate(update *PropertiesUpdate, updateCh chan<- *PropertiesUpdate, errCh chan<- error) {
 	select {
-	case c.propertiesSubscriber.updateCh <- update:
+	case updateCh <- update:
 	default:
 		msg := "update channel is full"
 		select {
-		case c.propertiesSubscriber.errCh <- errors.New(msg):
+		case errCh <- errors.New(msg):
 		default:
 			log.Printf("full error channel while reporting: %s\n", msg)
 		}

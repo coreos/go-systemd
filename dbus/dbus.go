@@ -106,8 +106,9 @@ type Conn struct {
 		cleanIgnore int64
 	}
 	propertiesSubscriber struct {
-		updateCh chan<- *PropertiesUpdate
-		errCh    chan<- error
+		setSubscriber []*setPropertiesSubscriber
+		updateCh      chan<- *PropertiesUpdate
+		errCh         chan<- error
 		sync.Mutex
 	}
 }
