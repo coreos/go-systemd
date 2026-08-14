@@ -47,12 +47,17 @@ type PropertyCollection struct {
 type execStart struct {
 	Path             string   // the binary path to execute
 	Args             []string // an array with all arguments to pass to the executed command, starting with argument 0
-	UncleanIsFailure bool     // a boolean whether it should be considered a failure if the process exits uncleanly
+	UncleanIsFailure bool     // a boolean controlling how systemd reacts to an unclean exit from the executed process; despite the name, true means *ignore* an unclean exit (equivalent to prefixing the command with `-` in a unit file and to systemd's arg_ignore_failure), while false (the default) treats unclean exits as failures. The field is named for the negation of the systemd property to preserve backward compatibility. See issue #510.
 }
 
 // PropExecStart sets the ExecStart service property.  The first argument is a
 // slice with the binary path to execute followed by the arguments to pass to
-// the executed command. See
+// the executed command.  The second argument controls how systemd reacts to an
+// unclean exit from the executed process: true ignores unclean exits
+// (equivalent to prefixing the command with `-` in a unit file and to
+// systemd's arg_ignore_failure), false (the default) treats unclean exits as
+// failures.  Despite the argument name, true does *not* mean unclean exits are
+// failures. See
 // http://www.freedesktop.org/software/systemd/man/systemd.service.html#ExecStart=
 func PropExecStart(command []string, uncleanIsFailure bool) Property {
 	execStarts := []execStart{
