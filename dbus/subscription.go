@@ -62,10 +62,16 @@ func (c *Conn) dispatch() {
 				c.jobComplete(signal)
 			}
 
+			c.subStateSubscriber.Lock()
+			c.propertiesSubscriber.Lock()
 			if c.subStateSubscriber.updateCh == nil &&
 				c.propertiesSubscriber.updateCh == nil {
+				c.propertiesSubscriber.Unlock()
+				c.subStateSubscriber.Unlock()
 				continue
 			}
+			c.propertiesSubscriber.Unlock()
+			c.subStateSubscriber.Unlock()
 
 			var unitPath dbus.ObjectPath
 			switch signal.Name {
