@@ -15,7 +15,9 @@
 package dlopen
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -60,6 +62,24 @@ func TestDlopen(t *testing.T) {
 
 		if tt.shouldSucceed && len != expLen {
 			t.Errorf("case %d: expected length %d, got %d", i, expLen, len)
+		}
+	}
+}
+
+func TestGetHandleError(t *testing.T) {
+	libs := []string{"libstrange1.so", "libstrange2.so"}
+
+	_, err := GetHandle(libs)
+	if err == nil {
+		t.Fatal("expected GetHandle to fail")
+	}
+	if !errors.Is(err, ErrSoNotFound) {
+		t.Errorf("expected ErrSoNotFound, got %v", err)
+	}
+	// the reason dlopen() gave for each name should be in the message
+	for _, name := range libs {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("error does not mention %q: %v", name, err)
 		}
 	}
 }
