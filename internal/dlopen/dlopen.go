@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"unsafe"
 )
 
@@ -41,9 +42,16 @@ type LibHandle struct {
 // opened. Callers are responsible for closing the handler. If no library can
 // be successfully opened, an error is returned.
 func GetHandle(libs []string) (*LibHandle, error) {
+	// Locking the thread is critical here as the dlerror() is thread local so
+	// go should not reschedule this onto another thread.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	msgs := make([]string, 0, len(libs))
 	for _, name := range libs {
 		libname := C.CString(name)
 		defer C.free(unsafe.Pointer(libname))
+		C.dlerror()
 		handle := C.dlopen(libname, C.RTLD_LAZY)
 		if handle != nil {
 			h := &LibHandle{
@@ -52,8 +60,14 @@ func GetHandle(libs []string) (*LibHandle, error) {
 			}
 			return h, nil
 		}
+		if e := C.dlerror(); e != nil {
+			msgs = append(msgs, C.GoString(e))
+		}
 	}
-	return nil, ErrSoNotFound
+	if len(msgs) == 0 {
+		return nil, ErrSoNotFound
+	}
+	return nil, fmt.Errorf("%w: %s", ErrSoNotFound, strings.Join(msgs, "; "))
 }
 
 // GetSymbolPointer takes a symbol name and returns a pointer to the symbol.
