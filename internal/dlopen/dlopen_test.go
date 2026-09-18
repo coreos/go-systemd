@@ -15,7 +15,9 @@
 package dlopen
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -60,6 +62,28 @@ func TestDlopen(t *testing.T) {
 
 		if tt.shouldSucceed && len != expLen {
 			t.Errorf("case %d: expected length %d, got %d", i, expLen, len)
+		}
+	}
+}
+
+// A failed GetHandle must keep the ErrSoNotFound sentinel for callers that
+// test for it, and must say why dlopen refused each name, since the sentinel
+// alone leaves a missing library indistinguishable from a resource failure.
+func TestGetHandleReportsDlerror(t *testing.T) {
+	libs := []string{"libstrange1.so", "libstrange2.so"}
+	_, err := GetHandle(libs)
+	if err == nil {
+		t.Fatal("expected GetHandle to fail for nonexistent libraries")
+	}
+	if !errors.Is(err, ErrSoNotFound) {
+		t.Errorf("error %q does not wrap ErrSoNotFound", err)
+	}
+	// glibc and musl both name the library in their message: glibc says
+	// "cannot open shared object file", musl "Error loading shared library".
+	// The exact wording is theirs, so only the name is asserted.
+	for _, name := range libs {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("error %q does not carry the dlerror() text for %s", err, name)
 		}
 	}
 }
