@@ -22,6 +22,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1705,6 +1706,28 @@ func TestUnitName(t *testing.T) {
 	}
 }
 
+// cgroupFile returns one file of a cgroup directory on a single line, or the
+// read error, for a failure message.
+func cgroupFile(dir, name string) string {
+	b, err := os.ReadFile(filepath.Join(dir, name))
+	if err != nil {
+		return err.Error()
+	}
+	return strings.TrimSpace(strings.ReplaceAll(string(b), "\n", " "))
+}
+
+// cgroupFreezerFiles reports the kernel's view of the unit's freezer, so a
+// FreezerState that disagrees with it can be told apart from a freeze that
+// never happened.
+func cgroupFreezerFiles(t *testing.T, conn *Conn, target string) string {
+	p, err := conn.GetServicePropertyContext(t.Context(), target, "ControlGroup")
+	if err != nil {
+		return fmt.Sprintf("ControlGroup unavailable: %v", err)
+	}
+	dir := filepath.Join("/sys/fs/cgroup", p.Value.Value().(string))
+	return fmt.Sprintf("cgroup.freeze=%q cgroup.events=%q", cgroupFile(dir, "cgroup.freeze"), cgroupFile(dir, "cgroup.events"))
+}
+
 func TestFreezer(t *testing.T) {
 	target := "freeze.service"
 	conn := setupConn(t)
@@ -1740,7 +1763,7 @@ func TestFreezer(t *testing.T) {
 
 	v := p.Value.Value().(string)
 	if v != "frozen" {
-		t.Fatalf("unit is not frozen after calling FreezeUnit(), FreezerState=%s", v)
+		t.Fatalf("unit is not frozen after calling FreezeUnit(), FreezerState=%s, %s", v, cgroupFreezerFiles(t, conn, target))
 	}
 
 	if err := conn.ThawUnit(t.Context(), target); err != nil {
@@ -1754,7 +1777,7 @@ func TestFreezer(t *testing.T) {
 
 	v = p.Value.Value().(string)
 	if v != "running" {
-		t.Fatalf("unit is not frozen after calling ThawUnit(), FreezerState=%s", v)
+		t.Fatalf("unit is not running after calling ThawUnit(), FreezerState=%s, %s", v, cgroupFreezerFiles(t, conn, target))
 	}
 
 	if err := runStopUnit(t, conn, TrUnitProp{target, nil}); err != nil {
