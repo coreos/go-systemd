@@ -188,10 +188,11 @@ type SubStateUpdate struct {
 // may be more recent than the change that generated it (due to an unavoidable
 // race in the systemd dbus interface).  That is, this method provides a good
 // way to keep a current view of all units' states, but is not guaranteed to
-// show every state transition they go through.  Furthermore, state changes
-// will only be written to the channel with non-blocking writes.  If updateCh
-// is full, it attempts to write an error to errCh; if errCh is full, the error
-// passes silently.
+// show every state transition they go through.  Identical consecutive
+// SubStates for the same unit are suppressed so a unit stuck in e.g. "dead"
+// does not flood updateCh.  Furthermore, state changes will only be written
+// to the channel with non-blocking writes.  If updateCh is full, it attempts
+// to write an error to errCh; if errCh is full, the error passes silently.
 func (c *Conn) SetSubStateSubscriber(updateCh chan<- *SubStateUpdate, errCh chan<- error) {
 	if c == nil {
 		msg := "nil receiver"
@@ -207,6 +208,8 @@ func (c *Conn) SetSubStateSubscriber(updateCh chan<- *SubStateUpdate, errCh chan
 	defer c.subStateSubscriber.Unlock()
 	c.subStateSubscriber.updateCh = updateCh
 	c.subStateSubscriber.errCh = errCh
+	// Fresh subscriber: do not suppress based on a previous channel's history.
+	c.subStateSubscriber.last = make(map[string]string)
 }
 
 func (c *Conn) sendSubStateUpdate(unitPath dbus.ObjectPath) {
@@ -255,6 +258,10 @@ func (c *Conn) sendSubStateUpdate(unitPath dbus.ObjectPath) {
 		return
 	}
 
+	if !c.noteSubStateLocked(name, substate) {
+		return
+	}
+
 	update := &SubStateUpdate{name, substate}
 	select {
 	case c.subStateSubscriber.updateCh <- update:
@@ -267,6 +274,19 @@ func (c *Conn) sendSubStateUpdate(unitPath dbus.ObjectPath) {
 		}
 		return
 	}
+}
+
+// noteSubStateLocked records name's SubState and reports whether an update
+// should be emitted. Caller must hold subStateSubscriber.Lock.
+func (c *Conn) noteSubStateLocked(name, substate string) bool {
+	if c.subStateSubscriber.last == nil {
+		c.subStateSubscriber.last = make(map[string]string)
+	}
+	if prev, ok := c.subStateSubscriber.last[name]; ok && prev == substate {
+		return false
+	}
+	c.subStateSubscriber.last[name] = substate
+	return true
 }
 
 // The ignore functions work around a wart in the systemd dbus interface.

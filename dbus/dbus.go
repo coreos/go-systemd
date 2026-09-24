@@ -104,6 +104,9 @@ type Conn struct {
 		sync.Mutex
 		ignore      map[dbus.ObjectPath]int64
 		cleanIgnore int64
+		// last remembers the most recently emitted SubState per unit name so
+		// unchanged repeats (e.g. continuous "dead") are not flooded to updateCh.
+		last map[string]string
 	}
 	propertiesSubscriber struct {
 		updateCh chan<- *PropertiesUpdate
@@ -207,6 +210,7 @@ func NewConnection(dialBus func() (*dbus.Conn, error)) (*Conn, error) {
 	}
 
 	c.subStateSubscriber.ignore = make(map[dbus.ObjectPath]int64)
+	c.subStateSubscriber.last = make(map[string]string)
 	c.jobListener.jobs = make(map[dbus.ObjectPath][]chan<- string)
 
 	// Setup the listeners on jobs so that we can get completions
