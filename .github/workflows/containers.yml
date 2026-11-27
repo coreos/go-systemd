@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         baseimage: ['debian:bookworm', 'debian:trixie', 'ubuntu:22.04', 'ubuntu:24.04', 'fedora']
-        go: [1.24, 1.25, 1.26]
+        go: [1.24, 1.26, 1.27]
     steps:
       - uses: actions/checkout@v7
       - name: Run tests in container
