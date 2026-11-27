@@ -196,7 +196,7 @@ func (r *JournalReader) Rewind() error {
 func (r *JournalReader) Follow(until <-chan time.Time, writer io.Writer) error {
 	// Process journal entries and events. Entries are flushed until the tail or
 	// timeout is reached, and then we wait for new events or the timeout.
-	msg := make([]byte, 64*1<<(10))
+	msg := make([]byte, 64*1<<10)
 	waitCh := make(chan int, 1)
 	var waitGroup sync.WaitGroup
 	defer waitGroup.Wait()
